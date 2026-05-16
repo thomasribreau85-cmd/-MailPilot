@@ -230,10 +230,14 @@ def oauth_callback():
         flow = Flow.from_client_secrets_file(
             creds_path,
             scopes=GMAIL_SCOPES,
-            redirect_uri=redirect_uri,
-            state=state
+            redirect_uri=redirect_uri
         )
-        flow.fetch_token(code=code)
+        # Reconstruit l'URL de réponse en forçant https sur Railway
+        auth_response = request.url
+        is_local = request.host.startswith('127') or request.host.startswith('localhost')
+        if not is_local:
+            auth_response = auth_response.replace('http://', 'https://')
+        flow.fetch_token(authorization_response=auth_response)
         creds = flow.credentials
 
         token_path = str(TOKENS_DIR / f"token_{compte_id}.json")
@@ -249,6 +253,8 @@ def oauth_callback():
         oauth_statut[compte_id] = "ok"
 
     except Exception as e:
+        import sys
+        print(f"[OAuth Callback ERREUR] compte={compte_id} err={e}", file=sys.stderr)
         oauth_statut[compte_id] = "erreur"
         with lock:
             logs_par_compte.setdefault(compte_id, []).append(f"[ERREUR OAuth] {e}")
