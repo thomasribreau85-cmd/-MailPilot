@@ -251,6 +251,8 @@ def oauth_callback():
             sauver_comptes(data)
 
         oauth_statut[compte_id] = "ok"
+        import sys
+        print(f"[OAuth SUCCESS] compte={compte_id} connecte=True token={token_path}", file=sys.stderr)
 
     except Exception as e:
         import sys
@@ -330,6 +332,11 @@ def statut_compte(compte_id):
         "logs":           logs,
         "oauth":          oauth_statut.get(compte_id, ""),
     })
+
+
+@app.route("/debug/comptes")
+def debug_comptes():
+    return jsonify(charger_comptes())
 
 
 @app.route("/statut_global")
