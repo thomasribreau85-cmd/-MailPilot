@@ -12,8 +12,8 @@ import threading
 import subprocess
 from pathlib import Path
 
-from flask import Flask, render_template, request, jsonify
-from google_auth_oauthlib.flow import InstalledAppFlow
+from flask import Flask, render_template, request, jsonify, redirect
+from google_auth_oauthlib.flow import InstalledAppFlow, Flow
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
 
@@ -32,8 +32,21 @@ processus       = {}   # compte_id -> subprocess
 logs_par_compte = {}   # compte_id -> [lignes]
 emails_comptes  = {}   # compte_id -> int
 oauth_statut    = {}   # compte_id -> 'en_cours' | 'ok' | 'erreur'
+oauth_flows     = {}   # state -> compte_id
 lock            = threading.Lock()
 MAX_LOGS        = 150
+
+
+# ── Credentials helper ───────────────────────────────────────
+
+def get_creds_path():
+    """Retourne le chemin vers credentials.json (depuis fichier ou env var)."""
+    creds_json = os.environ.get("GOOGLE_CREDENTIALS_JSON")
+    if creds_json:
+        tmp_path = BASE_DIR / "credentials_tmp.json"
+        tmp_path.write_text(creds_json)
+        return str(tmp_path)
+    return str(BASE_DIR / "credentials.json")
 
 
 # ── Persistence (comptes.json) ────────────────────────────────
@@ -139,55 +152,104 @@ def supprimer_compte(compte_id):
 
 @app.route("/connecter_gmail/<compte_id>", methods=["POST"])
 def connecter_gmail(compte_id):
-    """Lance le flux OAuth Gmail pour ce compte dans un thread."""
+    """Lance le flux OAuth Gmail (web redirect)."""
     if oauth_statut.get(compte_id) == "en_cours":
         return jsonify({"ok": False, "message": "Connexion déjà en cours…"})
 
-    creds_path = BASE_DIR / "credentials.json"
-    if not creds_path.exists():
+    creds_path = get_creds_path()
+    if not Path(creds_path).exists():
         return jsonify({"ok": False, "message": "credentials.json introuvable !"})
 
-    oauth_statut[compte_id] = "en_cours"
-
-    def lancer_oauth():
+    # Vérifie si un token valide existe déjà
+    token_path = str(TOKENS_DIR / f"token_{compte_id}.json")
+    if Path(token_path).exists():
         try:
-            token_path = str(TOKENS_DIR / f"token_{compte_id}.json")
-            creds = None
-
-            # Vérifie si un token existe déjà
-            if Path(token_path).exists():
-                creds = Credentials.from_authorized_user_file(token_path, GMAIL_SCOPES)
-
-            if not creds or not creds.valid:
-                if creds and creds.expired and creds.refresh_token:
-                    creds.refresh(Request())
-                else:
-                    flow = InstalledAppFlow.from_client_secrets_file(
-                        str(creds_path), GMAIL_SCOPES
-                    )
-                    creds = flow.run_local_server(port=0)
-
+            creds = Credentials.from_authorized_user_file(token_path, GMAIL_SCOPES)
+            if creds.valid:
+                data = charger_comptes()
+                c = trouver_compte(data, compte_id)
+                if c:
+                    c["connecte"] = True
+                    c["token"] = token_path
+                    sauver_comptes(data)
+                oauth_statut[compte_id] = "ok"
+                return jsonify({"ok": True, "message": "Déjà connecté !"})
+            elif creds.expired and creds.refresh_token:
+                creds.refresh(Request())
                 Path(token_path).write_text(creds.to_json())
+                data = charger_comptes()
+                c = trouver_compte(data, compte_id)
+                if c:
+                    c["connecte"] = True
+                    c["token"] = token_path
+                    sauver_comptes(data)
+                oauth_statut[compte_id] = "ok"
+                return jsonify({"ok": True, "message": "Token rafraîchi !"})
+        except Exception:
+            pass
 
-            # Marque comme connecté
-            data = charger_comptes()
-            c = trouver_compte(data, compte_id)
-            if c:
-                c["connecte"] = True
-                c["token"] = token_path
-                sauver_comptes(data)
+    # Construit l'URL OAuth web
+    redirect_uri = request.host_url.rstrip('/') + '/oauth/callback'
+    flow = Flow.from_client_secrets_file(
+        creds_path,
+        scopes=GMAIL_SCOPES,
+        redirect_uri=redirect_uri
+    )
+    auth_url, state = flow.authorization_url(
+        access_type='offline',
+        include_granted_scopes='true',
+        prompt='consent'
+    )
+    oauth_flows[state] = compte_id
+    oauth_statut[compte_id] = "en_cours"
+    return jsonify({"ok": True, "auth_url": auth_url})
 
-            oauth_statut[compte_id] = "ok"
 
-        except Exception as e:
+@app.route("/oauth/callback")
+def oauth_callback():
+    """Reçoit le code OAuth de Google et enregistre le token."""
+    state    = request.args.get('state')
+    code     = request.args.get('code')
+    error    = request.args.get('error')
+
+    compte_id = oauth_flows.pop(state, None)
+
+    if error or not compte_id:
+        if compte_id:
             oauth_statut[compte_id] = "erreur"
-            with lock:
-                logs_par_compte.setdefault(compte_id, []).append(
-                    f"[ERREUR OAuth] {e}"
-                )
+        return redirect('/')
 
-    threading.Thread(target=lancer_oauth, daemon=True).start()
-    return jsonify({"ok": True, "message": "Navigateur ouvert — autorise l'accès Gmail…"})
+    creds_path   = get_creds_path()
+    redirect_uri = request.host_url.rstrip('/') + '/oauth/callback'
+
+    try:
+        flow = Flow.from_client_secrets_file(
+            creds_path,
+            scopes=GMAIL_SCOPES,
+            redirect_uri=redirect_uri,
+            state=state
+        )
+        flow.fetch_token(code=code)
+        creds = flow.credentials
+
+        token_path = str(TOKENS_DIR / f"token_{compte_id}.json")
+        Path(token_path).write_text(creds.to_json())
+
+        data = charger_comptes()
+        c = trouver_compte(data, compte_id)
+        if c:
+            c["connecte"] = True
+            c["token"]    = token_path
+            sauver_comptes(data)
+
+        oauth_statut[compte_id] = "ok"
+
+    except Exception as e:
+        oauth_statut[compte_id] = "erreur"
+        with lock:
+            logs_par_compte.setdefault(compte_id, []).append(f"[ERREUR OAuth] {e}")
+
+    return redirect('/')
 
 
 @app.route("/statut_oauth/<compte_id>")

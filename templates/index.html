@@ -585,28 +585,23 @@
       const btn = document.getElementById(`btn-connect-${id}`);
       if (btn) { btn.disabled = true; btn.textContent = '⏳ Connexion…'; }
 
-      const dot = document.getElementById(`dot-${id}`);
-      if (dot) dot.classList.add('connexion');
-
       const res  = await fetch(`/connecter_gmail/${id}`, { method: 'POST' });
       const json = await res.json();
-      toast(json.message || '…');
 
-      // Surveille jusqu'à ce que l'OAuth soit terminé
-      const interval = setInterval(async () => {
-        const r = await fetch(`/statut_oauth/${id}`);
-        const d = await r.json();
-        if (d.statut === 'ok') {
-          clearInterval(interval);
-          toast('✓ Gmail connecté !');
-          rafraichirCarte(id);
-        } else if (d.statut === 'erreur') {
-          clearInterval(interval);
-          toast('❌ Erreur de connexion Gmail');
-          if (dot) dot.classList.remove('connexion');
-          if (btn) { btn.disabled = false; btn.textContent = '🔗 Connecter Gmail'; }
-        }
-      }, 1500);
+      if (!json.ok) {
+        toast('❌ ' + (json.message || 'Erreur'));
+        if (btn) { btn.disabled = false; btn.textContent = '🔗 Connecter Gmail'; }
+        return;
+      }
+
+      if (json.auth_url) {
+        // Redirige vers Google pour l'autorisation OAuth
+        window.location.href = json.auth_url;
+      } else {
+        // Déjà connecté ou token rafraîchi
+        toast('✓ ' + (json.message || 'Gmail connecté !'));
+        rafraichirCarte(id);
+      }
     }
 
     // ── Démarrer / Arrêter ─────────────────────────────────
