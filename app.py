@@ -278,14 +278,17 @@ def statut_global():
 
 # ── Lancement ─────────────────────────────────────────────────
 if __name__ == "__main__":
-    import webbrowser
+    port = int(os.environ.get("PORT", 5001))
+    is_local = port == 5001
 
-    def ouvrir():
-        import time
-        time.sleep(1.2)
-        webbrowser.open("http://127.0.0.1:5001")
+    if is_local:
+        import webbrowser
+        def ouvrir():
+            import time
+            time.sleep(1.2)
+            webbrowser.open(f"http://127.0.0.1:{port}")
+        threading.Thread(target=ouvrir, daemon=True).start()
+        print("\n🛩️  MailPilot Pro — Interface multi-comptes")
+        print(f"   Ouvre http://127.0.0.1:{port}\n")
 
-    threading.Thread(target=ouvrir, daemon=True).start()
-    print("\n🛩️  MailPilot Pro — Interface multi-comptes")
-    print("   Ouvre http://127.0.0.1:5001\n")
-    app.run(debug=False, port=5001)
+    app.run(debug=False, host="0.0.0.0", port=port)
