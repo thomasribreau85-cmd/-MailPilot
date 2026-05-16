@@ -1,0 +1,16 @@
+{
+  "api_key": "",
+  "comptes": [
+    {
+      "id": "edf2ddec",
+      "nom": "Marilou Picard",
+      "agence": "MailPilot demo",
+      "tel": "0641169712",
+      "email": "mariloup86380@gmail.com",
+      "zone": "chatellerault",
+      "intervalle": "60",
+      "connecte": false,
+      "token": ""
+    }
+  ]
+}
