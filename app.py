@@ -205,7 +205,8 @@ def connecter_gmail(compte_id):
         include_granted_scopes='true',
         prompt='consent'
     )
-    oauth_flows[state] = compte_id
+    # Stocke le flow ENTIER (avec code_verifier PKCE) + compte_id
+    oauth_flows[state] = {"compte_id": compte_id, "flow": flow}
     oauth_statut[compte_id] = "en_cours"
     return jsonify({"ok": True, "auth_url": auth_url})
 
@@ -214,27 +215,20 @@ def connecter_gmail(compte_id):
 def oauth_callback():
     """Reçoit le code OAuth de Google et enregistre le token."""
     state    = request.args.get('state')
-    code     = request.args.get('code')
     error    = request.args.get('error')
 
-    compte_id = oauth_flows.pop(state, None)
+    flow_data = oauth_flows.pop(state, None)
+    compte_id = flow_data["compte_id"] if flow_data else None
 
-    if error or not compte_id:
+    if error or not flow_data:
         if compte_id:
             oauth_statut[compte_id] = "erreur"
         return redirect('/')
 
-    creds_path   = get_creds_path()
-    is_local = request.host.startswith('127') or request.host.startswith('localhost')
-    scheme = 'http' if is_local else 'https'
-    redirect_uri = f'{scheme}://{request.host}/oauth/callback'
+    # Réutilise le flow original (conserve le code_verifier PKCE)
+    flow = flow_data["flow"]
 
     try:
-        flow = Flow.from_client_secrets_file(
-            creds_path,
-            scopes=GMAIL_SCOPES,
-            redirect_uri=redirect_uri
-        )
         # Reconstruit l'URL de réponse en forçant https sur Railway
         auth_response = request.url
         is_local = request.host.startswith('127') or request.host.startswith('localhost')
