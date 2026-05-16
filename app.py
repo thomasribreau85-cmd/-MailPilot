@@ -21,8 +21,11 @@ app = Flask(__name__)
 
 # ── Chemins ──────────────────────────────────────────────────
 BASE_DIR    = Path(__file__).parent
-COMPTES_FILE = BASE_DIR / "comptes.json"
-TOKENS_DIR   = BASE_DIR / "tokens"
+# DATA_DIR peut être monté sur un volume persistant (Railway)
+DATA_DIR     = Path(os.environ.get("DATA_DIR", str(BASE_DIR)))
+DATA_DIR.mkdir(parents=True, exist_ok=True)
+COMPTES_FILE = DATA_DIR / "comptes.json"
+TOKENS_DIR   = DATA_DIR / "tokens"
 TOKENS_DIR.mkdir(exist_ok=True)
 
 GMAIL_SCOPES = ["https://www.googleapis.com/auth/gmail.modify"]
