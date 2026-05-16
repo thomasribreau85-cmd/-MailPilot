@@ -189,7 +189,9 @@ def connecter_gmail(compte_id):
             pass
 
     # Construit l'URL OAuth web
-    redirect_uri = request.host_url.rstrip('/') + '/oauth/callback'
+    is_local = request.host.startswith('127') or request.host.startswith('localhost')
+    scheme = 'http' if is_local else 'https'
+    redirect_uri = f'{scheme}://{request.host}/oauth/callback'
     flow = Flow.from_client_secrets_file(
         creds_path,
         scopes=GMAIL_SCOPES,
@@ -220,7 +222,9 @@ def oauth_callback():
         return redirect('/')
 
     creds_path   = get_creds_path()
-    redirect_uri = request.host_url.rstrip('/') + '/oauth/callback'
+    is_local = request.host.startswith('127') or request.host.startswith('localhost')
+    scheme = 'http' if is_local else 'https'
+    redirect_uri = f'{scheme}://{request.host}/oauth/callback'
 
     try:
         flow = Flow.from_client_secrets_file(
