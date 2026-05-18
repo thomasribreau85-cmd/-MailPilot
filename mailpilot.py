@@ -31,7 +31,7 @@ from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 
-from prompts import CLASSIFICATION_PROMPT, DRAFTING_PROMPTS
+from prompts import build_classification_prompt, DRAFTING_PROMPTS, LABELS_DEFAUT, TOUS_LES_LABELS
 
 # --- Argument --token pour support multi-comptes ---
 parser = argparse.ArgumentParser()
@@ -55,16 +55,19 @@ logger = logging.getLogger(__name__)
 # "modify" permet de lire, étiqueter, créer des brouillons
 GMAIL_SCOPES = ["https://www.googleapis.com/auth/gmail.modify"]
 
-# --- Mapping catégorie → nom du label Gmail ---
-LABEL_NOMS = {
-    "URGENT": "MailPilot - Urgent",
-    "VISITE": "MailPilot - Visite",
-    "OFFRE":  "MailPilot - Offre",
-    "DEVIS":  "MailPilot - Devis",
-    "INFO":   "MailPilot - Info",
-    "ADMIN":  "MailPilot - Admin",
-    "INUTILE":"MailPilot - Inutile",
-}
+# TOUS_LES_LABELS est importé depuis prompts.py
+
+# Labels actifs pour ce compte (depuis variable d'environnement)
+_labels_env = os.environ.get("LABELS_ACTIFS", "")
+LABELS_ACTIFS = _labels_env.split(",") if _labels_env else LABELS_DEFAUT
+
+# Filtre : seulement les labels actifs et connus
+LABELS_ACTIFS = [l for l in LABELS_ACTIFS if l in TOUS_LES_LABELS]
+if not LABELS_ACTIFS:
+    LABELS_ACTIFS = LABELS_DEFAUT
+
+# Mapping simplifié pour compatibilité
+LABEL_NOMS = {k: v["nom"] for k, v in TOUS_LES_LABELS.items()}
 
 # --- Modèles Claude à utiliser ---
 MODEL_CLASSIFICATION = "claude-haiku-4-5-20251001"  # Rapide et économique pour classer
@@ -141,26 +144,17 @@ def obtenir_ou_creer_labels(service):
 
     label_ids = {}
 
-    for categorie, nom_label in LABEL_NOMS.items():
+    for categorie in LABELS_ACTIFS:
+        info = TOUS_LES_LABELS[categorie]
+        nom_label = info["nom"]
         if nom_label in labels_existants:
-            # Le label existe déjà
             label_ids[categorie] = labels_existants[nom_label]
         else:
-            # Crée le label avec une couleur distincte
-            couleurs = {
-                "URGENT":  {"backgroundColor": "#cc3a21", "textColor": "#ffffff"},
-                "VISITE":  {"backgroundColor": "#285bac", "textColor": "#ffffff"},
-                "OFFRE":   {"backgroundColor": "#0b804b", "textColor": "#ffffff"},
-                "DEVIS":   {"backgroundColor": "#eaa041", "textColor": "#ffffff"},
-                "INFO":    {"backgroundColor": "#f2c960", "textColor": "#000000"},
-                "ADMIN":   {"backgroundColor": "#8e63ce", "textColor": "#ffffff"},
-                "INUTILE": {"backgroundColor": "#999999", "textColor": "#ffffff"},
-            }
             corps_label = {
                 "name": nom_label,
                 "labelListVisibility": "labelShow",
                 "messageListVisibility": "show",
-                "color": couleurs.get(categorie, {}),
+                "color": info["couleur"],
             }
             nouveau_label = (
                 service.users()
@@ -281,13 +275,14 @@ CORPS :
 {email['corps']}"""
 
     try:
+        prompt_classif = build_classification_prompt(LABELS_ACTIFS)
         reponse = client_anthropic.messages.create(
             model=MODEL_CLASSIFICATION,
             max_tokens=10,  # On attend juste un mot-clé
             messages=[
                 {
                     "role": "user",
-                    "content": f"{CLASSIFICATION_PROMPT}\n\n{contenu_email}",
+                    "content": f"{prompt_classif}\n\n{contenu_email}",
                 }
             ],
         )
@@ -295,10 +290,11 @@ CORPS :
         # Extrait et nettoie la réponse
         categorie = reponse.content[0].text.strip().upper()
 
-        # Vérifie que la catégorie est valide
-        if categorie not in LABEL_NOMS:
-            logger.warning(f"Catégorie inconnue '{categorie}', fallback sur INFO")
-            categorie = "INFO"
+        # Vérifie que la catégorie est valide parmi les labels actifs
+        if categorie not in LABELS_ACTIFS:
+            fallback = "INFO" if "INFO" in LABELS_ACTIFS else LABELS_ACTIFS[-1]
+            logger.warning(f"Catégorie inconnue '{categorie}', fallback sur {fallback}")
+            categorie = fallback
 
         return categorie
 

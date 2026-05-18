@@ -23,6 +23,9 @@ app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY", secrets.token_hex(32))
 ADMIN_PASSWORD  = os.environ.get("ADMIN_PASSWORD", "mailpilot2024")
 
+# Labels disponibles (importés depuis prompts.py)
+from prompts import TOUS_LES_LABELS, LABELS_DEFAUT
+
 # ── Chemins ──────────────────────────────────────────────────
 BASE_DIR    = Path(__file__).parent
 # DATA_DIR peut être monté sur un volume persistant (Railway)
@@ -156,6 +159,7 @@ def register():
             "intervalle":    "60",
             "connecte":      False,
             "token":         "",
+            "labels_actifs": LABELS_DEFAUT,
         }
         data["comptes"].append(compte)
         sauver_comptes(data)
@@ -235,6 +239,7 @@ def ajouter_compte():
         "id":           str(uuid.uuid4())[:8],
         "access_token": secrets.token_urlsafe(16),
         "nom":          d.get("nom", ""),
+        "labels_actifs": LABELS_DEFAUT,
         "agence":   d.get("agence", ""),
         "tel":      d.get("tel", ""),
         "email":    d.get("email", ""),
@@ -429,6 +434,7 @@ def demarrer(compte_id):
         "AGENT_ZONE":        c["zone"],
         "ANTHROPIC_API_KEY": data.get("api_key", ""),
         "CHECK_INTERVAL":    c.get("intervalle", "60"),
+        "LABELS_ACTIFS":     ",".join(c.get("labels_actifs", list(TOUS_LES_LABELS.keys())[:7])),
     })
 
     logs_par_compte[compte_id] = []
@@ -479,6 +485,31 @@ def statut_compte(compte_id):
         "oauth":          oauth_statut.get(compte_id, ""),
     })
 
+
+@app.route("/labels/<compte_id>", methods=["GET", "POST"])
+def gerer_labels(compte_id):
+    if not check_access(compte_id):
+        return jsonify({"ok": False}), 403
+    data = charger_comptes()
+    c = trouver_compte(data, compte_id)
+    if not c:
+        return jsonify({"ok": False}), 404
+    if request.method == "POST":
+        labels = request.json.get("labels", [])
+        # Valide que les labels existent
+        labels = [l for l in labels if l in TOUS_LES_LABELS]
+        if "INUTILE" not in labels:
+            labels.append("INUTILE")  # INUTILE toujours actif
+        c["labels_actifs"] = labels
+        sauver_comptes(data)
+        return jsonify({"ok": True, "labels": labels})
+    # GET : retourne les labels actifs et tous les labels disponibles
+    actifs = c.get("labels_actifs", LABELS_DEFAUT)
+    return jsonify({
+        "actifs": actifs,
+        "tous": {k: {"emoji": v["emoji"], "description_ui": v["description_ui"]}
+                 for k, v in TOUS_LES_LABELS.items()}
+    })
 
 @app.route("/debug/comptes")
 def debug_comptes():

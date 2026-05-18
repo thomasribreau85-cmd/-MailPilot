@@ -87,6 +87,45 @@
       line-height: 1.7; color: #888;
     }
     .log-feed.open { display: block; }
+
+    /* Labels modal */
+    .overlay {
+      display: none; position: fixed; inset: 0;
+      background: rgba(0,0,0,.75); z-index: 100;
+      align-items: center; justify-content: center; padding: 20px;
+    }
+    .overlay.open { display: flex; }
+    .modal {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 16px; padding: 28px; width: 100%; max-width: 520px;
+      max-height: 85vh; overflow-y: auto;
+    }
+    .modal h2 { font-size: 17px; font-weight: 700; margin-bottom: 6px; }
+    .modal p.subtitle { font-size: 12px; color: var(--muted); margin-bottom: 20px; }
+    .label-grid { display: flex; flex-direction: column; gap: 8px; }
+    .label-item {
+      display: flex; align-items: center; gap: 12px;
+      background: #111; border: 1px solid var(--border);
+      border-radius: 8px; padding: 10px 14px; cursor: pointer;
+    }
+    .label-item:hover { border-color: var(--blue); }
+    .label-item input[type=checkbox] { width: 16px; height: 16px; cursor: pointer; accent-color: var(--blue); }
+    .label-item .label-emoji { font-size: 16px; }
+    .label-item .label-text { flex: 1; }
+    .label-item .label-name { font-size: 13px; font-weight: 600; }
+    .label-item .label-desc { font-size: 11px; color: var(--muted); margin-top: 2px; }
+    .label-item.locked { opacity: 0.5; cursor: not-allowed; }
+    .modal-btns { display: flex; gap: 10px; margin-top: 20px; }
+    .btn-cancel {
+      flex: 1; padding: 10px; background: #1e1e1e; border: 1px solid var(--border);
+      color: var(--text); border-radius: 8px; font-size: 14px; font-weight: 600;
+      cursor: pointer; font-family: inherit;
+    }
+    .btn-save {
+      flex: 2; padding: 10px; background: var(--blue); border: none;
+      color: #fff; border-radius: 8px; font-size: 14px; font-weight: 600;
+      cursor: pointer; font-family: inherit;
+    }
     .log-line.ok   { color: var(--green); }
     .log-line.err  { color: var(--red); }
     .log-line.warn { color: var(--yellow); }
@@ -139,9 +178,23 @@
 
     <div class="status-bar" id="status-bar">⏳ En attente…</div>
 
+    <button class="log-toggle" onclick="ouvrirLabels()" style="border-top:none;border-bottom:1px solid var(--border)">⚙️ Gérer mes catégories d'emails</button>
     <button class="log-toggle" onclick="toggleLogs()">▾ Journal d'activité</button>
     <div class="log-feed" id="log-feed">
       <div class="log-line">En attente de démarrage…</div>
+    </div>
+  </div>
+
+  <!-- Modal Labels -->
+  <div class="overlay" id="overlay-labels" onclick="if(event.target===this)fermerLabels()">
+    <div class="modal">
+      <h2>⚙️ Mes catégories d'emails</h2>
+      <p class="subtitle">Coche les catégories que tu veux que l'IA reconnaisse dans tes emails.</p>
+      <div class="label-grid" id="label-grid">Chargement…</div>
+      <div class="modal-btns">
+        <button class="btn-cancel" onclick="fermerLabels()">Annuler</button>
+        <button class="btn-save" onclick="sauvegarderLabels()">Sauvegarder</button>
+      </div>
     </div>
   </div>
 
@@ -245,6 +298,54 @@
           `<div class="log-line ${classeLog(l)}">${l}</div>`
         ).join('');
         feed.scrollTop = feed.scrollHeight;
+      }
+    }
+
+    // ── Gestion des labels ──────────────────────────────────
+    let tousLabels = {};
+    let labelsActifs = [];
+
+    async function ouvrirLabels() {
+      const res  = await fetch(`/labels/${COMPTE_ID}`);
+      const json = await res.json();
+      tousLabels  = json.tous;
+      labelsActifs = json.actifs;
+
+      const grid = document.getElementById('label-grid');
+      grid.innerHTML = Object.entries(tousLabels).map(([key, info]) => {
+        const checked  = labelsActifs.includes(key) ? 'checked' : '';
+        const locked   = key === 'INUTILE' ? 'locked' : '';
+        const disabled = key === 'INUTILE' ? 'disabled' : '';
+        return `
+          <label class="label-item ${locked}">
+            <input type="checkbox" id="lbl-${key}" ${checked} ${disabled} />
+            <span class="label-emoji">${info.emoji}</span>
+            <span class="label-text">
+              <div class="label-name">${key}</div>
+              <div class="label-desc">${info.description_ui}</div>
+            </span>
+          </label>`;
+      }).join('');
+
+      document.getElementById('overlay-labels').classList.add('open');
+    }
+
+    function fermerLabels() {
+      document.getElementById('overlay-labels').classList.remove('open');
+    }
+
+    async function sauvegarderLabels() {
+      const labels = Object.keys(tousLabels)
+        .filter(k => document.getElementById(`lbl-${k}`)?.checked);
+      const res  = await fetch(`/labels/${COMPTE_ID}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ labels })
+      });
+      const json = await res.json();
+      if (json.ok) {
+        fermerLabels();
+        toast(`✓ ${json.labels.length} catégories sauvegardées !`);
       }
     }
 
