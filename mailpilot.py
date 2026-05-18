@@ -151,7 +151,7 @@ def obtenir_ou_creer_labels(service):
                 "URGENT":  {"backgroundColor": "#cc3a21", "textColor": "#ffffff"},
                 "VISITE":  {"backgroundColor": "#285bac", "textColor": "#ffffff"},
                 "OFFRE":   {"backgroundColor": "#0b804b", "textColor": "#ffffff"},
-                "DEVIS":   {"backgroundColor": "#e07528", "textColor": "#ffffff"},
+                "DEVIS":   {"backgroundColor": "#eaa041", "textColor": "#ffffff"},
                 "INFO":    {"backgroundColor": "#f2c960", "textColor": "#000000"},
                 "ADMIN":   {"backgroundColor": "#8e63ce", "textColor": "#ffffff"},
                 "INUTILE": {"backgroundColor": "#999999", "textColor": "#ffffff"},
