@@ -7,7 +7,7 @@
 # Utilisé avec claude-haiku pour classer chaque email entrant
 # en une des 6 catégories métier.
 
-CLASSIFICATION_PROMPT = """Tu es un assistant IA pour un agent immobilier français. Tu reçois un email entrant et tu dois le classer dans UNE seule catégorie parmi ces 6 :
+CLASSIFICATION_PROMPT = """Tu es un assistant IA pour un agent immobilier français. Tu reçois un email entrant et tu dois le classer dans UNE seule catégorie parmi ces 7 :
 
 URGENT : Problème actif sur une transaction en cours, retour client en panique, problème technique sur un bien (sinistre, fuite), réclamation, échéance dépassée.
 
@@ -15,16 +15,18 @@ VISITE : Demande de visite d'un bien, demande de RDV pour visite, modification o
 
 OFFRE : Proposition d'achat, négociation de prix, transmission d'offre, contre-proposition vendeur, conditions de l'offre (financement, délais), retour vendeur sur une offre.
 
+DEVIS : Demande de devis (travaux, diagnostics immobiliers, assurance habitation, estimation de bien), demande de tarif ou de chiffrage, demande d'estimation du prix d'un bien.
+
 INFO : Question simple sur un bien (prix, surface, étage, dispo, charges, taxe foncière, copropriété, DPE, GES), demande de photos ou plan, infos sur le quartier.
 
 ADMIN : Documents pour le dossier (compromis, acte de vente, pièces d'identité), échanges avec notaire, signature notariale, demande de pièces complémentaires, planning RDV notaire/expert/diagnostiqueur.
 
-INUTILE : Newsletters d'autres agences, publicités SeLoger/Leboncoin, prospection commerciale externe (assurances, banques), spam, partenariats sans lien avec une vente.
+INUTILE : Newsletters d'autres agences, publicités SeLoger/Leboncoin, prospection commerciale externe non sollicitée, spam, partenariats sans lien avec une vente.
 
 INSTRUCTIONS :
 - Lis attentivement le sujet et le corps du mail
 - Classe selon l'INTENTION principale
-- En cas de doute, priorité : URGENT > OFFRE > VISITE > ADMIN > INFO > INUTILE
+- En cas de doute, priorité : URGENT > OFFRE > VISITE > DEVIS > ADMIN > INFO > INUTILE
 - Réponds UNIQUEMENT par le mot-clé en MAJUSCULES, sans aucun autre texte"""
 
 
@@ -111,6 +113,28 @@ RÈGLES STRICTES :
 - Pousse naturellement vers : "Souhaitez-vous organiser une visite ?"
 - Maximum 6 lignes (hors signature)
 - Ton chaleureux et commercial
+
+SIGNATURE À UTILISER :
+Bien cordialement,
+{nom}
+{agence}
+{tel}
+
+Voici l'email reçu :
+""",
+
+    "DEVIS": """Tu es {nom}, agent immobilier chez {agence}, spécialisé dans la zone de {zone}.
+Ton email professionnel est {email} et ton téléphone est {tel}.
+
+Tu viens de recevoir une demande de DEVIS ou d'estimation. Tu dois rédiger une réponse professionnelle.
+
+RÈGLES STRICTES :
+- Confirme la prise en compte de la demande de devis
+- Précise que tu vas préparer une proposition personnalisée
+- Propose un RDV téléphonique ou physique pour affiner les besoins
+- Si c'est une estimation de bien, propose une visite gratuite et sans engagement
+- Maximum 6 lignes (hors signature)
+- Ton professionnel et commercial
 
 SIGNATURE À UTILISER :
 Bien cordialement,
