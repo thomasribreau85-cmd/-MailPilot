@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>MailPilot Pro — Connexion admin</title>
+  <title>MailPilot Pro — Connexion</title>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     :root {
@@ -24,20 +24,32 @@
     .logo span { font-size: 28px; }
     .logo h1 { font-size: 20px; font-weight: 700; }
     .logo p { font-size: 12px; color: var(--muted); }
-    label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 6px; }
-    input[type=password] {
+    label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 6px; font-weight: 500; }
+    input {
       width: 100%; background: #111; border: 1px solid var(--border);
       border-radius: 8px; color: var(--text); font-size: 14px;
-      padding: 10px 12px; outline: none; font-family: inherit; margin-bottom: 16px;
+      padding: 10px 12px; outline: none; font-family: inherit; margin-bottom: 14px;
     }
-    input[type=password]:focus { border-color: var(--blue); }
-    button {
+    input:focus { border-color: var(--blue); }
+    button.btn-main {
       width: 100%; background: var(--blue); color: #fff; border: none;
       border-radius: 8px; padding: 11px; font-size: 14px; font-weight: 600;
       cursor: pointer; font-family: inherit;
     }
-    button:hover { opacity: .88; }
+    button.btn-main:hover { opacity: .88; }
+    .divider { text-align: center; color: var(--muted); font-size: 12px; margin: 18px 0; }
+    .btn-register {
+      display: block; text-align: center; width: 100%;
+      background: transparent; border: 1px solid var(--border);
+      border-radius: 8px; padding: 10px; font-size: 14px; font-weight: 600;
+      color: var(--text); text-decoration: none; cursor: pointer;
+      font-family: inherit;
+    }
+    .btn-register:hover { background: #222; }
     #erreur { color: var(--red); font-size: 13px; margin-top: 12px; text-align: center; display: none; }
+    .admin-link { text-align: center; margin-top: 24px; }
+    .admin-link a { color: var(--muted); font-size: 11px; text-decoration: none; }
+    .admin-link a:hover { color: var(--text); }
   </style>
 </head>
 <body>
@@ -46,27 +58,51 @@
       <span>🛩️</span>
       <div>
         <h1>MailPilot Pro</h1>
-        <p>Accès administrateur</p>
+        <p>Assistant email IA</p>
       </div>
     </div>
+
+    <label>Adresse email</label>
+    <input type="email" id="email" placeholder="votre@email.com" autocomplete="email" />
+
     <label>Mot de passe</label>
-    <input type="password" id="pwd" placeholder="••••••••" onkeydown="if(event.key==='Enter')connexion()" autofocus />
-    <button onclick="connexion()">Se connecter</button>
-    <p id="erreur">Mot de passe incorrect</p>
+    <input type="password" id="pwd" placeholder="••••••••" onkeydown="if(event.key==='Enter')connexion()" />
+
+    <button class="btn-main" onclick="connexion()">Se connecter</button>
+    <p id="erreur"></p>
+
+    <div class="divider">— ou —</div>
+    <a class="btn-register" href="/register">Créer un compte</a>
+
+    <div class="admin-link">
+      <a href="/admin">Accès administrateur</a>
+    </div>
   </div>
+
   <script>
     async function connexion() {
-      const pwd = document.getElementById('pwd').value;
-      const res = await fetch('/login', {
+      const email = document.getElementById('email').value.trim();
+      const pwd   = document.getElementById('pwd').value;
+      const err   = document.getElementById('erreur');
+      err.style.display = 'none';
+
+      if (!email || !pwd) {
+        err.textContent = 'Remplis tous les champs';
+        err.style.display = 'block';
+        return;
+      }
+
+      const res  = await fetch('/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ password: pwd })
+        body: JSON.stringify({ email, password: pwd })
       });
       const json = await res.json();
       if (json.ok) {
-        window.location.href = '/';
+        window.location.href = '/dashboard';
       } else {
-        document.getElementById('erreur').style.display = 'block';
+        err.textContent = json.message || 'Erreur de connexion';
+        err.style.display = 'block';
       }
     }
   </script>

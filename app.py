@@ -14,6 +14,7 @@ import subprocess
 from pathlib import Path
 
 from flask import Flask, render_template, request, jsonify, redirect, session
+from werkzeug.security import generate_password_hash, check_password_hash
 from google_auth_oauthlib.flow import InstalledAppFlow, Flow
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
@@ -81,15 +82,10 @@ def trouver_compte(data, compte_id):
     return None
 
 def check_access(compte_id):
-    """Retourne True si admin connecté ou si la session client correspond à ce compte."""
+    """Retourne True si admin connecté ou si l'utilisateur connecté est le propriétaire du compte."""
     if session.get("admin"):
         return True
-    client_token = session.get("client_token")
-    if client_token:
-        data = charger_comptes()
-        c = trouver_compte(data, compte_id)
-        return c is not None and c.get("access_token") == client_token
-    return False
+    return session.get("user_id") == compte_id
 
 
 # ── Capture logs subprocess ───────────────────────────────────
@@ -113,52 +109,111 @@ def capturer_logs(compte_id, process):
 
 @app.route("/login", methods=["GET", "POST"])
 def login():
+    """Connexion client (email + mot de passe)."""
     if request.method == "POST":
-        pwd = request.json.get("password", "")
-        if pwd == ADMIN_PASSWORD:
-            session["admin"] = True
-            return jsonify({"ok": True})
-        return jsonify({"ok": False, "message": "Mot de passe incorrect"})
+        d = request.json
+        email = d.get("email", "").strip().lower()
+        pwd   = d.get("password", "")
+        data  = charger_comptes()
+        for c in data["comptes"]:
+            if c.get("email", "").lower() == email and c.get("password_hash"):
+                if check_password_hash(c["password_hash"], pwd):
+                    session["user_id"] = c["id"]
+                    return jsonify({"ok": True})
+        return jsonify({"ok": False, "message": "Email ou mot de passe incorrect"})
+    # Si déjà connecté, redirige directement
+    if session.get("admin"):
+        return redirect("/admin-dashboard")
+    if session.get("user_id"):
+        return redirect("/dashboard")
     return render_template("login.html")
+
+@app.route("/register", methods=["GET", "POST"])
+def register():
+    """Inscription d'un nouveau client."""
+    if request.method == "POST":
+        d   = request.json
+        nom = d.get("nom", "").strip()
+        email = d.get("email", "").strip().lower()
+        pwd = d.get("password", "")
+        if not nom or not email or not pwd:
+            return jsonify({"ok": False, "message": "Nom, email et mot de passe sont requis"})
+        if len(pwd) < 6:
+            return jsonify({"ok": False, "message": "Mot de passe trop court (6 caractères min)"})
+        data = charger_comptes()
+        for c in data["comptes"]:
+            if c.get("email", "").lower() == email:
+                return jsonify({"ok": False, "message": "Cet email est déjà utilisé"})
+        compte = {
+            "id":            str(uuid.uuid4())[:8],
+            "access_token":  secrets.token_urlsafe(16),
+            "password_hash": generate_password_hash(pwd),
+            "nom":           nom,
+            "agence":        d.get("agence", ""),
+            "tel":           d.get("tel", ""),
+            "email":         email,
+            "zone":          d.get("zone", ""),
+            "intervalle":    "60",
+            "connecte":      False,
+            "token":         "",
+        }
+        data["comptes"].append(compte)
+        sauver_comptes(data)
+        session["user_id"] = compte["id"]
+        return jsonify({"ok": True})
+    if session.get("user_id"):
+        return redirect("/dashboard")
+    return render_template("register.html")
+
+@app.route("/dashboard")
+def dashboard():
+    """Page principale du client connecté."""
+    if session.get("admin"):
+        return redirect("/admin-dashboard")
+    user_id = session.get("user_id")
+    if not user_id:
+        return redirect("/login")
+    data = charger_comptes()
+    compte = trouver_compte(data, user_id)
+    if not compte:
+        session.clear()
+        return redirect("/login")
+    return render_template("client.html", compte=compte)
 
 @app.route("/logout")
 def logout():
     session.clear()
     return redirect("/login")
 
-@app.route("/client/<access_token>")
-def client_view(access_token):
-    data = charger_comptes()
-    compte = next((c for c in data["comptes"] if c.get("access_token") == access_token), None)
-    if not compte:
-        return "<h2 style='font-family:sans-serif;padding:40px'>Lien invalide ou expiré.</h2>", 403
-    if not session.get("admin"):
-        session["client_token"] = access_token
-    is_local = request.host.startswith("127") or request.host.startswith("localhost")
-    scheme = "http" if is_local else "https"
-    base_url = f"{scheme}://{request.host}"
-    return render_template("client.html", compte=compte, base_url=base_url)
+# ── Admin ─────────────────────────────────────────────────────
 
-@app.route("/client_url/<compte_id>")
-def client_url(compte_id):
-    if not session.get("admin"):
-        return jsonify({"ok": False}), 403
-    data = charger_comptes()
-    c = trouver_compte(data, compte_id)
-    if not c:
-        return jsonify({"ok": False}), 404
-    token = c.get("access_token", "")
-    is_local = request.host.startswith("127") or request.host.startswith("localhost")
-    scheme = "http" if is_local else "https"
-    url = f"{scheme}://{request.host}/client/{token}"
-    return jsonify({"ok": True, "url": url})
+@app.route("/admin", methods=["GET", "POST"])
+def admin_login():
+    """Page de connexion admin (Thomas uniquement)."""
+    if request.method == "POST":
+        pwd = request.json.get("password", "")
+        if pwd == ADMIN_PASSWORD:
+            session["admin"] = True
+            return jsonify({"ok": True})
+        return jsonify({"ok": False, "message": "Mot de passe incorrect"})
+    if session.get("admin"):
+        return redirect("/admin-dashboard")
+    return render_template("admin_login.html")
 
-@app.route("/")
+@app.route("/admin-dashboard")
 def index():
     if not session.get("admin"):
-        return redirect("/login")
+        return redirect("/admin")
     data = charger_comptes()
     return render_template("index.html", data=data)
+
+@app.route("/")
+def home():
+    if session.get("admin"):
+        return redirect("/admin-dashboard")
+    if session.get("user_id"):
+        return redirect("/dashboard")
+    return redirect("/login")
 
 
 @app.route("/sauvegarder_api", methods=["POST"])
@@ -338,14 +393,9 @@ def oauth_callback():
 
     # Redirige vers la bonne page selon le type d'utilisateur
     if session.get("admin"):
-        return redirect('/')
+        return redirect('/admin-dashboard')
     else:
-        # Client → retour vers sa page personnelle
-        data = charger_comptes()
-        c = trouver_compte(data, compte_id)
-        if c and c.get("access_token"):
-            return redirect(f'/client/{c["access_token"]}')
-        return redirect('/')
+        return redirect('/dashboard')
 
 
 @app.route("/statut_oauth/<compte_id>")
