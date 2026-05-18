@@ -409,8 +409,12 @@ def statut_compte(compte_id):
     actif = compte_id in processus and processus[compte_id].poll() is None
     with lock:
         logs = list(logs_par_compte.get(compte_id, [])[-25:])
+    data = charger_comptes()
+    c = trouver_compte(data, compte_id)
+    connecte = c.get("connecte", False) if c else False
     return jsonify({
         "actif":          actif,
+        "connecte":       connecte,
         "emails_traites": emails_comptes.get(compte_id, 0),
         "logs":           logs,
         "oauth":          oauth_statut.get(compte_id, ""),
