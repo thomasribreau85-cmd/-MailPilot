@@ -336,7 +336,16 @@ def oauth_callback():
         with lock:
             logs_par_compte.setdefault(compte_id, []).append(f"[ERREUR OAuth] {e}")
 
-    return redirect('/')
+    # Redirige vers la bonne page selon le type d'utilisateur
+    if session.get("admin"):
+        return redirect('/')
+    else:
+        # Client → retour vers sa page personnelle
+        data = charger_comptes()
+        c = trouver_compte(data, compte_id)
+        if c and c.get("access_token"):
+            return redirect(f'/client/{c["access_token"]}')
+        return redirect('/')
 
 
 @app.route("/statut_oauth/<compte_id>")
