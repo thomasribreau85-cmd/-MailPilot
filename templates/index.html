@@ -380,6 +380,7 @@
       <input type="password" id="api-key" value="{{ data.api_key }}" placeholder="sk-ant-..." />
       <button onclick="sauvegarderAPI()">Sauv.</button>
     </div>
+    <a href="/logout" style="color:var(--muted);font-size:12px;text-decoration:none;white-space:nowrap;" title="Déconnexion">⎋ Quitter</a>
   </header>
 
   <!-- ── Bouton ajouter ── -->
@@ -419,6 +420,7 @@
           <button class="btn btn-connect" id="btn-connect-{{ c.id }}" onclick="connecterGmail('{{ c.id }}')">🔗 Connecter Gmail</button>
           {% endif %}
         </div>
+        <button class="btn btn-delete" onclick="copierURL('{{ c.id }}')" title="Copier URL client" style="background:#1e1e1e;color:var(--muted);border:1px solid var(--border);flex:0 0 auto;">🔗</button>
         <button class="btn btn-delete" onclick="supprimerCompte('{{ c.id }}')" title="Supprimer">🗑</button>
       </div>
       <button class="log-toggle" onclick="toggleLogs('{{ c.id }}')">▾ Journal</button>
@@ -571,6 +573,7 @@
           </div>
           <div class="compte-btns">
             <div id="btns-${c.id}" style="display:flex;gap:8px;flex:1">${boutons}</div>
+            <button class="btn btn-delete" onclick="copierURL('${c.id}')" title="Copier URL client" style="background:#1e1e1e;color:var(--muted);border:1px solid var(--border);flex:0 0 auto;">🔗</button>
             <button class="btn btn-delete" onclick="supprimerCompte('${c.id}')" title="Supprimer">🗑</button>
           </div>
           <button class="log-toggle" onclick="toggleLogs('${c.id}')">▾ Journal</button>
@@ -687,6 +690,15 @@
         ).join('');
         feed.scrollTop = feed.scrollHeight;
       }
+    }
+
+    // ── Copier URL client ──────────────────────────────────
+    async function copierURL(id) {
+      const res  = await fetch(`/client_url/${id}`);
+      const json = await res.json();
+      if (!json.ok) { toast('❌ Erreur'); return; }
+      await navigator.clipboard.writeText(json.url);
+      toast('🔗 URL client copiée ! ' + json.url);
     }
 
     // ── Polling global toutes les 3s ───────────────────────

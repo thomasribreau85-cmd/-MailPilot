@@ -8,16 +8,19 @@ import sys
 import os
 import uuid
 import json
+import secrets
 import threading
 import subprocess
 from pathlib import Path
 
-from flask import Flask, render_template, request, jsonify, redirect
+from flask import Flask, render_template, request, jsonify, redirect, session
 from google_auth_oauthlib.flow import InstalledAppFlow, Flow
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
 
 app = Flask(__name__)
+app.secret_key = os.environ.get("SECRET_KEY", secrets.token_hex(32))
+ADMIN_PASSWORD  = os.environ.get("ADMIN_PASSWORD", "mailpilot2024")
 
 # ── Chemins ──────────────────────────────────────────────────
 BASE_DIR    = Path(__file__).parent
@@ -56,7 +59,16 @@ def get_creds_path():
 
 def charger_comptes():
     if COMPTES_FILE.exists():
-        return json.loads(COMPTES_FILE.read_text())
+        data = json.loads(COMPTES_FILE.read_text())
+        # Migration : ajoute access_token aux comptes existants
+        modifie = False
+        for c in data.get("comptes", []):
+            if not c.get("access_token"):
+                c["access_token"] = secrets.token_urlsafe(16)
+                modifie = True
+        if modifie:
+            sauver_comptes(data)
+        return data
     return {"api_key": "", "comptes": []}
 
 def sauver_comptes(data):
@@ -67,6 +79,17 @@ def trouver_compte(data, compte_id):
         if c["id"] == compte_id:
             return c
     return None
+
+def check_access(compte_id):
+    """Retourne True si admin connecté ou si la session client correspond à ce compte."""
+    if session.get("admin"):
+        return True
+    client_token = session.get("client_token")
+    if client_token:
+        data = charger_comptes()
+        c = trouver_compte(data, compte_id)
+        return c is not None and c.get("access_token") == client_token
+    return False
 
 
 # ── Capture logs subprocess ───────────────────────────────────
@@ -88,14 +111,60 @@ def capturer_logs(compte_id, process):
 
 # ── Routes ────────────────────────────────────────────────────
 
+@app.route("/login", methods=["GET", "POST"])
+def login():
+    if request.method == "POST":
+        pwd = request.json.get("password", "")
+        if pwd == ADMIN_PASSWORD:
+            session["admin"] = True
+            return jsonify({"ok": True})
+        return jsonify({"ok": False, "message": "Mot de passe incorrect"})
+    return render_template("login.html")
+
+@app.route("/logout")
+def logout():
+    session.clear()
+    return redirect("/login")
+
+@app.route("/client/<access_token>")
+def client_view(access_token):
+    data = charger_comptes()
+    compte = next((c for c in data["comptes"] if c.get("access_token") == access_token), None)
+    if not compte:
+        return "<h2 style='font-family:sans-serif;padding:40px'>Lien invalide ou expiré.</h2>", 403
+    if not session.get("admin"):
+        session["client_token"] = access_token
+    is_local = request.host.startswith("127") or request.host.startswith("localhost")
+    scheme = "http" if is_local else "https"
+    base_url = f"{scheme}://{request.host}"
+    return render_template("client.html", compte=compte, base_url=base_url)
+
+@app.route("/client_url/<compte_id>")
+def client_url(compte_id):
+    if not session.get("admin"):
+        return jsonify({"ok": False}), 403
+    data = charger_comptes()
+    c = trouver_compte(data, compte_id)
+    if not c:
+        return jsonify({"ok": False}), 404
+    token = c.get("access_token", "")
+    is_local = request.host.startswith("127") or request.host.startswith("localhost")
+    scheme = "http" if is_local else "https"
+    url = f"{scheme}://{request.host}/client/{token}"
+    return jsonify({"ok": True, "url": url})
+
 @app.route("/")
 def index():
+    if not session.get("admin"):
+        return redirect("/login")
     data = charger_comptes()
     return render_template("index.html", data=data)
 
 
 @app.route("/sauvegarder_api", methods=["POST"])
 def sauvegarder_api():
+    if not session.get("admin"):
+        return jsonify({"ok": False}), 403
     data = charger_comptes()
     data["api_key"] = request.json.get("api_key", "")
     sauver_comptes(data)
@@ -104,10 +173,13 @@ def sauvegarder_api():
 
 @app.route("/ajouter_compte", methods=["POST"])
 def ajouter_compte():
+    if not session.get("admin"):
+        return jsonify({"ok": False}), 403
     d = request.json
     compte = {
-        "id":       str(uuid.uuid4())[:8],
-        "nom":      d.get("nom", ""),
+        "id":           str(uuid.uuid4())[:8],
+        "access_token": secrets.token_urlsafe(16),
+        "nom":          d.get("nom", ""),
         "agence":   d.get("agence", ""),
         "tel":      d.get("tel", ""),
         "email":    d.get("email", ""),
@@ -124,6 +196,8 @@ def ajouter_compte():
 
 @app.route("/modifier_compte/<compte_id>", methods=["POST"])
 def modifier_compte(compte_id):
+    if not session.get("admin"):
+        return jsonify({"ok": False}), 403
     d = request.json
     data = charger_comptes()
     c = trouver_compte(data, compte_id)
@@ -138,6 +212,8 @@ def modifier_compte(compte_id):
 
 @app.route("/supprimer_compte/<compte_id>", methods=["POST"])
 def supprimer_compte(compte_id):
+    if not session.get("admin"):
+        return jsonify({"ok": False}), 403
     # Arrêter le processus s'il tourne
     if compte_id in processus:
         p = processus.pop(compte_id)
@@ -156,6 +232,8 @@ def supprimer_compte(compte_id):
 @app.route("/connecter_gmail/<compte_id>", methods=["POST"])
 def connecter_gmail(compte_id):
     """Lance le flux OAuth Gmail (web redirect)."""
+    if not check_access(compte_id):
+        return jsonify({"ok": False, "message": "Accès refusé"}), 403
     if oauth_statut.get(compte_id) == "en_cours":
         return jsonify({"ok": False, "message": "Connexion déjà en cours…"})
 
@@ -263,11 +341,15 @@ def oauth_callback():
 
 @app.route("/statut_oauth/<compte_id>")
 def statut_oauth(compte_id):
+    if not check_access(compte_id):
+        return jsonify({"ok": False}), 403
     return jsonify({"statut": oauth_statut.get(compte_id, "")})
 
 
 @app.route("/demarrer/<compte_id>", methods=["POST"])
 def demarrer(compte_id):
+    if not check_access(compte_id):
+        return jsonify({"ok": False, "message": "Accès refusé"}), 403
     if compte_id in processus and processus[compte_id].poll() is None:
         return jsonify({"ok": False, "message": "Déjà en cours"})
 
@@ -310,6 +392,8 @@ def demarrer(compte_id):
 
 @app.route("/arreter/<compte_id>", methods=["POST"])
 def arreter(compte_id):
+    if not check_access(compte_id):
+        return jsonify({"ok": False}), 403
     p = processus.pop(compte_id, None)
     if p and p.poll() is None:
         p.terminate()
@@ -320,6 +404,8 @@ def arreter(compte_id):
 
 @app.route("/statut/<compte_id>")
 def statut_compte(compte_id):
+    if not check_access(compte_id):
+        return jsonify({"ok": False}), 403
     actif = compte_id in processus and processus[compte_id].poll() is None
     with lock:
         logs = list(logs_par_compte.get(compte_id, [])[-25:])

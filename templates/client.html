@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MailPilot — {{ compte.nom }}</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #0e0e0e; --card: #181818; --border: #2a2a2a;
+      --text: #e8e8e8; --muted: #666; --green: #22c55e;
+      --red: #ef4444; --blue: #3b82f6; --yellow: #f59e0b; --radius: 12px;
+    }
+    body {
+      background: var(--bg); color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif;
+      min-height: 100vh; padding: 32px 20px 60px;
+    }
+    header {
+      max-width: 600px; margin: 0 auto 32px;
+      display: flex; align-items: center; gap: 12px;
+    }
+    .logo-icon { font-size: 32px; }
+    .logo-text h1 { font-size: 22px; font-weight: 700; }
+    .logo-text p { font-size: 12px; color: var(--muted); margin-top: 2px; }
+
+    .card {
+      max-width: 600px; margin: 0 auto;
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: var(--radius); overflow: hidden;
+    }
+    .card.actif { border-color: #1a4a2a; }
+
+    .card-header {
+      display: flex; align-items: center; gap: 14px; padding: 22px 22px 18px;
+    }
+    .status-dot {
+      width: 12px; height: 12px; border-radius: 50%;
+      background: var(--muted); flex-shrink: 0;
+    }
+    .status-dot.actif { background: var(--green); animation: pulse 1.8s infinite; }
+    .status-dot.connexion { background: var(--yellow); animation: pulse 1s infinite; }
+    @keyframes pulse {
+      0%   { box-shadow: 0 0 0 0 rgba(34,197,94,.6); }
+      70%  { box-shadow: 0 0 0 8px rgba(34,197,94,0); }
+      100% { box-shadow: 0 0 0 0 rgba(34,197,94,0); }
+    }
+    .info { flex: 1; }
+    .info .name { font-size: 18px; font-weight: 700; }
+    .info .email { font-size: 13px; color: var(--muted); margin-top: 3px; }
+    .counter { text-align: right; white-space: nowrap; }
+    .counter .num { font-size: 28px; font-weight: 700; display: block; line-height: 1; }
+    .counter .label { font-size: 11px; color: var(--muted); }
+
+    .card-btns { padding: 0 22px 18px; }
+    .btn {
+      width: 100%; padding: 12px 16px; border-radius: 9px; border: none;
+      font-size: 14px; font-weight: 700; font-family: inherit;
+      cursor: pointer; transition: opacity .15s;
+    }
+    .btn:disabled { opacity: .4; cursor: not-allowed; }
+    .btn:hover:not(:disabled) { opacity: .85; }
+    .btn-connect { background: var(--blue); color: #fff; }
+    .btn-start   { background: var(--green); color: #000; }
+    .btn-stop    { background: var(--red); color: #fff; }
+
+    .status-bar {
+      margin: 0 22px 18px; padding: 10px 14px;
+      background: #111; border-radius: 8px;
+      font-size: 12px; color: var(--muted);
+      display: flex; align-items: center; gap: 8px;
+    }
+    .status-bar.ok { color: var(--green); }
+    .status-bar.warn { color: var(--yellow); }
+
+    .log-toggle {
+      width: 100%; background: transparent; border: none;
+      border-top: 1px solid var(--border); color: var(--muted);
+      font-size: 11px; font-family: inherit; padding: 10px 22px;
+      text-align: left; cursor: pointer; display: flex; align-items: center; gap: 6px;
+    }
+    .log-toggle:hover { color: var(--text); }
+    .log-feed {
+      display: none; background: #0a0a0a; border-top: 1px solid var(--border);
+      padding: 12px 16px; height: 260px; overflow-y: auto;
+      font-family: "SF Mono", "Menlo", monospace; font-size: 11px;
+      line-height: 1.7; color: #888;
+    }
+    .log-feed.open { display: block; }
+    .log-line.ok   { color: var(--green); }
+    .log-line.err  { color: var(--red); }
+    .log-line.warn { color: var(--yellow); }
+    .log-line.info { color: #7dd3fc; }
+
+    #toast {
+      position: fixed; bottom: 28px; left: 50%;
+      transform: translateX(-50%) translateY(20px);
+      background: #222; border: 1px solid var(--border); color: var(--text);
+      padding: 11px 20px; border-radius: 10px; font-size: 13px;
+      opacity: 0; transition: opacity .2s, transform .2s;
+      pointer-events: none; white-space: nowrap;
+    }
+    #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  </style>
+</head>
+<body>
+
+  <header>
+    <span class="logo-icon">🛩️</span>
+    <div class="logo-text">
+      <h1>MailPilot Pro</h1>
+      <p>Assistant email IA</p>
+    </div>
+  </header>
+
+  <div class="card" id="main-card">
+    <div class="card-header">
+      <div class="status-dot" id="status-dot"></div>
+      <div class="info">
+        <div class="name">{{ compte.nom }}</div>
+        <div class="email">{{ compte.email }}</div>
+      </div>
+      <div class="counter">
+        <span class="num" id="emails-count">0</span>
+        <span class="label">emails traités</span>
+      </div>
+    </div>
+
+    <div class="card-btns">
+      <div id="btn-zone">
+        {% if compte.connecte %}
+        <button class="btn btn-start" onclick="demarrer()">▶ Démarrer</button>
+        {% else %}
+        <button class="btn btn-connect" id="btn-connect" onclick="connecterGmail()">🔗 Connecter Gmail</button>
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="status-bar" id="status-bar">⏳ En attente…</div>
+
+    <button class="log-toggle" onclick="toggleLogs()">▾ Journal d'activité</button>
+    <div class="log-feed" id="log-feed">
+      <div class="log-line">En attente de démarrage…</div>
+    </div>
+  </div>
+
+  <div id="toast"></div>
+
+  <script>
+    const COMPTE_ID = "{{ compte.id }}";
+    const BASE_URL  = "{{ base_url }}";
+
+    function toast(msg, duree = 2800) {
+      const el = document.getElementById('toast');
+      el.textContent = msg;
+      el.classList.add('show');
+      setTimeout(() => el.classList.remove('show'), duree);
+    }
+
+    function classeLog(l) {
+      if (l.includes('[CRITICAL]') || l.includes('Erreur') || l.includes('ERROR')) return 'err';
+      if (l.includes('Brouillon créé') || l.includes('✓') || l.includes('réussie') || l.includes('créé')) return 'ok';
+      if (l.includes('WARNING') || l.includes('FutureWarning')) return 'warn';
+      if (l.includes('Traitement') || l.includes('actif') || l.includes('Surveillance')) return 'info';
+      return '';
+    }
+
+    async function connecterGmail() {
+      const btn = document.getElementById('btn-connect');
+      if (btn) { btn.disabled = true; btn.textContent = '⏳ Connexion…'; }
+      const res  = await fetch(`/connecter_gmail/${COMPTE_ID}`, { method: 'POST' });
+      const json = await res.json();
+      if (!json.ok) {
+        toast('❌ ' + (json.message || 'Erreur'));
+        if (btn) { btn.disabled = false; btn.textContent = '🔗 Connecter Gmail'; }
+        return;
+      }
+      if (json.auth_url) {
+        window.location.href = json.auth_url;
+      } else {
+        toast('✓ ' + (json.message || 'Gmail connecté !'));
+        rafraichir();
+      }
+    }
+
+    async function demarrer() {
+      const res  = await fetch(`/demarrer/${COMPTE_ID}`, { method: 'POST' });
+      const json = await res.json();
+      if (!json.ok) { toast('⚠️ ' + json.message); return; }
+      rafraichir();
+    }
+
+    async function arreter() {
+      await fetch(`/arreter/${COMPTE_ID}`, { method: 'POST' });
+      rafraichir();
+    }
+
+    function toggleLogs() {
+      document.getElementById('log-feed').classList.toggle('open');
+    }
+
+    async function rafraichir() {
+      const r = await fetch(`/statut/${COMPTE_ID}`);
+      if (!r.ok) return;
+      const d = await r.json();
+
+      // Compteur
+      document.getElementById('emails-count').textContent = d.emails_traites;
+
+      // Dot
+      const dot = document.getElementById('status-dot');
+      dot.className = 'status-dot' + (d.actif ? ' actif' : '');
+
+      // Carte bordure
+      document.getElementById('main-card').classList.toggle('actif', d.actif);
+
+      // Statut bar
+      const bar = document.getElementById('status-bar');
+      if (d.actif) {
+        bar.className = 'status-bar ok';
+        bar.textContent = '🚀 Agent actif — surveillance en cours';
+      } else if (d.connecte) {
+        bar.className = 'status-bar';
+        bar.textContent = '⏸ Agent arrêté — cliquez Démarrer pour lancer';
+      } else {
+        bar.className = 'status-bar warn';
+        bar.textContent = '🔗 Gmail non connecté';
+      }
+
+      // Bouton
+      const zone = document.getElementById('btn-zone');
+      if (d.actif) {
+        zone.innerHTML = `<button class="btn btn-stop" onclick="arreter()">⏹ Arrêter</button>`;
+      } else if (d.connecte) {
+        zone.innerHTML = `<button class="btn btn-start" onclick="demarrer()">▶ Démarrer</button>`;
+      } else {
+        zone.innerHTML = `<button class="btn btn-connect" id="btn-connect" onclick="connecterGmail()">🔗 Connecter Gmail</button>`;
+      }
+
+      // Logs
+      const feed = document.getElementById('log-feed');
+      if (d.logs && d.logs.length) {
+        feed.innerHTML = d.logs.map(l =>
+          `<div class="log-line ${classeLog(l)}">${l}</div>`
+        ).join('');
+        feed.scrollTop = feed.scrollHeight;
+      }
+    }
+
+    // Polling toutes les 3s
+    setInterval(rafraichir, 3000);
+    rafraichir();
+  </script>
+</body>
+</html>

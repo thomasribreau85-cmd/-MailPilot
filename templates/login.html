@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MailPilot Pro — Connexion admin</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #0e0e0e; --card: #181818; --border: #2a2a2a;
+      --text: #e8e8e8; --muted: #666; --blue: #3b82f6; --red: #ef4444;
+    }
+    body {
+      background: var(--bg); color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif;
+      min-height: 100vh; display: flex; align-items: center; justify-content: center;
+      padding: 20px;
+    }
+    .card {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 16px; padding: 36px 32px; width: 100%; max-width: 380px;
+    }
+    .logo { display: flex; align-items: center; gap: 10px; margin-bottom: 28px; }
+    .logo span { font-size: 28px; }
+    .logo h1 { font-size: 20px; font-weight: 700; }
+    .logo p { font-size: 12px; color: var(--muted); }
+    label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 6px; }
+    input[type=password] {
+      width: 100%; background: #111; border: 1px solid var(--border);
+      border-radius: 8px; color: var(--text); font-size: 14px;
+      padding: 10px 12px; outline: none; font-family: inherit; margin-bottom: 16px;
+    }
+    input[type=password]:focus { border-color: var(--blue); }
+    button {
+      width: 100%; background: var(--blue); color: #fff; border: none;
+      border-radius: 8px; padding: 11px; font-size: 14px; font-weight: 600;
+      cursor: pointer; font-family: inherit;
+    }
+    button:hover { opacity: .88; }
+    #erreur { color: var(--red); font-size: 13px; margin-top: 12px; text-align: center; display: none; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="logo">
+      <span>🛩️</span>
+      <div>
+        <h1>MailPilot Pro</h1>
+        <p>Accès administrateur</p>
+      </div>
+    </div>
+    <label>Mot de passe</label>
+    <input type="password" id="pwd" placeholder="••••••••" onkeydown="if(event.key==='Enter')connexion()" autofocus />
+    <button onclick="connexion()">Se connecter</button>
+    <p id="erreur">Mot de passe incorrect</p>
+  </div>
+  <script>
+    async function connexion() {
+      const pwd = document.getElementById('pwd').value;
+      const res = await fetch('/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password: pwd })
+      });
+      const json = await res.json();
+      if (json.ok) {
+        window.location.href = '/';
+      } else {
+        document.getElementById('erreur').style.display = 'block';
+      }
+    }
+  </script>
+</body>
+</html>
