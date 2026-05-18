@@ -20,6 +20,7 @@ import base64
 import logging
 import json
 import argparse
+from datetime import datetime, date
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 
@@ -497,6 +498,101 @@ MailPilot — Assistant email IA
         logger.error(f"Erreur envoi notification : {e}")
 
 
+# ============================================================
+# STATS HEBDOMADAIRES
+# ============================================================
+
+STATS_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "stats_semaine.json")
+
+def charger_stats_semaine():
+    """Charge les stats de la semaine depuis le fichier JSON."""
+    semaine_courante = date.today().isocalendar()[1]  # numéro de semaine ISO
+    annee_courante = date.today().year
+    if os.path.exists(STATS_FILE):
+        try:
+            with open(STATS_FILE, "r", encoding="utf-8") as f:
+                data = json.load(f)
+            # Si on est dans une nouvelle semaine, on repart à zéro
+            if data.get("semaine") != semaine_courante or data.get("annee") != annee_courante:
+                return {"semaine": semaine_courante, "annee": annee_courante, "traites": 0, "brouillons": 0, "categories": {}}
+            return data
+        except Exception:
+            pass
+    return {"semaine": semaine_courante, "annee": annee_courante, "traites": 0, "brouillons": 0, "categories": {}}
+
+def sauver_stats_semaine(stats):
+    """Sauvegarde les stats de la semaine dans le fichier JSON."""
+    try:
+        with open(STATS_FILE, "w", encoding="utf-8") as f:
+            json.dump(stats, f, ensure_ascii=False, indent=2)
+    except Exception as e:
+        logger.error(f"Erreur sauvegarde stats semaine : {e}")
+
+def accumuler_stats_semaine(stats_cycle):
+    """Ajoute les stats du cycle aux stats hebdomadaires."""
+    data = charger_stats_semaine()
+    data["traites"] += stats_cycle.get("traites", 0)
+    data["brouillons"] += stats_cycle.get("brouillons", 0)
+    for cat, nb in stats_cycle.get("categories", {}).items():
+        data["categories"][cat] = data["categories"].get(cat, 0) + nb
+    sauver_stats_semaine(data)
+    return data
+
+def envoyer_bilan_hebdo(service, email_destinataire):
+    """Envoie le bilan hebdomadaire au client via Gmail API."""
+    try:
+        stats = charger_stats_semaine()
+        if stats["traites"] == 0:
+            logger.info("📅 Bilan hebdo : aucun email traité cette semaine, pas d'envoi.")
+            return
+
+        nb = stats["traites"]
+        nb_brouillons = stats["brouillons"]
+        semaine = stats["semaine"]
+        annee = stats["annee"]
+        categories = stats.get("categories", {})
+
+        lignes_categories = ""
+        for cat, count in sorted(categories.items(), key=lambda x: -x[1]):
+            info = TOUS_LES_LABELS.get(cat, {})
+            emoji = info.get("emoji", "•")
+            nom = info.get("nom", cat)
+            lignes_categories += f"  {emoji} {nom} : {count} email(s)\n"
+
+        corps = f"""Bonjour,
+
+Voici votre bilan MailPilot pour la semaine {semaine} ({annee}).
+
+📊 Résumé de la semaine :
+  • {nb} email(s) traité(s) au total
+  • {nb_brouillons} brouillon(s) généré(s)
+
+📂 Répartition par catégorie :
+{lignes_categories}
+💡 Astuce : validez vos brouillons Gmail régulièrement pour que vos clients reçoivent leurs réponses rapidement.
+
+---
+MailPilot — Assistant email IA
+"""
+        sujet = f"MailPilot — Bilan semaine {semaine} : {nb} email(s) traité(s)"
+
+        message_mime = MIMEMultipart()
+        message_mime["To"] = email_destinataire
+        message_mime["From"] = email_destinataire
+        message_mime["Subject"] = sujet
+        message_mime.attach(MIMEText(corps, "plain", "utf-8"))
+        raw = base64.urlsafe_b64encode(message_mime.as_bytes()).decode("utf-8")
+        service.users().messages().send(userId="me", body={"raw": raw}).execute()
+        logger.info(f"📅 Bilan hebdomadaire envoyé à {email_destinataire} (semaine {semaine})")
+
+        # Remet les stats à zéro après envoi
+        semaine_nouvelle = date.today().isocalendar()[1]
+        sauver_stats_semaine({"semaine": semaine_nouvelle, "annee": annee, "traites": 0, "brouillons": 0, "categories": {}})
+
+    except Exception as e:
+        logger.error(f"Erreur envoi bilan hebdo : {e}")
+
+
 def traiter_email(service, client_anthropic, email, label_ids):
     """
     Traite un email complet : classification, label, brouillon, marquage.
@@ -594,9 +690,21 @@ def boucle_principale():
 
     logger.info("\n🚀 MailPilot actif ! Surveillance en cours...\n")
 
+    dernier_bilan_lundi = None  # pour n'envoyer le bilan qu'une seule fois le lundi
+
     # --- Boucle infinie ---
     while True:
         try:
+            maintenant = datetime.now()
+            email_agent = os.getenv("AGENT_EMAIL")
+
+            # --- Bilan hebdomadaire (lundi matin entre 8h et 9h, une seule fois) ---
+            if maintenant.weekday() == 0 and maintenant.hour == 8:
+                lundi_actuel = maintenant.date()
+                if dernier_bilan_lundi != lundi_actuel:
+                    envoyer_bilan_hebdo(service, email_agent)
+                    dernier_bilan_lundi = lundi_actuel
+
             logger.info(f"🔍 Vérification des emails non lus...")
 
             emails = lire_emails_non_lus(service)
@@ -622,8 +730,8 @@ def boucle_principale():
                             f"'{email.get('sujet', '?')}' : {e}"
                         )
                 if stats["traites"] > 0:
-                    email_agent = os.getenv("AGENT_EMAIL")
                     envoyer_notification(service, email_agent, stats)
+                    accumuler_stats_semaine(stats)
 
         except Exception as e:
             # Une erreur générale ne stoppe pas la boucle
