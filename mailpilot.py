@@ -443,13 +443,68 @@ def creer_brouillon(service, email, texte_reponse, categorie):
 # BOUCLE PRINCIPALE
 # ============================================================
 
+def envoyer_notification(service, email_destinataire, stats):
+    """
+    Envoie un email de résumé au client via l'API Gmail.
+    stats = {"traites": N, "brouillons": N, "categories": {"URGENT": 2, ...}}
+    """
+    try:
+        nb = stats["traites"]
+        nb_brouillons = stats["brouillons"]
+        categories = stats.get("categories", {})
+
+        # Corps du mail
+        lignes_categories = ""
+        for cat, count in sorted(categories.items(), key=lambda x: -x[1]):
+            info = TOUS_LES_LABELS.get(cat, {})
+            emoji = info.get("emoji", "•")
+            nom = info.get("nom", cat)
+            lignes_categories += f"  {emoji} {nom} : {count} email(s)\n"
+
+        corps = f"""Bonjour,
+
+MailPilot vient de traiter votre boîte mail.
+
+📊 Résumé du cycle :
+  • {nb} email(s) traité(s)
+  • {nb_brouillons} brouillon(s) prêt(s) à valider
+
+📂 Répartition par catégorie :
+{lignes_categories}
+👉 Consultez vos brouillons Gmail pour valider les réponses.
+
+---
+MailPilot — Assistant email IA
+"""
+
+        sujet = f"MailPilot — {nb} email(s) traité(s), {nb_brouillons} brouillon(s) prêt(s)"
+
+        message_mime = MIMEMultipart()
+        message_mime["To"] = email_destinataire
+        message_mime["From"] = email_destinataire
+        message_mime["Subject"] = sujet
+        message_mime.attach(MIMEText(corps, "plain", "utf-8"))
+
+        raw = base64.urlsafe_b64encode(message_mime.as_bytes()).decode("utf-8")
+        service.users().messages().send(
+            userId="me",
+            body={"raw": raw}
+        ).execute()
+
+        logger.info(f"✉️  Notification envoyée à {email_destinataire}")
+
+    except Exception as e:
+        logger.error(f"Erreur envoi notification : {e}")
+
+
 def traiter_email(service, client_anthropic, email, label_ids):
     """
     Traite un email complet : classification, label, brouillon, marquage.
-    Chaque étape est indépendante — une erreur ne bloque pas les suivantes.
+    Retourne un dict {"categorie": ..., "brouillon_cree": bool}
     """
     email_resume = f"'{email['sujet'][:40]}' de {email['expediteur'][:30]}"
     logger.info(f"\n📧 Traitement : {email_resume}")
+    brouillon_cree = False
 
     # --- Étape 1 : Classification ---
     try:
@@ -474,6 +529,7 @@ def traiter_email(service, client_anthropic, email, label_ids):
             texte_reponse = rediger_reponse(client_anthropic, email, categorie)
             if texte_reponse:
                 creer_brouillon(service, email, texte_reponse, categorie)
+                brouillon_cree = True
             else:
                 logger.warning("  ✗ Brouillon non créé (réponse vide)")
         except Exception as e:
@@ -487,6 +543,8 @@ def traiter_email(service, client_anthropic, email, label_ids):
         logger.info("  → Email marqué comme lu ✓")
     except Exception as e:
         logger.error(f"  ✗ Erreur marquage lu : {e}")
+
+    return {"categorie": categorie, "brouillon_cree": brouillon_cree}
 
 
 def boucle_principale():
@@ -547,15 +605,25 @@ def boucle_principale():
                 logger.info("  Aucun email non lu.")
             else:
                 logger.info(f"  {len(emails)} email(s) à traiter.")
+                stats = {"traites": 0, "brouillons": 0, "categories": {}}
                 for email in emails:
                     try:
-                        traiter_email(service, client_anthropic, email, label_ids)
+                        resultat = traiter_email(service, client_anthropic, email, label_ids)
+                        if resultat:
+                            stats["traites"] += 1
+                            cat = resultat.get("categorie", "inconnu")
+                            stats["categories"][cat] = stats["categories"].get(cat, 0) + 1
+                            if resultat.get("brouillon_cree"):
+                                stats["brouillons"] += 1
                     except Exception as e:
                         # Une erreur sur un email n'arrête pas le programme
                         logger.error(
                             f"  ✗ Erreur inattendue sur l'email "
                             f"'{email.get('sujet', '?')}' : {e}"
                         )
+                if stats["traites"] > 0:
+                    email_agent = os.getenv("AGENT_EMAIL")
+                    envoyer_notification(service, email_agent, stats)
 
         except Exception as e:
             # Une erreur générale ne stoppe pas la boucle
