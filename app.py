@@ -1,7 +1,6 @@
 # ============================================================
 # app.py — Interface web multi-comptes pour MailPilot
-# Lance avec : python3 app.py
-# Ouvre : http://127.0.0.1:5000
+# Supporte plusieurs boîtes mail par compte (Gmail, Outlook, IMAP)
 # ============================================================
 
 import sys
@@ -23,20 +22,18 @@ from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
 
 # --- Microsoft OAuth ---
-MS_AUTH_URL   = "https://login.microsoftonline.com/common/oauth2/v2.0/authorize"
-MS_TOKEN_URL  = "https://login.microsoftonline.com/common/oauth2/v2.0/token"
-MS_SCOPES     = "https://graph.microsoft.com/Mail.Read https://graph.microsoft.com/Mail.ReadWrite https://graph.microsoft.com/Mail.Send offline_access"
+MS_AUTH_URL  = "https://login.microsoftonline.com/common/oauth2/v2.0/authorize"
+MS_TOKEN_URL = "https://login.microsoftonline.com/common/oauth2/v2.0/token"
+MS_SCOPES    = "https://graph.microsoft.com/Mail.Read https://graph.microsoft.com/Mail.ReadWrite https://graph.microsoft.com/Mail.Send offline_access"
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY", secrets.token_hex(32))
-ADMIN_PASSWORD  = os.environ.get("ADMIN_PASSWORD", "mailpilot2024")
+ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "mailpilot2024")
 
-# Labels disponibles (importés depuis prompts.py)
 from prompts import TOUS_LES_LABELS, LABELS_DEFAUT
 
 # ── Chemins ──────────────────────────────────────────────────
-BASE_DIR    = Path(__file__).parent
-# DATA_DIR peut être monté sur un volume persistant (Railway)
+BASE_DIR     = Path(__file__).parent
 DATA_DIR     = Path(os.environ.get("DATA_DIR", str(BASE_DIR)))
 DATA_DIR.mkdir(parents=True, exist_ok=True)
 COMPTES_FILE = DATA_DIR / "comptes.json"
@@ -46,19 +43,19 @@ TOKENS_DIR.mkdir(exist_ok=True)
 GMAIL_SCOPES = ["https://www.googleapis.com/auth/gmail.modify"]
 
 # ── État en mémoire ───────────────────────────────────────────
-processus       = {}   # compte_id -> subprocess
-logs_par_compte = {}   # compte_id -> [lignes]
-emails_comptes  = {}   # compte_id -> int
-oauth_statut    = {}   # compte_id -> 'en_cours' | 'ok' | 'erreur'
-oauth_flows     = {}   # state -> compte_id
+# Clé = f"{compte_id}_{boite_id}"
+processus       = {}
+logs_par_compte = {}
+emails_comptes  = {}
+oauth_statut    = {}
+oauth_flows     = {}  # state -> {compte_id, boite_id, ...}
 lock            = threading.Lock()
 MAX_LOGS        = 150
 
 
-# ── Credentials helper ───────────────────────────────────────
+# ── Helpers ───────────────────────────────────────────────────
 
 def get_creds_path():
-    """Retourne le chemin vers credentials.json (depuis fichier ou env var)."""
     creds_json = os.environ.get("GOOGLE_CREDENTIALS_JSON")
     if creds_json:
         tmp_path = BASE_DIR / "credentials_tmp.json"
@@ -67,24 +64,54 @@ def get_creds_path():
     return str(BASE_DIR / "credentials.json")
 
 
-# ── Persistence (comptes.json) ────────────────────────────────
+def pkey(compte_id, boite_id):
+    """Clé unique pour un process/log/statut."""
+    return f"{compte_id}_{boite_id}"
+
+
+def migrer_compte_vers_boites(c):
+    """Migre un compte de l'ancien format (champs directs) vers le format boites[]."""
+    if "boites" in c:
+        return
+    boite = {
+        "id":            str(uuid.uuid4())[:8],
+        "email":         c.pop("email", ""),
+        "provider":      c.pop("provider", "gmail"),
+        "token":         c.pop("token", ""),
+        "connecte":      c.pop("connecte", False),
+        "labels_actifs": c.pop("labels_actifs", LABELS_DEFAUT),
+        "intervalle":    c.pop("intervalle", "60"),
+        "imap_server":   c.pop("imap_server", ""),
+        "imap_port":     c.pop("imap_port", "993"),
+        "smtp_server":   c.pop("smtp_server", ""),
+        "smtp_port":     c.pop("smtp_port", "465"),
+        "imap_password": c.pop("imap_password", ""),
+    }
+    if not c.get("login_email"):
+        c["login_email"] = boite["email"]
+    c["boites"] = [boite]
+
 
 def charger_comptes():
     if COMPTES_FILE.exists():
         data = json.loads(COMPTES_FILE.read_text())
-        # Migration : ajoute access_token aux comptes existants
         modifie = False
         for c in data.get("comptes", []):
             if not c.get("access_token"):
                 c["access_token"] = secrets.token_urlsafe(16)
+                modifie = True
+            if "boites" not in c:
+                migrer_compte_vers_boites(c)
                 modifie = True
         if modifie:
             sauver_comptes(data)
         return data
     return {"api_key": "", "comptes": []}
 
+
 def sauver_comptes(data):
     COMPTES_FILE.write_text(json.dumps(data, indent=2, ensure_ascii=False))
+
 
 def trouver_compte(data, compte_id):
     for c in data["comptes"]:
@@ -92,27 +119,42 @@ def trouver_compte(data, compte_id):
             return c
     return None
 
+
+def trouver_boite(compte, boite_id):
+    for b in compte.get("boites", []):
+        if b["id"] == boite_id:
+            return b
+    return None
+
+
 def check_access(compte_id):
-    """Retourne True si admin connecté ou si l'utilisateur connecté est le propriétaire du compte."""
     if session.get("admin"):
         return True
     return session.get("user_id") == compte_id
 
 
-# ── Capture logs subprocess ───────────────────────────────────
+def get_login_email(c):
+    if c.get("login_email"):
+        return c["login_email"]
+    if c.get("boites"):
+        return c["boites"][0].get("email", "")
+    return ""
 
-def capturer_logs(compte_id, process):
-    logs_par_compte.setdefault(compte_id, [])
+
+# ── Capture logs ──────────────────────────────────────────────
+
+def capturer_logs(pk, process):
+    logs_par_compte.setdefault(pk, [])
     for ligne in iter(process.stdout.readline, ""):
         ligne = ligne.strip()
         if not ligne:
             continue
         with lock:
-            logs_par_compte[compte_id].append(ligne)
-            if len(logs_par_compte[compte_id]) > MAX_LOGS:
-                logs_par_compte[compte_id].pop(0)
+            logs_par_compte[pk].append(ligne)
+            if len(logs_par_compte[pk]) > MAX_LOGS:
+                logs_par_compte[pk].pop(0)
             if "Brouillon créé" in ligne:
-                emails_comptes[compte_id] = emails_comptes.get(compte_id, 0) + 1
+                emails_comptes[pk] = emails_comptes.get(pk, 0) + 1
     process.wait()
 
 
@@ -120,63 +162,70 @@ def capturer_logs(compte_id, process):
 
 @app.route("/login", methods=["GET", "POST"])
 def login():
-    """Connexion client (email + mot de passe)."""
     if request.method == "POST":
-        d = request.json
+        d     = request.json
         email = d.get("email", "").strip().lower()
         pwd   = d.get("password", "")
         data  = charger_comptes()
         for c in data["comptes"]:
-            if c.get("email", "").lower() == email and c.get("password_hash"):
+            if get_login_email(c).lower() == email and c.get("password_hash"):
                 if check_password_hash(c["password_hash"], pwd):
                     session["user_id"] = c["id"]
                     return jsonify({"ok": True})
         return jsonify({"ok": False, "message": "Email ou mot de passe incorrect"})
-    # Si déjà connecté, redirige directement
     if session.get("admin"):
         return redirect("/admin-dashboard")
     if session.get("user_id"):
         return redirect("/dashboard")
     return render_template("login.html")
 
+
 @app.route("/register", methods=["GET", "POST"])
 def register():
-    """Inscription d'un nouveau client."""
     if request.method == "POST":
-        d   = request.json
-        nom = d.get("nom", "").strip()
+        d     = request.json
+        nom   = d.get("nom", "").strip()
         email = d.get("email", "").strip().lower()
-        pwd = d.get("password", "")
+        pwd   = d.get("password", "")
         if not nom or not email or not pwd:
             return jsonify({"ok": False, "message": "Nom, email et mot de passe sont requis"})
         if len(pwd) < 6:
             return jsonify({"ok": False, "message": "Mot de passe trop court (6 caractères min)"})
         data = charger_comptes()
         for c in data["comptes"]:
-            if c.get("email", "").lower() == email:
+            if get_login_email(c).lower() == email:
                 return jsonify({"ok": False, "message": "Cet email est déjà utilisé"})
+
         provider = d.get("provider", "gmail")
+        boite = {
+            "id":            str(uuid.uuid4())[:8],
+            "email":         email,
+            "provider":      provider,
+            "token":         "",
+            "connecte":      provider == "imap",
+            "labels_actifs": LABELS_DEFAUT,
+            "intervalle":    "60",
+        }
+        if provider == "imap":
+            boite.update({
+                "imap_server":   d.get("imap_server", ""),
+                "imap_port":     d.get("imap_port", "993"),
+                "smtp_server":   d.get("smtp_server", ""),
+                "smtp_port":     d.get("smtp_port", "465"),
+                "imap_password": d.get("imap_password", ""),
+            })
+
         compte = {
             "id":            str(uuid.uuid4())[:8],
             "access_token":  secrets.token_urlsafe(16),
             "password_hash": generate_password_hash(pwd),
+            "login_email":   email,
             "nom":           nom,
             "agence":        d.get("agence", ""),
             "tel":           d.get("tel", ""),
-            "email":         email,
             "zone":          d.get("zone", ""),
-            "intervalle":    "60",
-            "provider":      provider,
-            "connecte":      provider == "imap",    # IMAP : connecté dès l'inscription, Microsoft/Gmail nécessitent OAuth
-            "token":         "",
-            "labels_actifs": LABELS_DEFAUT,
+            "boites":        [boite],
         }
-        if provider == "imap":
-            compte["imap_server"]   = d.get("imap_server", "")
-            compte["imap_port"]     = d.get("imap_port", "993")
-            compte["smtp_server"]   = d.get("smtp_server", "")
-            compte["smtp_port"]     = d.get("smtp_port", "465")
-            compte["imap_password"] = d.get("imap_password", "")
         data["comptes"].append(compte)
         sauver_comptes(data)
         session["user_id"] = compte["id"]
@@ -185,9 +234,9 @@ def register():
         return redirect("/dashboard")
     return render_template("register.html")
 
+
 @app.route("/dashboard")
 def dashboard():
-    """Page principale du client connecté."""
     if session.get("admin"):
         return redirect("/admin-dashboard")
     user_id = session.get("user_id")
@@ -198,24 +247,29 @@ def dashboard():
     if not compte:
         session.clear()
         return redirect("/login")
-    # Pour Microsoft : si le fichier token n'existe plus, on remet à zéro
-    if compte.get("provider") == "microsoft" and compte.get("token"):
-        if not Path(compte["token"]).exists():
-            compte["token"]    = ""
-            compte["connecte"] = False
-            sauver_comptes(data)
+    # Vérifie que les fichiers token Microsoft existent toujours
+    modifie = False
+    for b in compte.get("boites", []):
+        if b.get("provider") == "microsoft" and b.get("token"):
+            if not Path(b["token"]).exists():
+                b["token"]    = ""
+                b["connecte"] = False
+                modifie = True
+    if modifie:
+        sauver_comptes(data)
     return render_template("client.html", compte=compte)
+
 
 @app.route("/logout")
 def logout():
     session.clear()
     return redirect("/login")
 
+
 # ── Admin ─────────────────────────────────────────────────────
 
 @app.route("/admin", methods=["GET", "POST"])
 def admin_login():
-    """Page de connexion admin (Thomas uniquement)."""
     if request.method == "POST":
         pwd = request.json.get("password", "")
         if pwd == ADMIN_PASSWORD:
@@ -226,12 +280,14 @@ def admin_login():
         return redirect("/admin-dashboard")
     return render_template("admin_login.html")
 
+
 @app.route("/admin-dashboard")
 def index():
     if not session.get("admin"):
         return redirect("/admin")
     data = charger_comptes()
     return render_template("index.html", data=data)
+
 
 @app.route("/")
 def home():
@@ -256,19 +312,26 @@ def sauvegarder_api():
 def ajouter_compte():
     if not session.get("admin"):
         return jsonify({"ok": False}), 403
-    d = request.json
+    d     = request.json
+    email = d.get("email", "")
+    boite = {
+        "id":            str(uuid.uuid4())[:8],
+        "email":         email,
+        "provider":      "gmail",
+        "token":         "",
+        "connecte":      False,
+        "labels_actifs": LABELS_DEFAUT,
+        "intervalle":    d.get("intervalle", "60"),
+    }
     compte = {
         "id":           str(uuid.uuid4())[:8],
         "access_token": secrets.token_urlsafe(16),
+        "login_email":  email,
         "nom":          d.get("nom", ""),
-        "labels_actifs": LABELS_DEFAUT,
-        "agence":   d.get("agence", ""),
-        "tel":      d.get("tel", ""),
-        "email":    d.get("email", ""),
-        "zone":     d.get("zone", ""),
-        "intervalle": d.get("intervalle", "60"),
-        "connecte": False,
-        "token":    "",
+        "agence":       d.get("agence", ""),
+        "tel":          d.get("tel", ""),
+        "zone":         d.get("zone", ""),
+        "boites":       [boite],
     }
     data = charger_comptes()
     data["comptes"].append(compte)
@@ -280,14 +343,19 @@ def ajouter_compte():
 def modifier_compte(compte_id):
     if not session.get("admin"):
         return jsonify({"ok": False}), 403
-    d = request.json
+    d    = request.json
     data = charger_comptes()
-    c = trouver_compte(data, compte_id)
+    c    = trouver_compte(data, compte_id)
     if not c:
         return jsonify({"ok": False})
-    for champ in ["nom", "agence", "tel", "email", "zone", "intervalle"]:
+    for champ in ["nom", "agence", "tel", "zone"]:
         if champ in d:
             c[champ] = d[champ]
+    if d.get("email") and c.get("boites"):
+        c["boites"][0]["email"] = d["email"]
+        c["login_email"] = d["email"]
+    if d.get("intervalle") and c.get("boites"):
+        c["boites"][0]["intervalle"] = d["intervalle"]
     sauver_comptes(data)
     return jsonify({"ok": True})
 
@@ -296,163 +364,217 @@ def modifier_compte(compte_id):
 def supprimer_compte(compte_id):
     if not session.get("admin"):
         return jsonify({"ok": False}), 403
-    # Arrêter le processus s'il tourne
-    if compte_id in processus:
-        p = processus.pop(compte_id)
-        if p.poll() is None:
-            p.terminate()
     data = charger_comptes()
+    c    = trouver_compte(data, compte_id)
+    if c:
+        for b in c.get("boites", []):
+            pk = pkey(compte_id, b["id"])
+            if pk in processus:
+                p = processus.pop(pk)
+                if p.poll() is None:
+                    p.terminate()
     data["comptes"] = [c for c in data["comptes"] if c["id"] != compte_id]
     sauver_comptes(data)
-    # Supprimer le token
-    token_path = TOKENS_DIR / f"token_{compte_id}.json"
-    if token_path.exists():
-        token_path.unlink()
+    for f in TOKENS_DIR.glob(f"token_{compte_id}_*.json"):
+        f.unlink()
+    for f in TOKENS_DIR.glob(f"token_ms_{compte_id}_*.json"):
+        f.unlink()
     return jsonify({"ok": True})
 
 
-@app.route("/connecter_gmail/<compte_id>", methods=["POST"])
-def connecter_gmail(compte_id):
-    """Lance le flux OAuth Gmail (web redirect)."""
+# ── Gestion des boîtes mail ───────────────────────────────────
+
+@app.route("/ajouter_boite/<compte_id>", methods=["POST"])
+def ajouter_boite(compte_id):
     if not check_access(compte_id):
         return jsonify({"ok": False, "message": "Accès refusé"}), 403
-    if oauth_statut.get(compte_id) == "en_cours":
+    d    = request.json
+    data = charger_comptes()
+    c    = trouver_compte(data, compte_id)
+    if not c:
+        return jsonify({"ok": False, "message": "Compte introuvable"})
+
+    provider = d.get("provider", "gmail")
+    email    = d.get("email", "").strip().lower()
+    if not email:
+        return jsonify({"ok": False, "message": "Email requis"})
+
+    for b in c.get("boites", []):
+        if b.get("email", "").lower() == email:
+            return jsonify({"ok": False, "message": "Cette boîte mail est déjà ajoutée"})
+
+    boite = {
+        "id":            str(uuid.uuid4())[:8],
+        "email":         email,
+        "provider":      provider,
+        "token":         "",
+        "connecte":      provider == "imap",
+        "labels_actifs": LABELS_DEFAUT,
+        "intervalle":    "60",
+    }
+    if provider == "imap":
+        imap_server = d.get("imap_server", "").strip()
+        smtp_server = d.get("smtp_server", "").strip()
+        imap_pwd    = d.get("imap_password", "")
+        if not imap_server or not smtp_server or not imap_pwd:
+            return jsonify({"ok": False, "message": "Serveur IMAP, SMTP et mot de passe requis"})
+        boite.update({
+            "imap_server":   imap_server,
+            "imap_port":     d.get("imap_port", "993"),
+            "smtp_server":   smtp_server,
+            "smtp_port":     d.get("smtp_port", "465"),
+            "imap_password": imap_pwd,
+        })
+
+    c.setdefault("boites", []).append(boite)
+    sauver_comptes(data)
+    return jsonify({"ok": True, "boite": boite})
+
+
+@app.route("/supprimer_boite/<compte_id>/<boite_id>", methods=["POST"])
+def supprimer_boite(compte_id, boite_id):
+    if not check_access(compte_id):
+        return jsonify({"ok": False, "message": "Accès refusé"}), 403
+    data = charger_comptes()
+    c    = trouver_compte(data, compte_id)
+    if not c:
+        return jsonify({"ok": False})
+    if len(c.get("boites", [])) <= 1:
+        return jsonify({"ok": False, "message": "Impossible de supprimer la dernière boîte mail"})
+    pk = pkey(compte_id, boite_id)
+    if pk in processus:
+        p = processus.pop(pk)
+        if p.poll() is None:
+            p.terminate()
+    c["boites"] = [b for b in c["boites"] if b["id"] != boite_id]
+    sauver_comptes(data)
+    return jsonify({"ok": True})
+
+
+# ── OAuth Gmail ───────────────────────────────────────────────
+
+@app.route("/connecter_gmail/<compte_id>/<boite_id>", methods=["POST"])
+def connecter_gmail(compte_id, boite_id):
+    if not check_access(compte_id):
+        return jsonify({"ok": False, "message": "Accès refusé"}), 403
+    pk = pkey(compte_id, boite_id)
+    if oauth_statut.get(pk) == "en_cours":
         return jsonify({"ok": False, "message": "Connexion déjà en cours…"})
 
     creds_path = get_creds_path()
     if not Path(creds_path).exists():
         return jsonify({"ok": False, "message": "credentials.json introuvable !"})
 
-    # Vérifie si un token valide existe déjà
-    token_path = str(TOKENS_DIR / f"token_{compte_id}.json")
+    data = charger_comptes()
+    c    = trouver_compte(data, compte_id)
+    b    = trouver_boite(c, boite_id) if c else None
+    if not b:
+        return jsonify({"ok": False, "message": "Boîte introuvable"})
+
+    token_path = str(TOKENS_DIR / f"token_{compte_id}_{boite_id}.json")
     if Path(token_path).exists():
         try:
             creds = Credentials.from_authorized_user_file(token_path, GMAIL_SCOPES)
             if creds.valid:
-                data = charger_comptes()
-                c = trouver_compte(data, compte_id)
-                if c:
-                    c["connecte"] = True
-                    c["token"] = token_path
-                    sauver_comptes(data)
-                oauth_statut[compte_id] = "ok"
+                b["connecte"] = True
+                b["token"]    = token_path
+                sauver_comptes(data)
+                oauth_statut[pk] = "ok"
                 return jsonify({"ok": True, "message": "Déjà connecté !"})
             elif creds.expired and creds.refresh_token:
                 creds.refresh(Request())
                 Path(token_path).write_text(creds.to_json())
-                data = charger_comptes()
-                c = trouver_compte(data, compte_id)
-                if c:
-                    c["connecte"] = True
-                    c["token"] = token_path
-                    sauver_comptes(data)
-                oauth_statut[compte_id] = "ok"
+                b["connecte"] = True
+                b["token"]    = token_path
+                sauver_comptes(data)
+                oauth_statut[pk] = "ok"
                 return jsonify({"ok": True, "message": "Token rafraîchi !"})
         except Exception:
             pass
 
-    # Construit l'URL OAuth web
-    is_local = request.host.startswith('127') or request.host.startswith('localhost')
-    scheme = 'http' if is_local else 'https'
+    is_local     = request.host.startswith('127') or request.host.startswith('localhost')
+    scheme       = 'http' if is_local else 'https'
     redirect_uri = f'{scheme}://{request.host}/oauth/callback'
-    flow = Flow.from_client_secrets_file(
-        creds_path,
-        scopes=GMAIL_SCOPES,
-        redirect_uri=redirect_uri
-    )
-    auth_url, state = flow.authorization_url(
-        access_type='offline',
-        include_granted_scopes='true',
-        prompt='consent'
-    )
-    # Stocke le flow ENTIER (avec code_verifier PKCE) + compte_id
-    oauth_flows[state] = {"compte_id": compte_id, "flow": flow}
-    oauth_statut[compte_id] = "en_cours"
+    flow = Flow.from_client_secrets_file(creds_path, scopes=GMAIL_SCOPES, redirect_uri=redirect_uri)
+    auth_url, state = flow.authorization_url(access_type='offline', include_granted_scopes='true', prompt='consent')
+    oauth_flows[state] = {"compte_id": compte_id, "boite_id": boite_id, "flow": flow}
+    oauth_statut[pk]   = "en_cours"
     return jsonify({"ok": True, "auth_url": auth_url})
 
 
 @app.route("/oauth/callback")
 def oauth_callback():
-    """Reçoit le code OAuth de Google et enregistre le token."""
-    state    = request.args.get('state')
-    error    = request.args.get('error')
-
+    state     = request.args.get('state')
+    error     = request.args.get('error')
     flow_data = oauth_flows.pop(state, None)
     compte_id = flow_data["compte_id"] if flow_data else None
+    boite_id  = flow_data["boite_id"]  if flow_data else None
+    pk        = pkey(compte_id, boite_id) if compte_id and boite_id else None
 
     if error or not flow_data:
-        if compte_id:
-            oauth_statut[compte_id] = "erreur"
+        if pk:
+            oauth_statut[pk] = "erreur"
         return redirect('/')
 
-    # Réutilise le flow original (conserve le code_verifier PKCE)
     flow = flow_data["flow"]
-
     try:
-        # Reconstruit l'URL de réponse en forçant https sur Railway
         auth_response = request.url
-        is_local = request.host.startswith('127') or request.host.startswith('localhost')
+        is_local      = request.host.startswith('127') or request.host.startswith('localhost')
         if not is_local:
             auth_response = auth_response.replace('http://', 'https://')
         flow.fetch_token(authorization_response=auth_response)
-        creds = flow.credentials
-
-        token_path = str(TOKENS_DIR / f"token_{compte_id}.json")
+        creds      = flow.credentials
+        token_path = str(TOKENS_DIR / f"token_{compte_id}_{boite_id}.json")
         Path(token_path).write_text(creds.to_json())
 
         data = charger_comptes()
-        c = trouver_compte(data, compte_id)
-        if c:
-            c["connecte"] = True
-            c["token"]    = token_path
+        c    = trouver_compte(data, compte_id)
+        b    = trouver_boite(c, boite_id) if c else None
+        if b:
+            b["connecte"] = True
+            b["token"]    = token_path
             sauver_comptes(data)
-
-        oauth_statut[compte_id] = "ok"
-        import sys
-        print(f"[OAuth SUCCESS] compte={compte_id} connecte=True token={token_path}", file=sys.stderr)
-
+        oauth_statut[pk] = "ok"
+        print(f"[OAuth SUCCESS] compte={compte_id} boite={boite_id}", file=sys.stderr)
     except Exception as e:
-        import sys
-        print(f"[OAuth Callback ERREUR] compte={compte_id} err={e}", file=sys.stderr)
-        oauth_statut[compte_id] = "erreur"
-        with lock:
-            logs_par_compte.setdefault(compte_id, []).append(f"[ERREUR OAuth] {e}")
+        print(f"[OAuth Callback ERREUR] {e}", file=sys.stderr)
+        if pk:
+            oauth_statut[pk] = "erreur"
+            with lock:
+                logs_par_compte.setdefault(pk, []).append(f"[ERREUR OAuth] {e}")
 
-    # Redirige vers la bonne page selon le type d'utilisateur
-    if session.get("admin"):
-        return redirect('/admin-dashboard')
-    else:
-        return redirect('/dashboard')
+    return redirect('/admin-dashboard' if session.get("admin") else '/dashboard')
 
 
-@app.route("/statut_oauth/<compte_id>")
-def statut_oauth(compte_id):
+@app.route("/statut_oauth/<compte_id>/<boite_id>")
+def statut_oauth(compte_id, boite_id):
     if not check_access(compte_id):
         return jsonify({"ok": False}), 403
-    return jsonify({"statut": oauth_statut.get(compte_id, "")})
+    pk = pkey(compte_id, boite_id)
+    return jsonify({"statut": oauth_statut.get(pk, "")})
 
 
 # ── OAuth Microsoft ────────────────────────────────────────────
 
-@app.route("/connecter_microsoft/<compte_id>", methods=["POST"])
-def connecter_microsoft(compte_id):
-    """Lance le flux OAuth Microsoft."""
+@app.route("/connecter_microsoft/<compte_id>/<boite_id>", methods=["POST"])
+def connecter_microsoft(compte_id, boite_id):
     if not check_access(compte_id):
         return jsonify({"ok": False, "message": "Accès refusé"}), 403
-    if oauth_statut.get(compte_id) == "en_cours":
+    pk = pkey(compte_id, boite_id)
+    if oauth_statut.get(pk) == "en_cours":
         return jsonify({"ok": False, "message": "Connexion déjà en cours…"})
 
     client_id = os.environ.get("MICROSOFT_CLIENT_ID", "")
     if not client_id:
-        return jsonify({"ok": False, "message": "Microsoft OAuth non configuré (MICROSOFT_CLIENT_ID manquant dans Railway)"})
+        return jsonify({"ok": False, "message": "Microsoft OAuth non configuré (MICROSOFT_CLIENT_ID manquant)"})
 
-    is_local   = request.host.startswith('127') or request.host.startswith('localhost')
-    scheme     = 'http' if is_local else 'https'
+    is_local     = request.host.startswith('127') or request.host.startswith('localhost')
+    scheme       = 'http' if is_local else 'https'
     redirect_uri = f'{scheme}://{request.host}/oauth/microsoft/callback'
 
     state = secrets.token_urlsafe(16)
-    oauth_flows[state] = {"compte_id": compte_id, "provider": "microsoft", "redirect_uri": redirect_uri}
-    oauth_statut[compte_id] = "en_cours"
+    oauth_flows[state] = {"compte_id": compte_id, "boite_id": boite_id, "provider": "microsoft", "redirect_uri": redirect_uri}
+    oauth_statut[pk]   = "en_cours"
 
     params = {
         "client_id":     client_id,
@@ -462,39 +584,37 @@ def connecter_microsoft(compte_id):
         "state":         state,
         "response_mode": "query",
     }
-    auth_url = MS_AUTH_URL + "?" + urlencode(params)
-    return jsonify({"ok": True, "auth_url": auth_url})
+    return jsonify({"ok": True, "auth_url": MS_AUTH_URL + "?" + urlencode(params)})
 
 
 @app.route("/oauth/microsoft/callback")
 def microsoft_callback():
-    """Reçoit le code OAuth de Microsoft et enregistre le token."""
-    state = request.args.get("state")
-    code  = request.args.get("code")
-    error = request.args.get("error")
-
+    state     = request.args.get("state")
+    code      = request.args.get("code")
+    error     = request.args.get("error")
     flow_data = oauth_flows.pop(state, None)
     compte_id = flow_data["compte_id"] if flow_data else None
+    boite_id  = flow_data["boite_id"]  if flow_data else None
+    pk        = pkey(compte_id, boite_id) if compte_id and boite_id else None
 
     if error or not flow_data or not code:
-        if compte_id:
-            oauth_statut[compte_id] = "erreur"
+        if pk:
+            oauth_statut[pk] = "erreur"
         return redirect("/dashboard")
 
-    redirect_uri = flow_data["redirect_uri"]
     try:
-        resp = http_requests.post(MS_TOKEN_URL, data={
+        resp       = http_requests.post(MS_TOKEN_URL, data={
             "client_id":     os.environ.get("MICROSOFT_CLIENT_ID", ""),
             "client_secret": os.environ.get("MICROSOFT_CLIENT_SECRET", ""),
             "code":          code,
-            "redirect_uri":  redirect_uri,
+            "redirect_uri":  flow_data["redirect_uri"],
             "grant_type":    "authorization_code",
         })
         token_data = resp.json()
         if "access_token" not in token_data:
             raise Exception(f"Réponse Microsoft invalide : {token_data}")
 
-        token_path = str(TOKENS_DIR / f"token_ms_{compte_id}.json")
+        token_path = str(TOKENS_DIR / f"token_ms_{compte_id}_{boite_id}.json")
         with open(token_path, "w") as f:
             json.dump({
                 "access_token":  token_data["access_token"],
@@ -503,79 +623,84 @@ def microsoft_callback():
             }, f)
 
         data = charger_comptes()
-        c = trouver_compte(data, compte_id)
-        if c:
-            c["connecte"] = True
-            c["token"]    = token_path
+        c    = trouver_compte(data, compte_id)
+        b    = trouver_boite(c, boite_id) if c else None
+        if b:
+            b["connecte"] = True
+            b["token"]    = token_path
             sauver_comptes(data)
-
-        oauth_statut[compte_id] = "ok"
+        oauth_statut[pk] = "ok"
 
     except Exception as e:
-        oauth_statut[compte_id] = "erreur"
-        with lock:
-            logs_par_compte.setdefault(compte_id, []).append(f"[ERREUR OAuth Microsoft] {e}")
+        if pk:
+            oauth_statut[pk] = "erreur"
+            with lock:
+                logs_par_compte.setdefault(pk, []).append(f"[ERREUR OAuth Microsoft] {e}")
 
-    if session.get("admin"):
-        return redirect("/admin-dashboard")
-    return redirect("/dashboard")
+    return redirect('/admin-dashboard' if session.get("admin") else '/dashboard')
 
 
-@app.route("/demarrer/<compte_id>", methods=["POST"])
-def demarrer(compte_id):
+# ── Démarrer / Arrêter ────────────────────────────────────────
+
+@app.route("/demarrer/<compte_id>/<boite_id>", methods=["POST"])
+def demarrer(compte_id, boite_id):
     if not check_access(compte_id):
         return jsonify({"ok": False, "message": "Accès refusé"}), 403
-    if compte_id in processus and processus[compte_id].poll() is None:
+    pk = pkey(compte_id, boite_id)
+    if pk in processus and processus[pk].poll() is None:
         return jsonify({"ok": False, "message": "Déjà en cours"})
 
     data = charger_comptes()
-    c = trouver_compte(data, compte_id)
+    c    = trouver_compte(data, compte_id)
     if not c:
         return jsonify({"ok": False, "message": "Compte introuvable"})
-    provider = c.get("provider", "gmail")
-    if provider == "gmail" and (not c.get("connecte") or not c.get("token")):
+    b = trouver_boite(c, boite_id)
+    if not b:
+        return jsonify({"ok": False, "message": "Boîte introuvable"})
+
+    provider = b.get("provider", "gmail")
+    if provider == "gmail" and (not b.get("connecte") or not b.get("token")):
         return jsonify({"ok": False, "message": "Connecte d'abord Gmail !"})
-    elif provider == "microsoft" and not c.get("token"):
-        return jsonify({"ok": False, "message": "Connecte d'abord Outlook ! (bouton 🔗 Connecter Outlook)"})
-    elif provider == "imap" and not c.get("imap_server"):
+    elif provider == "microsoft" and not b.get("token"):
+        return jsonify({"ok": False, "message": "Connecte d'abord Outlook !"})
+    elif provider == "imap" and not b.get("imap_server"):
         return jsonify({"ok": False, "message": "Configuration IMAP incomplète."})
 
-    # Prépare les variables d'environnement pour ce compte
     env = os.environ.copy()
     env.update({
         "AGENT_NOM":         c["nom"],
-        "AGENT_AGENCE":      c["agence"],
-        "AGENT_TEL":         c["tel"],
-        "AGENT_EMAIL":       c["email"],
-        "AGENT_ZONE":        c["zone"],
+        "AGENT_AGENCE":      c.get("agence", ""),
+        "AGENT_TEL":         c.get("tel", ""),
+        "AGENT_EMAIL":       b["email"],
+        "AGENT_ZONE":        c.get("zone", ""),
         "ANTHROPIC_API_KEY": data.get("api_key", ""),
-        "CHECK_INTERVAL":    c.get("intervalle", "60"),
-        "LABELS_ACTIFS":     ",".join(c.get("labels_actifs", list(TOUS_LES_LABELS.keys())[:7])),
+        "CHECK_INTERVAL":    b.get("intervalle", "60"),
+        "LABELS_ACTIFS":     ",".join(b.get("labels_actifs", LABELS_DEFAUT)),
         "MAIL_PROVIDER":     provider,
-        "COMPTE_ID":         compte_id,
+        "COMPTE_ID":         pk,
         "STATS_DIR":         str(DATA_DIR),
     })
     if provider == "microsoft":
         env.update({
-            "MICROSOFT_TOKEN_PATH":   c.get("token", ""),
-            "MICROSOFT_CLIENT_ID":    os.environ.get("MICROSOFT_CLIENT_ID", ""),
+            "MICROSOFT_TOKEN_PATH":    b.get("token", ""),
+            "MICROSOFT_CLIENT_ID":     os.environ.get("MICROSOFT_CLIENT_ID", ""),
             "MICROSOFT_CLIENT_SECRET": os.environ.get("MICROSOFT_CLIENT_SECRET", ""),
         })
     elif provider == "imap":
         env.update({
-            "IMAP_SERVER":   c.get("imap_server", ""),
-            "IMAP_PORT":     str(c.get("imap_port", "993")),
-            "SMTP_SERVER":   c.get("smtp_server", ""),
-            "SMTP_PORT":     str(c.get("smtp_port", "465")),
-            "IMAP_PASSWORD": c.get("imap_password", ""),
+            "IMAP_SERVER":   b.get("imap_server", ""),
+            "IMAP_PORT":     str(b.get("imap_port", "993")),
+            "SMTP_SERVER":   b.get("smtp_server", ""),
+            "SMTP_PORT":     str(b.get("smtp_port", "465")),
+            "IMAP_PASSWORD": b.get("imap_password", ""),
         })
 
-    logs_par_compte[compte_id] = []
-    emails_comptes[compte_id]  = 0
+    logs_par_compte[pk] = []
+    emails_comptes[pk]  = 0
 
     cmd = [sys.executable, "mailpilot.py"]
     if provider == "gmail":
-        cmd += ["--token", c["token"]]
+        cmd += ["--token", b["token"]]
 
     p = subprocess.Popen(
         cmd,
@@ -586,63 +711,74 @@ def demarrer(compte_id):
         cwd=str(BASE_DIR),
         env=env,
     )
-    processus[compte_id] = p
-    threading.Thread(target=capturer_logs, args=(compte_id, p), daemon=True).start()
-
+    processus[pk] = p
+    threading.Thread(target=capturer_logs, args=(pk, p), daemon=True).start()
     return jsonify({"ok": True})
 
 
-@app.route("/arreter/<compte_id>", methods=["POST"])
-def arreter(compte_id):
+@app.route("/arreter/<compte_id>/<boite_id>", methods=["POST"])
+def arreter(compte_id, boite_id):
     if not check_access(compte_id):
         return jsonify({"ok": False}), 403
-    p = processus.pop(compte_id, None)
+    pk = pkey(compte_id, boite_id)
+    p  = processus.pop(pk, None)
     if p and p.poll() is None:
         p.terminate()
         with lock:
-            logs_par_compte.setdefault(compte_id, []).append("── Arrêté manuellement ──")
+            logs_par_compte.setdefault(pk, []).append("── Arrêté manuellement ──")
     return jsonify({"ok": True})
 
+
+# ── Statut ────────────────────────────────────────────────────
 
 @app.route("/statut/<compte_id>")
 def statut_compte(compte_id):
     if not check_access(compte_id):
         return jsonify({"ok": False}), 403
-    actif = compte_id in processus and processus[compte_id].poll() is None
-    with lock:
-        logs = list(logs_par_compte.get(compte_id, [])[-25:])
     data = charger_comptes()
-    c = trouver_compte(data, compte_id)
-    connecte = c.get("connecte", False) if c else False
-    return jsonify({
-        "actif":          actif,
-        "connecte":       connecte,
-        "emails_traites": emails_comptes.get(compte_id, 0),
-        "logs":           logs,
-        "oauth":          oauth_statut.get(compte_id, ""),
-        "provider":       c.get("provider", "gmail") if c else "gmail",
-    })
+    c    = trouver_compte(data, compte_id)
+    if not c:
+        return jsonify({"ok": False}), 404
+
+    boites_statut = []
+    for b in c.get("boites", []):
+        pk    = pkey(compte_id, b["id"])
+        actif = pk in processus and processus[pk].poll() is None
+        with lock:
+            logs = list(logs_par_compte.get(pk, [])[-25:])
+        boites_statut.append({
+            "id":             b["id"],
+            "email":          b["email"],
+            "provider":       b.get("provider", "gmail"),
+            "connecte":       b.get("connecte", False),
+            "token":          bool(b.get("token")),
+            "actif":          actif,
+            "emails_traites": emails_comptes.get(pk, 0),
+            "logs":           logs,
+            "oauth":          oauth_statut.get(pk, ""),
+        })
+    return jsonify({"boites": boites_statut})
 
 
-@app.route("/labels/<compte_id>", methods=["GET", "POST"])
-def gerer_labels(compte_id):
+# ── Labels ────────────────────────────────────────────────────
+
+@app.route("/labels/<compte_id>/<boite_id>", methods=["GET", "POST"])
+def gerer_labels(compte_id, boite_id):
     if not check_access(compte_id):
         return jsonify({"ok": False}), 403
     data = charger_comptes()
-    c = trouver_compte(data, compte_id)
-    if not c:
+    c    = trouver_compte(data, compte_id)
+    b    = trouver_boite(c, boite_id) if c else None
+    if not b:
         return jsonify({"ok": False}), 404
     if request.method == "POST":
-        labels = request.json.get("labels", [])
-        # Valide que les labels existent
-        labels = [l for l in labels if l in TOUS_LES_LABELS]
+        labels = [l for l in request.json.get("labels", []) if l in TOUS_LES_LABELS]
         if "INUTILE" not in labels:
-            labels.append("INUTILE")  # INUTILE toujours actif
-        c["labels_actifs"] = labels
+            labels.append("INUTILE")
+        b["labels_actifs"] = labels
         sauver_comptes(data)
         return jsonify({"ok": True, "labels": labels})
-    # GET : retourne les labels actifs et tous les labels disponibles
-    actifs = c.get("labels_actifs", LABELS_DEFAUT)
+    actifs = b.get("labels_actifs", LABELS_DEFAUT)
     return jsonify({
         "actifs": actifs,
         "tous": {k: {"emoji": v["emoji"], "description_ui": v["description_ui"]}
@@ -650,25 +786,25 @@ def gerer_labels(compte_id):
     })
 
 
-@app.route("/stats/<compte_id>")
-def stats_compte_route(compte_id):
-    """Retourne les stats de la semaine courante + historique pour un compte."""
+# ── Stats ─────────────────────────────────────────────────────
+
+@app.route("/stats/<compte_id>/<boite_id>")
+def stats_compte_route(compte_id, boite_id):
     if not check_access(compte_id):
         return jsonify({"ok": False}), 403
-    stats_file = DATA_DIR / f"stats_{compte_id}.json"
-    hist_file  = DATA_DIR / f"stats_hist_{compte_id}.json"
+    stats_id   = pkey(compte_id, boite_id)
+    stats_file = DATA_DIR / f"stats_{stats_id}.json"
+    hist_file  = DATA_DIR / f"stats_hist_{stats_id}.json"
     semaine_courante = {}
-    historique = []
+    historique       = []
     if stats_file.exists():
         try:
-            with open(stats_file, encoding="utf-8") as f:
-                semaine_courante = json.load(f)
+            semaine_courante = json.loads(stats_file.read_text(encoding="utf-8"))
         except Exception:
             pass
     if hist_file.exists():
         try:
-            with open(hist_file, encoding="utf-8") as f:
-                historique = json.load(f).get("semaines", [])
+            historique = json.loads(hist_file.read_text(encoding="utf-8")).get("semaines", [])
         except Exception:
             pass
     return jsonify({"ok": True, "semaine_courante": semaine_courante, "historique": historique[-12:]})
@@ -676,33 +812,32 @@ def stats_compte_route(compte_id):
 
 @app.route("/statut_global")
 def statut_global():
-    data = charger_comptes()
+    data   = charger_comptes()
     result = {}
     for c in data["comptes"]:
-        cid = c["id"]
-        actif = cid in processus and processus[cid].poll() is None
-        result[cid] = {
-            "actif":          actif,
-            "connecte":       c.get("connecte", False),
-            "emails_traites": emails_comptes.get(cid, 0),
-            "oauth":          oauth_statut.get(cid, ""),
-        }
+        for b in c.get("boites", []):
+            pk = pkey(c["id"], b["id"])
+            result[pk] = {
+                "actif":          pk in processus and processus[pk].poll() is None,
+                "connecte":       b.get("connecte", False),
+                "emails_traites": emails_comptes.get(pk, 0),
+                "oauth":          oauth_statut.get(pk, ""),
+            }
     return jsonify(result)
 
 
 # ── Lancement ─────────────────────────────────────────────────
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 5001))
+    port     = int(os.environ.get("PORT", 5001))
     is_local = port == 5001
 
     if is_local:
         import webbrowser
         def ouvrir():
-            import time
-            time.sleep(1.2)
+            import time; time.sleep(1.2)
             webbrowser.open(f"http://127.0.0.1:{port}")
         threading.Thread(target=ouvrir, daemon=True).start()
-        print("\n🛩️  MailPilot Pro — Interface multi-comptes")
+        print("\n🛩️  MailPilot Pro — Interface multi-boîtes")
         print(f"   Ouvre http://127.0.0.1:{port}\n")
 
     app.run(debug=False, host="0.0.0.0", port=port)
