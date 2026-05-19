@@ -3,236 +3,91 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>MailPilot Pro</title>
+  <title>MailPilot Pro — Admin</title>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
     :root {
-      --bg:      #0e0e0e;
-      --card:    #181818;
-      --border:  #2a2a2a;
-      --text:    #e8e8e8;
-      --muted:   #666;
-      --green:   #22c55e;
-      --red:     #ef4444;
-      --blue:    #3b82f6;
-      --yellow:  #f59e0b;
-      --radius:  12px;
+      --bg:#0e0e0e; --card:#181818; --border:#2a2a2a;
+      --text:#e8e8e8; --muted:#666; --green:#22c55e;
+      --red:#ef4444; --blue:#3b82f6; --yellow:#f59e0b; --radius:12px;
     }
+    body { background:var(--bg); color:var(--text); font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text",sans-serif; min-height:100vh; padding:24px 20px 60px; }
 
-    body {
-      background: var(--bg);
-      color: var(--text);
-      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif;
-      min-height: 100vh;
-      padding: 24px 20px 60px;
-    }
+    header { display:flex; align-items:center; justify-content:space-between; max-width:900px; margin:0 auto 24px; gap:16px; flex-wrap:wrap; }
+    .logo-zone { display:flex; align-items:center; gap:10px; }
+    .logo-zone .icon { font-size:26px; }
+    .logo-zone h1 { font-size:20px; font-weight:700; }
+    .logo-zone p { font-size:12px; color:var(--muted); margin-top:1px; }
+    .api-zone { display:flex; align-items:center; gap:8px; background:var(--card); border:1px solid var(--border); border-radius:10px; padding:8px 12px; flex:1; max-width:420px; }
+    .api-zone label { font-size:11px; color:var(--muted); white-space:nowrap; }
+    .api-zone input { flex:1; background:transparent; border:none; color:var(--text); font-size:13px; outline:none; font-family:monospace; min-width:0; }
+    .api-zone button { background:#252525; border:1px solid var(--border); color:var(--text); border-radius:7px; padding:5px 12px; font-size:12px; font-weight:600; cursor:pointer; }
+    .api-zone button:hover { background:#2f2f2f; }
 
-    /* ── Header ── */
-    header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      max-width: 860px;
-      margin: 0 auto 28px;
-      gap: 16px;
-      flex-wrap: wrap;
-    }
+    .actions-bar { max-width:900px; margin:0 auto 16px; display:flex; justify-content:flex-end; }
+    .btn-add { display:flex; align-items:center; gap:6px; background:var(--blue); color:#fff; border:none; border-radius:9px; padding:9px 16px; font-size:13px; font-weight:600; cursor:pointer; font-family:inherit; }
+    .btn-add:hover { opacity:.88; }
 
-    .logo-zone { display: flex; align-items: center; gap: 10px; }
-    .logo-zone .icon { font-size: 26px; }
-    .logo-zone h1 { font-size: 20px; font-weight: 700; }
-    .logo-zone p  { font-size: 12px; color: var(--muted); margin-top: 1px; }
+    .comptes-list { max-width:900px; margin:0 auto; display:flex; flex-direction:column; gap:20px; }
+    .empty-state { text-align:center; padding:60px 20px; color:var(--muted); }
+    .empty-state .big { font-size:40px; margin-bottom:12px; }
 
-    .api-zone {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      background: var(--card);
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      padding: 8px 12px;
-      flex: 1;
-      max-width: 420px;
-    }
+    /* Compte card */
+    .compte-card { background:var(--card); border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; }
+    .compte-header { display:flex; align-items:center; gap:14px; padding:16px 20px 12px; border-bottom:1px solid var(--border); }
+    .compte-avatar { width:36px; height:36px; border-radius:50%; background:#222; display:flex; align-items:center; justify-content:center; font-size:16px; font-weight:700; color:var(--blue); flex-shrink:0; }
+    .compte-info { flex:1; min-width:0; }
+    .compte-info .name { font-size:15px; font-weight:600; }
+    .compte-info .meta { font-size:12px; color:var(--muted); margin-top:2px; }
+    .compte-actions { display:flex; gap:6px; }
+    .icon-btn { background:#1e1e1e; border:1px solid var(--border); color:var(--muted); border-radius:7px; padding:6px 10px; font-size:13px; cursor:pointer; }
+    .icon-btn:hover { color:var(--red); border-color:var(--red); }
 
-    .api-zone label { font-size: 11px; color: var(--muted); white-space: nowrap; }
+    /* Boites list */
+    .boites-list { padding:12px 20px; display:flex; flex-direction:column; gap:10px; }
+    .boite-row { background:#111; border:1px solid var(--border); border-radius:9px; padding:12px 14px; }
+    .boite-row.actif { border-color:#1a4a2a; }
+    .boite-top { display:flex; align-items:center; gap:10px; margin-bottom:10px; }
+    .status-dot { width:9px; height:9px; border-radius:50%; background:var(--muted); flex-shrink:0; }
+    .status-dot.actif { background:var(--green); animation:pulse 1.8s infinite; }
+    @keyframes pulse { 0%{box-shadow:0 0 0 0 rgba(34,197,94,.6)} 70%{box-shadow:0 0 0 8px rgba(34,197,94,0)} 100%{box-shadow:0 0 0 0 rgba(34,197,94,0)} }
+    .boite-email { flex:1; font-size:13px; font-weight:600; }
+    .boite-provider { font-size:11px; color:var(--muted); }
+    .boite-count { font-size:13px; font-weight:700; color:var(--text); }
+    .boite-count-lbl { font-size:10px; color:var(--muted); }
+    .boite-btns { display:flex; gap:6px; }
+    .btn { padding:8px 12px; border-radius:7px; border:none; font-size:12px; font-weight:600; font-family:inherit; cursor:pointer; transition:opacity .15s; }
+    .btn:disabled { opacity:.4; cursor:not-allowed; }
+    .btn:hover:not(:disabled) { opacity:.85; }
+    .btn-connect { background:var(--blue); color:#fff; flex:1; }
+    .btn-start   { background:var(--green); color:#000; flex:1; }
+    .btn-stop    { background:var(--red); color:#fff; flex:1; }
+    .btn-icon    { background:#1e1e1e; border:1px solid var(--border); color:var(--muted); }
+    .btn-icon:hover { color:var(--text); }
 
-    .api-zone input {
-      flex: 1;
-      background: transparent;
-      border: none;
-      color: var(--text);
-      font-size: 13px;
-      outline: none;
-      font-family: monospace;
-      min-width: 0;
-    }
+    .log-toggle { width:100%; background:transparent; border:none; border-top:1px solid var(--border); color:var(--muted); font-size:11px; font-family:inherit; padding:7px 14px; text-align:left; cursor:pointer; margin-top:8px; }
+    .log-toggle:hover { color:var(--text); }
+    .log-feed { display:none; background:#0a0a0a; border-top:1px solid var(--border); padding:10px 14px; height:180px; overflow-y:auto; font-family:"SF Mono","Menlo",monospace; font-size:11px; line-height:1.7; color:#888; margin-top:4px; border-radius:6px; }
+    .log-feed.open { display:block; }
+    .log-line.ok   { color:var(--green); }
+    .log-line.err  { color:var(--red); }
+    .log-line.warn { color:var(--yellow); }
+    .log-line.info { color:#7dd3fc; }
 
-    .api-zone button {
-      background: #252525;
-      border: 1px solid var(--border);
-      color: var(--text);
-      border-radius: 7px;
-      padding: 5px 12px;
-      font-size: 12px;
-      font-weight: 600;
-      cursor: pointer;
-      white-space: nowrap;
-    }
-
-    .api-zone button:hover { background: #2f2f2f; }
-
-    /* ── Barre d'actions ── */
-    .actions-bar {
-      max-width: 860px;
-      margin: 0 auto 16px;
-      display: flex;
-      justify-content: flex-end;
-    }
-
-    .btn-add {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      background: var(--blue);
-      color: #fff;
-      border: none;
-      border-radius: 9px;
-      padding: 9px 16px;
-      font-size: 13px;
-      font-weight: 600;
-      cursor: pointer;
-      font-family: inherit;
-    }
-
-    .btn-add:hover { opacity: .88; }
-
-    /* ── Liste des comptes ── */
-    .comptes-list {
-      max-width: 860px;
-      margin: 0 auto;
-      display: flex;
-      flex-direction: column;
-      gap: 16px;
-    }
-
-    .empty-state {
-      text-align: center;
-      padding: 60px 20px;
-      color: var(--muted);
-    }
-
-    .empty-state .big { font-size: 40px; margin-bottom: 12px; }
-    .empty-state p { font-size: 14px; }
-
-    /* ── Carte compte ── */
-    .compte-card {
-      background: var(--card);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      overflow: hidden;
-    }
-
-    .compte-card.actif { border-color: #1a4a2a; }
-
-    .compte-header {
-      display: flex;
-      align-items: center;
-      gap: 14px;
-      padding: 18px 20px;
-    }
-
-    .status-dot {
-      width: 10px;
-      height: 10px;
-      border-radius: 50%;
-      background: var(--muted);
-      flex-shrink: 0;
-    }
-
-    .status-dot.actif {
-      background: var(--green);
-      animation: pulse 1.8s infinite;
-    }
-
-    .status-dot.connexion {
-      background: var(--yellow);
-      animation: pulse 1s infinite;
-    }
-
-    @keyframes pulse {
-      0%   { box-shadow: 0 0 0 0 rgba(34,197,94,.6); }
-      70%  { box-shadow: 0 0 0 8px rgba(34,197,94,0); }
-      100% { box-shadow: 0 0 0 0 rgba(34,197,94,0); }
-    }
-
-    .compte-info { flex: 1; min-width: 0; }
-
-    .compte-info .name {
-      font-size: 15px;
-      font-weight: 600;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-
-    .compte-info .meta {
-      font-size: 12px;
-      color: var(--muted);
-      margin-top: 2px;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-
-    .compte-counter {
-      font-size: 13px;
-      color: var(--muted);
-      text-align: right;
-      white-space: nowrap;
-    }
-
-    .compte-counter .num {
-      font-size: 22px;
-      font-weight: 700;
-      color: var(--text);
-      display: block;
-      line-height: 1;
-    }
-
-    .compte-btns {
-      display: flex;
-      gap: 8px;
-      padding: 0 20px 16px;
-    }
-
-    .btn {
-      flex: 1;
-      padding: 9px 14px;
-      border-radius: 8px;
-      border: none;
-      font-size: 13px;
-      font-weight: 600;
-      font-family: inherit;
-      cursor: pointer;
-      transition: opacity .15s;
-    }
-
-    .btn:disabled { opacity: .4; cursor: not-allowed; }
-    .btn:hover:not(:disabled) { opacity: .85; }
-
-    .btn-connect { background: var(--blue); color: #fff; }
-    .btn-start   { background: var(--green); color: #000; }
-    .btn-stop    { background: var(--red); color: #fff; }
-    .btn-delete  { background: #1e1e1e; color: var(--muted); border: 1px solid var(--border); flex: 0 0 auto; }
-
-    /* Labels modal */
-    .overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,.75); z-index:100; align-items:center; justify-content:center; padding:20px; }
+    /* Modals */
+    .overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,.8); z-index:100; align-items:center; justify-content:center; padding:20px; }
     .overlay.open { display:flex; }
-    .modal { background:var(--card); border:1px solid var(--border); border-radius:16px; padding:28px; width:100%; max-width:520px; max-height:85vh; overflow-y:auto; }
-    .modal h2 { font-size:17px; font-weight:700; margin-bottom:6px; }
-    .modal p.subtitle { font-size:12px; color:var(--muted); margin-bottom:20px; }
+    .modal { background:var(--card); border:1px solid var(--border); border-radius:16px; padding:28px; width:100%; max-width:440px; max-height:90vh; overflow-y:auto; }
+    .modal h2 { font-size:17px; font-weight:700; margin-bottom:20px; }
+    .field { margin-bottom:14px; }
+    .field label { display:block; font-size:11px; color:var(--muted); margin-bottom:5px; font-weight:500; }
+    .field input { width:100%; background:#111; border:1px solid var(--border); border-radius:8px; color:var(--text); font-size:14px; padding:9px 12px; outline:none; font-family:inherit; }
+    .field input:focus { border-color:var(--blue); }
+    .modal-btns { display:flex; gap:10px; margin-top:20px; }
+    .btn-modal-cancel { flex:1; padding:10px; background:#1e1e1e; border:1px solid var(--border); color:var(--text); border-radius:8px; font-size:14px; font-weight:600; cursor:pointer; font-family:inherit; }
+    .btn-modal-ok { flex:2; padding:10px; background:var(--blue); border:none; color:#fff; border-radius:8px; font-size:14px; font-weight:600; cursor:pointer; font-family:inherit; }
+
+    /* Labels */
     .label-grid { display:flex; flex-direction:column; gap:8px; }
     .label-item { display:flex; align-items:center; gap:12px; background:#111; border:1px solid var(--border); border-radius:8px; padding:10px 14px; cursor:pointer; }
     .label-item:hover { border-color:var(--blue); }
@@ -242,258 +97,115 @@
     .label-item .label-name { font-size:13px; font-weight:600; }
     .label-item .label-desc { font-size:11px; color:var(--muted); margin-top:2px; }
     .label-item.locked { opacity:0.5; cursor:not-allowed; }
-    .modal-btns { display:flex; gap:10px; margin-top:20px; }
-    .btn-modal-cancel { flex:1; padding:10px; background:#1e1e1e; border:1px solid var(--border); color:var(--text); border-radius:8px; font-size:14px; font-weight:600; cursor:pointer; font-family:inherit; }
-    .btn-modal-ok { flex:2; padding:10px; background:var(--blue); border:none; color:#fff; border-radius:8px; font-size:14px; font-weight:600; cursor:pointer; font-family:inherit; }
 
-    /* ── Logs ── */
-    .log-toggle {
-      width: 100%;
-      background: transparent;
-      border: none;
-      border-top: 1px solid var(--border);
-      color: var(--muted);
-      font-size: 11px;
-      font-family: inherit;
-      padding: 8px 20px;
-      text-align: left;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      gap: 6px;
-    }
-
-    .log-toggle:hover { color: var(--text); }
-
-    .log-feed {
-      display: none;
-      background: #0a0a0a;
-      border-top: 1px solid var(--border);
-      padding: 10px 14px;
-      height: 220px;
-      overflow-y: auto;
-      font-family: "SF Mono", "Menlo", monospace;
-      font-size: 11px;
-      line-height: 1.7;
-      color: #888;
-    }
-
-    .log-feed.open { display: block; }
-    .log-line.ok   { color: var(--green); }
-    .log-line.err  { color: var(--red); }
-    .log-line.warn { color: var(--yellow); }
-    .log-line.info { color: #7dd3fc; }
-
-    /* ── Modal ── */
-    .overlay {
-      display: none;
-      position: fixed;
-      inset: 0;
-      background: rgba(0,0,0,.7);
-      z-index: 100;
-      align-items: center;
-      justify-content: center;
-      padding: 20px;
-    }
-
-    .overlay.open { display: flex; }
-
-    .modal {
-      background: var(--card);
-      border: 1px solid var(--border);
-      border-radius: 16px;
-      padding: 28px;
-      width: 100%;
-      max-width: 440px;
-    }
-
-    .modal h2 { font-size: 17px; font-weight: 700; margin-bottom: 20px; }
-
-    .field { margin-bottom: 14px; }
-
-    .field label {
-      display: block;
-      font-size: 11px;
-      color: var(--muted);
-      margin-bottom: 5px;
-      font-weight: 500;
-    }
-
-    .field input {
-      width: 100%;
-      background: #111;
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      color: var(--text);
-      font-size: 14px;
-      padding: 9px 12px;
-      outline: none;
-      font-family: inherit;
-    }
-
-    .field input:focus { border-color: var(--blue); }
-
-    .modal-btns { display: flex; gap: 10px; margin-top: 20px; }
-
-    .btn-modal-cancel {
-      flex: 1;
-      padding: 10px;
-      background: #1e1e1e;
-      border: 1px solid var(--border);
-      color: var(--text);
-      border-radius: 8px;
-      font-size: 14px;
-      font-weight: 600;
-      cursor: pointer;
-      font-family: inherit;
-    }
-
-    .btn-modal-ok {
-      flex: 2;
-      padding: 10px;
-      background: var(--blue);
-      border: none;
-      color: #fff;
-      border-radius: 8px;
-      font-size: 14px;
-      font-weight: 600;
-      cursor: pointer;
-      font-family: inherit;
-    }
-
-    /* ── Toast ── */
-    #toast {
-      position: fixed;
-      bottom: 28px;
-      left: 50%;
-      transform: translateX(-50%) translateY(20px);
-      background: #222;
-      border: 1px solid var(--border);
-      color: var(--text);
-      padding: 11px 20px;
-      border-radius: 10px;
-      font-size: 13px;
-      opacity: 0;
-      transition: opacity .2s, transform .2s;
-      pointer-events: none;
-      white-space: nowrap;
-    }
-
-    #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+    #toast { position:fixed; bottom:28px; left:50%; transform:translateX(-50%) translateY(20px); background:#222; border:1px solid var(--border); color:var(--text); padding:11px 20px; border-radius:10px; font-size:13px; opacity:0; transition:opacity .2s,transform .2s; pointer-events:none; white-space:nowrap; z-index:200; }
+    #toast.show { opacity:1; transform:translateX(-50%) translateY(0); }
   </style>
 </head>
 <body>
 
-  <!-- ── Header ── -->
   <header>
     <div class="logo-zone">
       <span class="icon">🛩️</span>
       <div>
         <h1>MailPilot Pro</h1>
-        <p>Gestion email IA — multi-comptes</p>
+        <p>Administration — multi-comptes</p>
       </div>
     </div>
-
     <div class="api-zone">
       <label>Clé API&nbsp;</label>
       <input type="password" id="api-key" value="{{ data.api_key }}" placeholder="sk-ant-..." />
       <button onclick="sauvegarderAPI()">Sauv.</button>
     </div>
-    <a href="/logout" style="color:var(--muted);font-size:12px;text-decoration:none;white-space:nowrap;" title="Déconnexion admin">⎋ Déconnexion</a>
+    <a href="/logout" style="color:var(--muted);font-size:12px;text-decoration:none;white-space:nowrap;">⎋ Déconnexion</a>
   </header>
 
-  <!-- ── Bouton ajouter ── -->
   <div class="actions-bar">
-    <button class="btn-add" onclick="ouvrirModal()">＋ Ajouter une boîte mail</button>
+    <button class="btn-add" onclick="ouvrirModal()">＋ Nouveau compte</button>
   </div>
 
-  <!-- ── Liste des comptes ── -->
   <div class="comptes-list" id="liste">
-
     {% if not data.comptes %}
-    <div class="empty-state" id="empty-state">
+    <div class="empty-state">
       <div class="big">📭</div>
-      <p>Aucune boîte mail configurée.</p>
-      <p>Clique sur <strong>+ Ajouter une boîte mail</strong> pour commencer.</p>
+      <p>Aucun compte configuré.</p>
     </div>
     {% endif %}
 
     {% for c in data.comptes %}
     <div class="compte-card" id="card-{{ c.id }}">
       <div class="compte-header">
-        <div class="status-dot" id="dot-{{ c.id }}"></div>
+        <div class="compte-avatar">{{ (c.nom or '?')[0].upper() }}</div>
         <div class="compte-info">
           <div class="name">{{ c.nom or '—' }}</div>
-          <div class="meta">{{ c.email }}{% if c.agence %} · {{ c.agence }}{% endif %}{% if c.zone %} · {{ c.zone }}{% endif %}</div>
+          <div class="meta">
+            {{ c.get('login_email', '') }}
+            {% if c.agence %} · {{ c.agence }}{% endif %}
+            {% if c.zone %} · {{ c.zone }}{% endif %}
+            — {{ c.get('boites', [])|length }} boîte(s)
+          </div>
         </div>
-        <div class="compte-counter">
-          <span class="num" id="count-{{ c.id }}">0</span>
-          emails traités
+        <div class="compte-actions">
+          <button class="icon-btn" onclick="supprimerCompte('{{ c.id }}')" title="Supprimer le compte">🗑</button>
         </div>
       </div>
-      <div class="compte-btns">
-        <div id="btns-{{ c.id }}" style="display:flex;gap:8px;flex:1">
-          {% if c.connecte %}
-          <button class="btn btn-start" onclick="demarrer('{{ c.id }}')">▶ Démarrer</button>
-          {% else %}
-          <button class="btn btn-connect" id="btn-connect-{{ c.id }}" onclick="connecterGmail('{{ c.id }}')">🔗 Connecter Gmail</button>
-          {% endif %}
+
+      <!-- Boites mail du compte -->
+      <div class="boites-list" id="boites-{{ c.id }}">
+        {% for b in c.get('boites', []) %}
+        {% set prov_icon = '📧' if b.provider == 'gmail' else ('💼' if b.provider == 'microsoft' else '🌐') %}
+        {% set prov_lbl  = 'Gmail' if b.provider == 'gmail' else ('Outlook' if b.provider == 'microsoft' else 'IMAP') %}
+        <div class="boite-row" id="boite-{{ c.id }}-{{ b.id }}">
+          <div class="boite-top">
+            <div class="status-dot" id="dot-{{ c.id }}-{{ b.id }}"></div>
+            <div class="boite-email">{{ prov_icon }} {{ b.email }}</div>
+            <div style="text-align:right">
+              <div class="boite-count" id="count-{{ c.id }}-{{ b.id }}">0</div>
+              <div class="boite-count-lbl">emails</div>
+            </div>
+          </div>
+          <div class="boite-btns" id="btns-{{ c.id }}-{{ b.id }}">
+            {% if b.connecte and (b.provider == 'imap' or b.token) %}
+            <button class="btn btn-start" onclick="demarrer('{{ c.id }}','{{ b.id }}')">▶ Démarrer</button>
+            {% elif b.provider == 'microsoft' %}
+            <button class="btn btn-connect" onclick="connecterMicrosoft('{{ c.id }}','{{ b.id }}')">🔗 Connecter Outlook</button>
+            {% else %}
+            <button class="btn btn-connect" onclick="connecterGmail('{{ c.id }}','{{ b.id }}')">🔗 Connecter Gmail</button>
+            {% endif %}
+            <button class="btn btn-icon" onclick="ouvrirLabels('{{ c.id }}','{{ b.id }}','{{ b.email }}')" title="Catégories">⚙️</button>
+          </div>
+          <button class="log-toggle" onclick="toggleLogs('{{ c.id }}-{{ b.id }}')">▾ Journal — {{ b.email }}</button>
+          <div class="log-feed" id="logs-{{ c.id }}-{{ b.id }}">
+            <div class="log-line">En attente de démarrage…</div>
+          </div>
         </div>
-        <button class="btn btn-delete" onclick="ouvrirLabels('{{ c.id }}')" title="Gérer les labels" style="background:#1e1e1e;color:var(--muted);border:1px solid var(--border);flex:0 0 auto;">⚙️</button>
-        <button class="btn btn-delete" onclick="copierURL('{{ c.id }}')" title="Copier URL client" style="background:#1e1e1e;color:var(--muted);border:1px solid var(--border);flex:0 0 auto;">🔗</button>
-        <button class="btn btn-delete" onclick="supprimerCompte('{{ c.id }}')" title="Supprimer">🗑</button>
-      </div>
-      <button class="log-toggle" onclick="toggleLogs('{{ c.id }}')">▾ Journal</button>
-      <div class="log-feed" id="logs-{{ c.id }}">
-        <div class="log-line">En attente de démarrage…</div>
+        {% endfor %}
       </div>
     </div>
     {% endfor %}
-
   </div>
 
-  <!-- ── Modal ajout ── -->
+  <!-- Modal nouveau compte -->
   <div class="overlay" id="overlay" onclick="if(event.target===this)fermerModal()">
     <div class="modal">
-      <h2>➕ Nouvelle boîte mail</h2>
-
-      <div class="field">
-        <label>Nom de l'agent</label>
-        <input type="text" id="m-nom" placeholder="Thomas RIBREAU" />
-      </div>
-      <div class="field">
-        <label>Agence</label>
-        <input type="text" id="m-agence" placeholder="Nom de l'agence" />
-      </div>
-      <div class="field">
-        <label>Téléphone</label>
-        <input type="text" id="m-tel" placeholder="06 00 00 00 00" />
-      </div>
-      <div class="field">
-        <label>Adresse Gmail à connecter</label>
-        <input type="email" id="m-email" placeholder="agent@gmail.com" />
-      </div>
-      <div class="field">
-        <label>Zone géographique</label>
-        <input type="text" id="m-zone" placeholder="ex: Châtellerault" />
-      </div>
-      <div class="field">
-        <label>Intervalle de vérification (secondes)</label>
-        <input type="number" id="m-intervalle" value="60" min="30" />
-      </div>
-
+      <h2>➕ Nouveau compte</h2>
+      <div class="field"><label>Nom de l'agent *</label><input type="text" id="m-nom" placeholder="Thomas RIBREAU" /></div>
+      <div class="field"><label>Agence</label><input type="text" id="m-agence" placeholder="Nom de l'agence" /></div>
+      <div class="field"><label>Téléphone</label><input type="text" id="m-tel" placeholder="06 00 00 00 00" /></div>
+      <div class="field"><label>Email *</label><input type="email" id="m-email" placeholder="agent@gmail.com" /></div>
+      <div class="field"><label>Zone géographique</label><input type="text" id="m-zone" placeholder="ex: Châtellerault" /></div>
       <div class="modal-btns">
         <button class="btn-modal-cancel" onclick="fermerModal()">Annuler</button>
-        <button class="btn-modal-ok" onclick="ajouterCompte()">Créer le compte</button>
+        <button class="btn-modal-ok" onclick="ajouterCompte()">Créer</button>
       </div>
     </div>
   </div>
 
   <!-- Modal Labels -->
   <div class="overlay" id="overlay-labels" onclick="if(event.target===this)fermerLabels()">
-    <div class="modal">
+    <div class="modal" style="max-width:520px">
       <h2>⚙️ Catégories d'emails</h2>
-      <p class="subtitle" id="labels-subtitle"></p>
+      <p class="field" style="font-size:12px;color:var(--muted);margin-bottom:16px" id="labels-subtitle"></p>
       <div class="label-grid" id="label-grid">Chargement…</div>
       <div class="modal-btns">
         <button class="btn-modal-cancel" onclick="fermerLabels()">Annuler</button>
@@ -505,299 +217,174 @@
   <div id="toast"></div>
 
   <script>
-    // ── Toast ──────────────────────────────────────────────
-    function toast(msg, duree = 2800) {
+    function toast(msg, duree=2800) {
       const el = document.getElementById('toast');
-      el.textContent = msg;
-      el.classList.add('show');
+      el.textContent = msg; el.classList.add('show');
       setTimeout(() => el.classList.remove('show'), duree);
-    }
-
-    // ── API Key ────────────────────────────────────────────
-    async function sauvegarderAPI() {
-      await fetch('/sauvegarder_api', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ api_key: document.getElementById('api-key').value }),
-      });
-      toast('🔑 Clé API sauvegardée');
-    }
-
-    // ── Modal ──────────────────────────────────────────────
-    function ouvrirModal() {
-      document.getElementById('overlay').classList.add('open');
-      document.getElementById('m-nom').focus();
-    }
-
-    function fermerModal() {
-      document.getElementById('overlay').classList.remove('open');
-    }
-
-    async function ajouterCompte() {
-      const data = {
-        nom:        document.getElementById('m-nom').value.trim(),
-        agence:     document.getElementById('m-agence').value.trim(),
-        tel:        document.getElementById('m-tel').value.trim(),
-        email:      document.getElementById('m-email').value.trim(),
-        zone:       document.getElementById('m-zone').value.trim(),
-        intervalle: document.getElementById('m-intervalle').value,
-      };
-
-      if (!data.nom || !data.email) {
-        toast('⚠️ Nom et email sont obligatoires');
-        return;
-      }
-
-      const res  = await fetch('/ajouter_compte', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
-      });
-      const json = await res.json();
-
-      if (json.ok) {
-        fermerModal();
-        ajouterCarteDOM(json.compte);
-        toast('✓ Compte créé — connecte maintenant Gmail');
-        // Reset form
-        ['m-nom','m-agence','m-tel','m-email','m-zone'].forEach(id => {
-          document.getElementById(id).value = '';
-        });
-        document.getElementById('m-intervalle').value = '60';
-        // Supprimer l'état vide si présent
-        const empty = document.querySelector('.empty-state');
-        if (empty) empty.remove();
-      }
-    }
-
-    // ── Créer une carte HTML ───────────────────────────────
-    function ajouterCarteDOM(c) {
-      const liste = document.getElementById('liste');
-      const div = document.createElement('div');
-      div.innerHTML = carteHTML(c, false, false, 0);
-      liste.appendChild(div.firstElementChild);
-    }
-
-    function carteHTML(c, actif, connecte, emails) {
-      const dotClass = actif ? 'actif' : '';
-      const meta = [c.agence, c.zone].filter(Boolean).join(' · ');
-
-      let boutons = '';
-      if (actif) {
-        boutons = `<button class="btn btn-stop" onclick="arreter('${c.id}')">⏹ Arrêter</button>`;
-      } else if (connecte) {
-        boutons = `<button class="btn btn-start" onclick="demarrer('${c.id}')">▶ Démarrer</button>`;
-      } else {
-        boutons = `<button class="btn btn-connect" id="btn-connect-${c.id}" onclick="connecterGmail('${c.id}')">🔗 Connecter Gmail</button>`;
-      }
-
-      return `
-        <div class="compte-card ${actif ? 'actif' : ''}" id="card-${c.id}">
-          <div class="compte-header">
-            <div class="status-dot ${dotClass}" id="dot-${c.id}"></div>
-            <div class="compte-info">
-              <div class="name">${c.nom || '—'}</div>
-              <div class="meta">${c.email}${meta ? ' · ' + meta : ''}</div>
-            </div>
-            <div class="compte-counter">
-              <span class="num" id="count-${c.id}">${emails}</span>
-              emails traités
-            </div>
-          </div>
-          <div class="compte-btns">
-            <div id="btns-${c.id}" style="display:flex;gap:8px;flex:1">${boutons}</div>
-            <button class="btn btn-delete" onclick="ouvrirLabels('${c.id}')" title="Gérer les labels" style="background:#1e1e1e;color:var(--muted);border:1px solid var(--border);flex:0 0 auto;">⚙️</button>
-            <button class="btn btn-delete" onclick="copierURL('${c.id}')" title="Copier URL client" style="background:#1e1e1e;color:var(--muted);border:1px solid var(--border);flex:0 0 auto;">🔗</button>
-            <button class="btn btn-delete" onclick="supprimerCompte('${c.id}')" title="Supprimer">🗑</button>
-          </div>
-          <button class="log-toggle" onclick="toggleLogs('${c.id}')">▾ Journal</button>
-          <div class="log-feed" id="logs-${c.id}">
-            <div class="log-line">En attente de démarrage…</div>
-          </div>
-        </div>`;
-    }
-
-    // ── Connecter Gmail ────────────────────────────────────
-    async function connecterGmail(id) {
-      const btn = document.getElementById(`btn-connect-${id}`);
-      if (btn) { btn.disabled = true; btn.textContent = '⏳ Connexion…'; }
-
-      const res  = await fetch(`/connecter_gmail/${id}`, { method: 'POST' });
-      const json = await res.json();
-
-      if (!json.ok) {
-        toast('❌ ' + (json.message || 'Erreur'));
-        if (btn) { btn.disabled = false; btn.textContent = '🔗 Connecter Gmail'; }
-        return;
-      }
-
-      if (json.auth_url) {
-        // Redirige vers Google pour l'autorisation OAuth
-        window.location.href = json.auth_url;
-      } else {
-        // Déjà connecté ou token rafraîchi
-        toast('✓ ' + (json.message || 'Gmail connecté !'));
-        rafraichirCarte(id);
-      }
-    }
-
-    // ── Démarrer / Arrêter ─────────────────────────────────
-    async function demarrer(id) {
-      const res  = await fetch(`/demarrer/${id}`, { method: 'POST' });
-      const json = await res.json();
-      if (!json.ok) { toast('⚠️ ' + json.message); return; }
-      rafraichirCarte(id);
-    }
-
-    async function arreter(id) {
-      await fetch(`/arreter/${id}`, { method: 'POST' });
-      rafraichirCarte(id);
-    }
-
-    // ── Supprimer ──────────────────────────────────────────
-    async function supprimerCompte(id) {
-      if (!confirm('Supprimer ce compte ?')) return;
-      await fetch(`/supprimer_compte/${id}`, { method: 'POST' });
-      const card = document.getElementById(`card-${id}`);
-      if (card) card.remove();
-      toast('Compte supprimé');
-    }
-
-    // ── Logs toggle ────────────────────────────────────────
-    function toggleLogs(id) {
-      const feed = document.getElementById(`logs-${id}`);
-      feed.classList.toggle('open');
     }
 
     function classeLog(l) {
       if (l.includes('[CRITICAL]') || l.includes('Erreur') || l.includes('ERROR')) return 'err';
       if (l.includes('Brouillon créé') || l.includes('✓') || l.includes('réussie') || l.includes('créé')) return 'ok';
       if (l.includes('WARNING') || l.includes('FutureWarning')) return 'warn';
-      if (l.includes('Traitement') || l.includes('Catégorie') || l.includes('actif') || l.includes('Surveillance')) return 'info';
+      if (l.includes('Traitement') || l.includes('actif') || l.includes('Surveillance')) return 'info';
       return '';
     }
 
-    // ── Rafraîchir une carte ───────────────────────────────
-    async function rafraichirCarte(id) {
-      const r = await fetch(`/statut/${id}`);
-      const d = await r.json();
+    // ── API Key ───────────────────────────────────────────────
+    async function sauvegarderAPI() {
+      await fetch('/sauvegarder_api', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ api_key: document.getElementById('api-key').value }) });
+      toast('🔑 Clé API sauvegardée');
+    }
 
-      // Compteur
-      const count = document.getElementById(`count-${id}`);
-      if (count) count.textContent = d.emails_traites;
+    // ── Modal ─────────────────────────────────────────────────
+    function ouvrirModal() { document.getElementById('overlay').classList.add('open'); document.getElementById('m-nom').focus(); }
+    function fermerModal() { document.getElementById('overlay').classList.remove('open'); }
 
-      // Dot
-      const dot = document.getElementById(`dot-${id}`);
-      if (dot) {
-        dot.className = 'status-dot';
-        if (d.actif) dot.classList.add('actif');
-      }
+    async function ajouterCompte() {
+      const nom   = document.getElementById('m-nom').value.trim();
+      const email = document.getElementById('m-email').value.trim();
+      if (!nom || !email) { toast('⚠️ Nom et email obligatoires'); return; }
+      const res  = await fetch('/ajouter_compte', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ nom, agence:document.getElementById('m-agence').value.trim(), tel:document.getElementById('m-tel').value.trim(), email, zone:document.getElementById('m-zone').value.trim() }) });
+      const json = await res.json();
+      if (json.ok) { fermerModal(); toast('✓ Compte créé — connecte maintenant la boîte mail'); location.reload(); }
+    }
 
-      // Carte border
+    // ── OAuth Gmail ───────────────────────────────────────────
+    async function connecterGmail(compteId, boiteId) {
+      const res  = await fetch(`/connecter_gmail/${compteId}/${boiteId}`, { method:'POST' });
+      const json = await res.json();
+      if (!json.ok) { toast('❌ ' + (json.message || 'Erreur')); return; }
+      if (json.auth_url) window.location.href = json.auth_url;
+      else { toast('✓ ' + (json.message || 'Gmail connecté !')); rafraichirCompte(compteId); }
+    }
+
+    async function connecterMicrosoft(compteId, boiteId) {
+      const res  = await fetch(`/connecter_microsoft/${compteId}/${boiteId}`, { method:'POST' });
+      const json = await res.json();
+      if (!json.ok) { toast('❌ ' + (json.message || 'Erreur')); return; }
+      if (json.auth_url) window.location.href = json.auth_url;
+      else { toast('✓ ' + (json.message || 'Outlook connecté !')); rafraichirCompte(compteId); }
+    }
+
+    // ── Démarrer / Arrêter ────────────────────────────────────
+    async function demarrer(compteId, boiteId) {
+      const res  = await fetch(`/demarrer/${compteId}/${boiteId}`, { method:'POST' });
+      const json = await res.json();
+      if (!json.ok) { toast('⚠️ ' + json.message); return; }
+      rafraichirCompte(compteId);
+    }
+
+    async function arreter(compteId, boiteId) {
+      await fetch(`/arreter/${compteId}/${boiteId}`, { method:'POST' });
+      rafraichirCompte(compteId);
+    }
+
+    // ── Supprimer compte ──────────────────────────────────────
+    async function supprimerCompte(id) {
+      if (!confirm('Supprimer ce compte et toutes ses boîtes mail ?')) return;
+      await fetch(`/supprimer_compte/${id}`, { method:'POST' });
       const card = document.getElementById(`card-${id}`);
-      if (card) {
-        card.classList.toggle('actif', d.actif);
-      }
+      if (card) card.remove();
+      toast('Compte supprimé');
+    }
 
-      // Boutons
-      const btnsZone = document.getElementById(`btns-${id}`);
-      if (btnsZone) {
-        // On récupère l'état connecté depuis le statut global
-        const rg = await fetch('/statut_global');
-        const dg = await rg.json();
-        const connecte = dg[id]?.connecte ?? false;
+    // ── Logs ──────────────────────────────────────────────────
+    function toggleLogs(key) {
+      document.getElementById(`logs-${key}`).classList.toggle('open');
+    }
 
-        if (d.actif) {
-          btnsZone.innerHTML = `<button class="btn btn-stop" onclick="arreter('${id}')">⏹ Arrêter</button>`;
-        } else if (connecte) {
-          btnsZone.innerHTML = `<button class="btn btn-start" onclick="demarrer('${id}')">▶ Démarrer</button>`;
-        } else {
-          btnsZone.innerHTML = `<button class="btn btn-connect" id="btn-connect-${id}" onclick="connecterGmail('${id}')">🔗 Connecter Gmail</button>`;
+    // ── Rafraîchir un compte ──────────────────────────────────
+    async function rafraichirCompte(compteId) {
+      const r = await fetch(`/statut/${compteId}`);
+      if (!r.ok) return;
+      const data = await r.json();
+      if (!data.boites) return;
+
+      for (const b of data.boites) {
+        const key    = `${compteId}-${b.id}`;
+        const row    = document.getElementById(`boite-${key}`);
+        if (!row) continue;
+
+        // Dot
+        const dot = document.getElementById(`dot-${key}`);
+        if (dot) dot.className = 'status-dot' + (b.actif ? ' actif' : '');
+        row.classList.toggle('actif', b.actif);
+
+        // Compteur
+        const cnt = document.getElementById(`count-${key}`);
+        if (cnt) cnt.textContent = b.emails_traites || 0;
+
+        // Boutons
+        const btns = document.getElementById(`btns-${key}`);
+        if (btns) {
+          let html;
+          if (b.actif) {
+            html = `<button class="btn btn-stop" onclick="arreter('${compteId}','${b.id}')">⏹ Arrêter</button>`;
+          } else if (b.connecte && (b.provider === 'imap' || b.token)) {
+            html = `<button class="btn btn-start" onclick="demarrer('${compteId}','${b.id}')">▶ Démarrer</button>`;
+          } else if (b.provider === 'microsoft') {
+            html = `<button class="btn btn-connect" onclick="connecterMicrosoft('${compteId}','${b.id}')">🔗 Connecter Outlook</button>`;
+          } else {
+            html = `<button class="btn btn-connect" onclick="connecterGmail('${compteId}','${b.id}')">🔗 Connecter Gmail</button>`;
+          }
+          html += `<button class="btn btn-icon" onclick="ouvrirLabels('${compteId}','${b.id}','${b.email}')" title="Catégories">⚙️</button>`;
+          btns.innerHTML = html;
         }
-      }
 
-      // Logs
-      const feed = document.getElementById(`logs-${id}`);
-      if (feed && d.logs.length) {
-        feed.innerHTML = d.logs.map(l =>
-          `<div class="log-line ${classeLog(l)}">${l}</div>`
-        ).join('');
-        feed.scrollTop = feed.scrollHeight;
+        // Logs
+        if (b.logs && b.logs.length) {
+          const feed = document.getElementById(`logs-${key}`);
+          if (feed) {
+            feed.innerHTML = b.logs.map(l => `<div class="log-line ${classeLog(l)}">${l}</div>`).join('');
+            feed.scrollTop = feed.scrollHeight;
+          }
+        }
       }
     }
 
-    // ── Gestion des labels ──────────────────────────────────
+    // ── Labels ────────────────────────────────────────────────
     let labelsCompteId = null;
-    let tousLabels = {};
-    let labelsActifs = [];
+    let labelsBoiteId  = null;
+    let tousLabels     = {};
 
-    async function ouvrirLabels(id) {
-      labelsCompteId = id;
-      const res  = await fetch(`/labels/${id}`);
+    async function ouvrirLabels(compteId, boiteId, email) {
+      labelsCompteId = compteId;
+      labelsBoiteId  = boiteId;
+      const res  = await fetch(`/labels/${compteId}/${boiteId}`);
       const json = await res.json();
-      tousLabels  = json.tous;
-      labelsActifs = json.actifs;
-
-      document.getElementById('labels-subtitle').textContent =
-        `Compte : ${id} — Coche les catégories à activer.`;
-
-      const grid = document.getElementById('label-grid');
-      grid.innerHTML = Object.entries(tousLabels).map(([key, info]) => {
-        const checked  = labelsActifs.includes(key) ? 'checked' : '';
+      tousLabels   = json.tous;
+      const actifs = json.actifs;
+      document.getElementById('labels-subtitle').textContent = email;
+      document.getElementById('label-grid').innerHTML = Object.entries(tousLabels).map(([key, info]) => {
+        const checked  = actifs.includes(key) ? 'checked' : '';
         const locked   = key === 'INUTILE' ? 'locked' : '';
         const disabled = key === 'INUTILE' ? 'disabled' : '';
-        return `
-          <label class="label-item ${locked}">
-            <input type="checkbox" id="lbl-${key}" ${checked} ${disabled} />
-            <span class="label-emoji">${info.emoji}</span>
-            <span class="label-text">
-              <div class="label-name">${key}</div>
-              <div class="label-desc">${info.description_ui}</div>
-            </span>
-          </label>`;
+        return `<label class="label-item ${locked}"><input type="checkbox" id="lbl-${key}" ${checked} ${disabled} /><span class="label-emoji">${info.emoji}</span><span class="label-text"><div class="label-name">${key}</div><div class="label-desc">${info.description_ui}</div></span></label>`;
       }).join('');
-
       document.getElementById('overlay-labels').classList.add('open');
     }
 
-    function fermerLabels() {
-      document.getElementById('overlay-labels').classList.remove('open');
-    }
+    function fermerLabels() { document.getElementById('overlay-labels').classList.remove('open'); }
 
     async function sauvegarderLabels() {
-      const labels = Object.keys(tousLabels)
-        .filter(k => document.getElementById(`lbl-${k}`)?.checked);
-      const res  = await fetch(`/labels/${labelsCompteId}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ labels })
-      });
+      const labels = Object.keys(tousLabels).filter(k => document.getElementById(`lbl-${k}`)?.checked);
+      const res  = await fetch(`/labels/${labelsCompteId}/${labelsBoiteId}`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ labels }) });
       const json = await res.json();
-      if (json.ok) {
-        fermerLabels();
-        toast(`✓ ${json.labels.length} catégories sauvegardées !`);
-      }
+      if (json.ok) { fermerLabels(); toast(`✓ ${json.labels.length} catégories sauvegardées !`); }
     }
 
-    // ── Copier URL client ──────────────────────────────────
-    async function copierURL(id) {
-      const res  = await fetch(`/client_url/${id}`);
-      const json = await res.json();
-      if (!json.ok) { toast('❌ Erreur'); return; }
-      await navigator.clipboard.writeText(json.url);
-      toast('🔗 URL client copiée ! ' + json.url);
-    }
+    // ── Polling global ────────────────────────────────────────
+    const compteIds = [{% for c in data.comptes %}'{{ c.id }}'{% if not loop.last %},{% endif %}{% endfor %}];
 
-    // ── Polling global toutes les 3s ───────────────────────
     async function polling() {
-      const cartes = document.querySelectorAll('.compte-card');
-      for (const c of cartes) {
-        const id = c.id.replace('card-', '');
-        await rafraichirCarte(id);
+      for (const id of compteIds) {
+        await rafraichirCompte(id);
       }
     }
 
     setInterval(polling, 3000);
+    polling();
   </script>
 
 </body>
