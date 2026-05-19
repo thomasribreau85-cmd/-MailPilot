@@ -140,7 +140,30 @@
       pointer-events: none; white-space: nowrap;
     }
     #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+    /* Stats modal */
+    .stats-grid {
+      display: grid; grid-template-columns: 1fr 1fr 1fr;
+      gap: 12px; margin-bottom: 20px;
+    }
+    .stat-box {
+      background: #111; border: 1px solid var(--border);
+      border-radius: 10px; padding: 14px; text-align: center;
+    }
+    .stat-box .stat-num { font-size: 28px; font-weight: 700; display: block; line-height: 1.1; }
+    .stat-box .stat-label { font-size: 11px; color: var(--muted); margin-top: 4px; }
+    .stat-box.blue .stat-num { color: var(--blue); }
+    .stat-box.green .stat-num { color: var(--green); }
+    .stat-box.yellow .stat-num { color: var(--yellow); }
+    .chart-wrap { position: relative; height: 180px; margin-bottom: 20px; }
+    .cats-list { display: flex; flex-direction: column; gap: 8px; }
+    .cat-item { display: flex; align-items: center; gap: 10px; font-size: 13px; }
+    .cat-bar-wrap { flex: 1; background: #111; border-radius: 4px; height: 6px; overflow: hidden; }
+    .cat-bar { height: 100%; background: var(--blue); border-radius: 4px; transition: width .4s; }
+    .cat-count { font-size: 12px; color: var(--muted); min-width: 30px; text-align: right; }
+    .stats-semaine-label { font-size: 11px; color: var(--muted); margin-bottom: 8px; }
   </style>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 </head>
 <body>
 
@@ -183,6 +206,7 @@
     <div class="status-bar" id="status-bar">⏳ En attente…</div>
 
     <button class="log-toggle" onclick="ouvrirLabels()" style="border-top:none;border-bottom:1px solid var(--border)">⚙️ Gérer mes catégories d'emails</button>
+    <button class="log-toggle" onclick="ouvrirStats()" style="border-bottom:1px solid var(--border)">📊 Mes statistiques</button>
     <button class="log-toggle" onclick="toggleLogs()">▾ Journal d'activité</button>
     <div class="log-feed" id="log-feed">
       <div class="log-line">En attente de démarrage…</div>
@@ -198,6 +222,18 @@
       <div class="modal-btns">
         <button class="btn-cancel" onclick="fermerLabels()">Annuler</button>
         <button class="btn-save" onclick="sauvegarderLabels()">Sauvegarder</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Stats -->
+  <div class="overlay" id="overlay-stats" onclick="if(event.target===this)fermerStats()">
+    <div class="modal">
+      <h2>📊 Mes statistiques</h2>
+      <p class="subtitle">Suivi de votre activité MailPilot</p>
+      <div id="stats-content">Chargement…</div>
+      <div class="modal-btns">
+        <button class="btn-cancel" onclick="fermerStats()">Fermer</button>
       </div>
     </div>
   </div>
@@ -379,6 +415,103 @@
     // Polling toutes les 3s
     setInterval(rafraichir, 3000);
     rafraichir();
+
+    // ── Stats ────────────────────────────────────────────────
+    let chartInstance = null;
+
+    async function ouvrirStats() {
+      document.getElementById('overlay-stats').classList.add('open');
+      document.getElementById('stats-content').innerHTML = 'Chargement…';
+      if (chartInstance) { chartInstance.destroy(); chartInstance = null; }
+      const res  = await fetch(`/stats/${COMPTE_ID}`);
+      const json = await res.json();
+      if (!json.ok) { document.getElementById('stats-content').innerHTML = 'Erreur chargement stats.'; return; }
+      afficherStats(json);
+    }
+
+    function fermerStats() {
+      document.getElementById('overlay-stats').classList.remove('open');
+    }
+
+    function afficherStats(data) {
+      const sc   = data.semaine_courante || {};
+      const hist = data.historique || [];
+      const traites    = sc.traites    || 0;
+      const brouillons = sc.brouillons || 0;
+      const semaine    = sc.semaine    || '—';
+      const cats       = sc.categories || {};
+
+      // Total toutes semaines
+      const totalTraites    = hist.reduce((s,h) => s + (h.traites||0), 0) + traites;
+      const totalBrouillons = hist.reduce((s,h) => s + (h.brouillons||0), 0) + brouillons;
+
+      let html = `
+        <div class="stats-grid">
+          <div class="stat-box blue">
+            <span class="stat-num">${traites}</span>
+            <div class="stat-label">Cette semaine</div>
+          </div>
+          <div class="stat-box green">
+            <span class="stat-num">${brouillons}</span>
+            <div class="stat-label">Brouillons créés</div>
+          </div>
+          <div class="stat-box yellow">
+            <span class="stat-num">${totalTraites}</span>
+            <div class="stat-label">Total emails</div>
+          </div>
+        </div>`;
+
+      // Graphique historique
+      const semaines = [...hist, {label: `Sem. ${semaine} ★`, traites, brouillons}];
+      if (semaines.length > 0) {
+        html += `<div class="stats-semaine-label">📈 Emails traités par semaine (${semaines.length} sem.)</div>
+                 <div class="chart-wrap"><canvas id="stats-chart"></canvas></div>`;
+      }
+
+      // Catégories semaine courante
+      const catEntries = Object.entries(cats).sort((a,b) => b[1]-a[1]);
+      if (catEntries.length > 0) {
+        const maxCat = catEntries[0][1];
+        html += `<div class="stats-semaine-label">📂 Répartition cette semaine</div><div class="cats-list">`;
+        const emojis = { URGENT:'🔴', COMMERCIAL:'🤝', ADMINISTRATIF:'📋', SUPPORT:'❓', INUTILE:'🗑️', DEVIS:'💰', VISITE:'🏠', OFFRE:'✍️', JURIDIQUE:'⚖️', RELANCE:'🔔' };
+        for (const [cat, nb] of catEntries) {
+          const pct = maxCat > 0 ? Math.round(nb/maxCat*100) : 0;
+          const emoji = emojis[cat] || '•';
+          html += `<div class="cat-item">
+            <span style="font-size:14px">${emoji}</span>
+            <span style="min-width:120px;font-size:12px">${cat}</span>
+            <div class="cat-bar-wrap"><div class="cat-bar" style="width:${pct}%"></div></div>
+            <span class="cat-count">${nb}</span>
+          </div>`;
+        }
+        html += `</div>`;
+      }
+
+      document.getElementById('stats-content').innerHTML = html;
+
+      // Dessiner le graphique
+      if (semaines.length > 0) {
+        const ctx = document.getElementById('stats-chart').getContext('2d');
+        chartInstance = new Chart(ctx, {
+          type: 'bar',
+          data: {
+            labels: semaines.map(s => s.label),
+            datasets: [
+              { label: 'Emails traités', data: semaines.map(s => s.traites||0), backgroundColor: '#3b82f6', borderRadius: 4 },
+              { label: 'Brouillons',     data: semaines.map(s => s.brouillons||0), backgroundColor: '#22c55e', borderRadius: 4 },
+            ]
+          },
+          options: {
+            responsive: true, maintainAspectRatio: false,
+            plugins: { legend: { labels: { color: '#888', font: { size: 11 } } } },
+            scales: {
+              x: { ticks: { color: '#666', font: { size: 10 } }, grid: { color: '#1a1a1a' } },
+              y: { ticks: { color: '#666', font: { size: 10 } }, grid: { color: '#1a1a1a' }, beginAtZero: true }
+            }
+          }
+        });
+      }
+    }
   </script>
 </body>
 </html>

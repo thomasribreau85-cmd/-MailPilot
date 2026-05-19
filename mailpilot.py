@@ -508,36 +508,69 @@ MailPilot — Assistant email IA
 # STATS HEBDOMADAIRES
 # ============================================================
 
-STATS_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "stats_semaine.json")
+def _stats_paths():
+    """Retourne les chemins des fichiers de stats pour ce compte."""
+    stats_dir = os.getenv("STATS_DIR", os.path.dirname(os.path.abspath(__file__)))
+    compte_id  = os.getenv("COMPTE_ID", "default")
+    return (
+        os.path.join(stats_dir, f"stats_{compte_id}.json"),
+        os.path.join(stats_dir, f"stats_hist_{compte_id}.json"),
+    )
 
 def charger_stats_semaine():
-    """Charge les stats de la semaine depuis le fichier JSON."""
-    semaine_courante = date.today().isocalendar()[1]  # numéro de semaine ISO
-    annee_courante = date.today().year
-    if os.path.exists(STATS_FILE):
+    """Charge les stats de la semaine courante."""
+    stats_file, _ = _stats_paths()
+    semaine_courante = date.today().isocalendar()[1]
+    annee_courante   = date.today().year
+    vide = {"semaine": semaine_courante, "annee": annee_courante, "traites": 0, "brouillons": 0, "categories": {}}
+    if os.path.exists(stats_file):
         try:
-            with open(STATS_FILE, "r", encoding="utf-8") as f:
+            with open(stats_file, "r", encoding="utf-8") as f:
                 data = json.load(f)
-            # Si on est dans une nouvelle semaine, on repart à zéro
             if data.get("semaine") != semaine_courante or data.get("annee") != annee_courante:
-                return {"semaine": semaine_courante, "annee": annee_courante, "traites": 0, "brouillons": 0, "categories": {}}
+                return vide
             return data
         except Exception:
             pass
-    return {"semaine": semaine_courante, "annee": annee_courante, "traites": 0, "brouillons": 0, "categories": {}}
+    return vide
 
 def sauver_stats_semaine(stats):
-    """Sauvegarde les stats de la semaine dans le fichier JSON."""
+    """Sauvegarde les stats de la semaine courante."""
+    stats_file, _ = _stats_paths()
     try:
-        with open(STATS_FILE, "w", encoding="utf-8") as f:
+        with open(stats_file, "w", encoding="utf-8") as f:
             json.dump(stats, f, ensure_ascii=False, indent=2)
     except Exception as e:
         logger.error(f"Erreur sauvegarde stats semaine : {e}")
 
+def archiver_semaine_dans_historique(stats):
+    """Ajoute les stats de la semaine terminée à l'historique (12 semaines max)."""
+    _, hist_file = _stats_paths()
+    try:
+        historique = []
+        if os.path.exists(hist_file):
+            with open(hist_file, "r", encoding="utf-8") as f:
+                historique = json.load(f).get("semaines", [])
+        # Évite les doublons
+        historique = [s for s in historique if not (s.get("semaine") == stats["semaine"] and s.get("annee") == stats["annee"])]
+        historique.append({
+            "semaine":    stats["semaine"],
+            "annee":      stats["annee"],
+            "label":      f"Sem. {stats['semaine']}",
+            "traites":    stats["traites"],
+            "brouillons": stats["brouillons"],
+            "categories": stats.get("categories", {}),
+        })
+        historique = historique[-12:]  # garder les 12 dernières semaines
+        with open(hist_file, "w", encoding="utf-8") as f:
+            json.dump({"semaines": historique}, f, ensure_ascii=False, indent=2)
+    except Exception as e:
+        logger.error(f"Erreur archivage historique stats : {e}")
+
 def accumuler_stats_semaine(stats_cycle):
     """Ajoute les stats du cycle aux stats hebdomadaires."""
     data = charger_stats_semaine()
-    data["traites"] += stats_cycle.get("traites", 0)
+    data["traites"]   += stats_cycle.get("traites", 0)
     data["brouillons"] += stats_cycle.get("brouillons", 0)
     for cat, nb in stats_cycle.get("categories", {}).items():
         data["categories"][cat] = data["categories"].get(cat, 0) + nb
@@ -591,7 +624,8 @@ MailPilot — Assistant email IA
         service.users().messages().send(userId="me", body={"raw": raw}).execute()
         logger.info(f"📅 Bilan hebdomadaire envoyé à {email_destinataire} (semaine {semaine})")
 
-        # Remet les stats à zéro après envoi
+        # Archive et remet à zéro
+        archiver_semaine_dans_historique(stats)
         semaine_nouvelle = date.today().isocalendar()[1]
         sauver_stats_semaine({"semaine": semaine_nouvelle, "annee": annee, "traites": 0, "brouillons": 0, "categories": {}})
 
@@ -1007,6 +1041,7 @@ def boucle_principale():
                                 envoyer_notification_microsoft(sujet_bilan, corps)
                             else:
                                 envoyer_notification_smtp(sujet_bilan, corps)
+                            archiver_semaine_dans_historique(stats_h)
                             sauver_stats_semaine({"semaine": semaine, "annee": maintenant.year,
                                                   "traites": 0, "brouillons": 0, "categories": {}})
                     dernier_bilan_lundi = lundi_actuel

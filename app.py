@@ -544,6 +544,8 @@ def demarrer(compte_id):
         "CHECK_INTERVAL":    c.get("intervalle", "60"),
         "LABELS_ACTIFS":     ",".join(c.get("labels_actifs", list(TOUS_LES_LABELS.keys())[:7])),
         "MAIL_PROVIDER":     provider,
+        "COMPTE_ID":         compte_id,
+        "STATS_DIR":         str(DATA_DIR),
     })
     if provider == "microsoft":
         env.update({
@@ -638,6 +640,30 @@ def gerer_labels(compte_id):
         "tous": {k: {"emoji": v["emoji"], "description_ui": v["description_ui"]}
                  for k, v in TOUS_LES_LABELS.items()}
     })
+
+
+@app.route("/stats/<compte_id>")
+def stats_compte_route(compte_id):
+    """Retourne les stats de la semaine courante + historique pour un compte."""
+    if not check_access(compte_id):
+        return jsonify({"ok": False}), 403
+    stats_file = DATA_DIR / f"stats_{compte_id}.json"
+    hist_file  = DATA_DIR / f"stats_hist_{compte_id}.json"
+    semaine_courante = {}
+    historique = []
+    if stats_file.exists():
+        try:
+            with open(stats_file, encoding="utf-8") as f:
+                semaine_courante = json.load(f)
+        except Exception:
+            pass
+    if hist_file.exists():
+        try:
+            with open(hist_file, encoding="utf-8") as f:
+                historique = json.load(f).get("semaines", [])
+        except Exception:
+            pass
+    return jsonify({"ok": True, "semaine_courante": semaine_courante, "historique": historique[-12:]})
 
 
 @app.route("/statut_global")
