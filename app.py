@@ -639,10 +639,6 @@ def gerer_labels(compte_id):
                  for k, v in TOUS_LES_LABELS.items()}
     })
 
-@app.route("/debug/comptes")
-def debug_comptes():
-    return jsonify(charger_comptes())
-
 
 @app.route("/statut_global")
 def statut_global():
