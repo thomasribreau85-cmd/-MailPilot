@@ -18,19 +18,20 @@
     }
     .card {
       background: var(--card); border: 1px solid var(--border);
-      border-radius: 16px; padding: 36px 32px; width: 100%; max-width: 420px;
+      border-radius: 16px; padding: 36px 32px; width: 100%; max-width: 440px;
     }
     .logo { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
     .logo span { font-size: 28px; }
     .logo h1 { font-size: 20px; font-weight: 700; }
     .subtitle { font-size: 13px; color: var(--muted); margin-bottom: 24px; }
     label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 6px; font-weight: 500; }
-    input {
+    input, select {
       width: 100%; background: #111; border: 1px solid var(--border);
       border-radius: 8px; color: var(--text); font-size: 14px;
       padding: 10px 12px; outline: none; font-family: inherit; margin-bottom: 14px;
     }
-    input:focus { border-color: var(--blue); }
+    input:focus, select:focus { border-color: var(--blue); }
+    select option { background: #111; }
     .row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
     button.btn-main {
       width: 100%; background: var(--blue); color: #fff; border: none;
@@ -42,6 +43,34 @@
     .login-link { text-align: center; margin-top: 18px; }
     .login-link a { color: var(--muted); font-size: 13px; }
     .login-link a:hover { color: var(--text); }
+
+    /* Provider selector */
+    .provider-label { font-size: 12px; color: var(--muted); margin-bottom: 8px; font-weight: 500; }
+    .provider-btns { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 20px; }
+    .provider-btn {
+      background: #111; border: 1px solid var(--border); border-radius: 8px;
+      color: var(--muted); font-size: 13px; font-weight: 500; padding: 10px 6px;
+      cursor: pointer; text-align: center; transition: all .15s; font-family: inherit;
+    }
+    .provider-btn:hover { border-color: var(--blue); color: var(--text); }
+    .provider-btn.active { border-color: var(--blue); color: var(--text); background: #1a2540; }
+    .provider-btn .icon { font-size: 18px; display: block; margin-bottom: 4px; }
+
+    /* IMAP section */
+    .imap-section { display: none; }
+    .imap-section.visible { display: block; }
+    .section-title {
+      font-size: 11px; color: var(--muted); font-weight: 600; letter-spacing: .05em;
+      text-transform: uppercase; margin-bottom: 12px; padding-top: 4px;
+      border-top: 1px solid var(--border);
+    }
+    .info-box {
+      background: #1a2540; border: 1px solid #2a3f6f; border-radius: 8px;
+      padding: 10px 12px; font-size: 12px; color: #93b4f0; margin-bottom: 14px; line-height: 1.5;
+    }
+    .preset-row { display: flex; align-items: center; gap: 8px; margin-bottom: 14px; }
+    .preset-row label { margin: 0; white-space: nowrap; font-size: 12px; }
+    .preset-row select { margin: 0; flex: 1; }
   </style>
 </head>
 <body>
@@ -52,11 +81,9 @@
     </div>
     <p class="subtitle">Créez votre compte pour gérer votre boite mail avec l'IA.</p>
 
+    <!-- Infos personnelles -->
     <label>Votre nom *</label>
     <input type="text" id="nom" placeholder="Jean Dupont" />
-
-    <label>Adresse Gmail à connecter *</label>
-    <input type="email" id="email" placeholder="votre@gmail.com" autocomplete="email" />
 
     <div class="row">
       <div>
@@ -72,7 +99,73 @@
     <label>Ville / Zone</label>
     <input type="text" id="zone" placeholder="ex: Châtellerault" />
 
-    <label>Mot de passe * (6 caractères min)</label>
+    <!-- Choix du fournisseur -->
+    <div class="provider-label">Type de boîte mail *</div>
+    <div class="provider-btns">
+      <button class="provider-btn active" onclick="setProvider('gmail')" id="btn-gmail">
+        <span class="icon">📧</span>Gmail
+      </button>
+      <button class="provider-btn" onclick="setProvider('outlook')" id="btn-outlook">
+        <span class="icon">💼</span>Outlook
+      </button>
+      <button class="provider-btn" onclick="setProvider('imap')" id="btn-imap">
+        <span class="icon">🌐</span>Autre
+      </button>
+    </div>
+
+    <!-- Adresse email (commune à tous) -->
+    <label>Adresse email à connecter *</label>
+    <input type="email" id="email" placeholder="votre@email.com" autocomplete="email" />
+
+    <!-- Section IMAP (Outlook + Autre) -->
+    <div class="imap-section" id="imap-section">
+      <div class="section-title">Connexion IMAP / SMTP</div>
+
+      <div class="info-box">
+        💡 Utilisez un <strong>mot de passe d'application</strong> (pas votre mot de passe habituel).
+        Outlook : Paramètres → Sécurité → Mots de passe d'application.
+      </div>
+
+      <div class="preset-row">
+        <label>Préconfigurer :</label>
+        <select onchange="appliquerPreset(this.value)">
+          <option value="">Choisir un fournisseur...</option>
+          <option value="outlook">Outlook / Hotmail / Live</option>
+          <option value="ovh">OVH Mail</option>
+          <option value="orange">Orange</option>
+          <option value="free">Free</option>
+          <option value="yahoo">Yahoo</option>
+          <option value="sfr">SFR</option>
+        </select>
+      </div>
+
+      <div class="row">
+        <div>
+          <label>Serveur IMAP *</label>
+          <input type="text" id="imap_server" placeholder="imap.exemple.fr" />
+        </div>
+        <div>
+          <label>Port IMAP</label>
+          <input type="number" id="imap_port" placeholder="993" value="993" />
+        </div>
+      </div>
+      <div class="row">
+        <div>
+          <label>Serveur SMTP *</label>
+          <input type="text" id="smtp_server" placeholder="smtp.exemple.fr" />
+        </div>
+        <div>
+          <label>Port SMTP</label>
+          <input type="number" id="smtp_port" placeholder="465" value="465" />
+        </div>
+      </div>
+
+      <label>Mot de passe d'application *</label>
+      <input type="password" id="imap_password" placeholder="Mot de passe d'application" />
+    </div>
+
+    <!-- Mot de passe compte MailPilot -->
+    <label>Mot de passe MailPilot * (6 caractères min)</label>
     <input type="password" id="pwd" placeholder="Choisissez un mot de passe" />
 
     <label>Confirmer le mot de passe *</label>
@@ -87,6 +180,42 @@
   </div>
 
   <script>
+    let provider = 'gmail';
+
+    const PRESETS = {
+      outlook: { imap_server: 'imap-mail.outlook.com', imap_port: 993, smtp_server: 'smtp-mail.outlook.com', smtp_port: 587 },
+      ovh:     { imap_server: 'imap.mail.ovh.com',     imap_port: 993, smtp_server: 'ssl0.ovh.net',          smtp_port: 465 },
+      orange:  { imap_server: 'imap.orange.fr',         imap_port: 993, smtp_server: 'smtp.orange.fr',        smtp_port: 465 },
+      free:    { imap_server: 'imap.free.fr',           imap_port: 993, smtp_server: 'smtp.free.fr',          smtp_port: 465 },
+      yahoo:   { imap_server: 'imap.mail.yahoo.com',   imap_port: 993, smtp_server: 'smtp.mail.yahoo.com',   smtp_port: 465 },
+      sfr:     { imap_server: 'imap.sfr.fr',           imap_port: 993, smtp_server: 'smtp.sfr.fr',           smtp_port: 587 },
+    };
+
+    function setProvider(p) {
+      provider = p;
+      ['gmail','outlook','imap'].forEach(id => {
+        document.getElementById('btn-' + id).classList.toggle('active', id === p);
+      });
+      const imapSection = document.getElementById('imap-section');
+      if (p === 'gmail') {
+        imapSection.classList.remove('visible');
+        document.getElementById('email').placeholder = 'votre@gmail.com';
+      } else {
+        imapSection.classList.add('visible');
+        document.getElementById('email').placeholder = p === 'outlook' ? 'votre@outlook.com' : 'votre@email.com';
+        if (p === 'outlook') appliquerPreset('outlook');
+      }
+    }
+
+    function appliquerPreset(val) {
+      if (!val || !PRESETS[val]) return;
+      const p = PRESETS[val];
+      document.getElementById('imap_server').value = p.imap_server;
+      document.getElementById('imap_port').value   = p.imap_port;
+      document.getElementById('smtp_server').value = p.smtp_server;
+      document.getElementById('smtp_port').value   = p.smtp_port;
+    }
+
     async function inscrire() {
       const nom   = document.getElementById('nom').value.trim();
       const email = document.getElementById('email').value.trim();
@@ -100,19 +229,32 @@
 
       if (!nom || !email || !pwd) {
         err.textContent = 'Nom, email et mot de passe sont requis';
-        err.style.display = 'block';
-        return;
+        err.style.display = 'block'; return;
       }
       if (pwd !== pwd2) {
         err.textContent = 'Les mots de passe ne correspondent pas';
-        err.style.display = 'block';
-        return;
+        err.style.display = 'block'; return;
+      }
+
+      const body = { nom, email, agence, tel, zone, password: pwd, provider };
+
+      if (provider !== 'gmail') {
+        const imap_server   = document.getElementById('imap_server').value.trim();
+        const imap_port     = document.getElementById('imap_port').value.trim();
+        const smtp_server   = document.getElementById('smtp_server').value.trim();
+        const smtp_port     = document.getElementById('smtp_port').value.trim();
+        const imap_password = document.getElementById('imap_password').value;
+        if (!imap_server || !smtp_server || !imap_password) {
+          err.textContent = 'Serveur IMAP, SMTP et mot de passe d\'application sont requis';
+          err.style.display = 'block'; return;
+        }
+        Object.assign(body, { imap_server, imap_port, smtp_server, smtp_port, imap_password });
       }
 
       const res  = await fetch('/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ nom, email, agence, tel, zone, password: pwd })
+        body: JSON.stringify(body)
       });
       const json = await res.json();
       if (json.ok) {

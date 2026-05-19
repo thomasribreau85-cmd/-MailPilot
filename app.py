@@ -147,6 +147,7 @@ def register():
         for c in data["comptes"]:
             if c.get("email", "").lower() == email:
                 return jsonify({"ok": False, "message": "Cet email est déjà utilisé"})
+        provider = d.get("provider", "gmail")
         compte = {
             "id":            str(uuid.uuid4())[:8],
             "access_token":  secrets.token_urlsafe(16),
@@ -157,10 +158,17 @@ def register():
             "email":         email,
             "zone":          d.get("zone", ""),
             "intervalle":    "60",
-            "connecte":      False,
+            "provider":      provider,
+            "connecte":      provider != "gmail",  # IMAP : connecté dès l'inscription
             "token":         "",
             "labels_actifs": LABELS_DEFAUT,
         }
+        if provider != "gmail":
+            compte["imap_server"]   = d.get("imap_server", "")
+            compte["imap_port"]     = d.get("imap_port", "993")
+            compte["smtp_server"]   = d.get("smtp_server", "")
+            compte["smtp_port"]     = d.get("smtp_port", "465")
+            compte["imap_password"] = d.get("imap_password", "")
         data["comptes"].append(compte)
         sauver_comptes(data)
         session["user_id"] = compte["id"]
@@ -421,8 +429,11 @@ def demarrer(compte_id):
     c = trouver_compte(data, compte_id)
     if not c:
         return jsonify({"ok": False, "message": "Compte introuvable"})
-    if not c.get("connecte") or not c.get("token"):
+    provider = c.get("provider", "gmail")
+    if provider == "gmail" and (not c.get("connecte") or not c.get("token")):
         return jsonify({"ok": False, "message": "Connecte d'abord Gmail !"})
+    if provider != "gmail" and not c.get("imap_server"):
+        return jsonify({"ok": False, "message": "Configuration IMAP incomplète."})
 
     # Prépare les variables d'environnement pour ce compte
     env = os.environ.copy()
@@ -435,13 +446,26 @@ def demarrer(compte_id):
         "ANTHROPIC_API_KEY": data.get("api_key", ""),
         "CHECK_INTERVAL":    c.get("intervalle", "60"),
         "LABELS_ACTIFS":     ",".join(c.get("labels_actifs", list(TOUS_LES_LABELS.keys())[:7])),
+        "MAIL_PROVIDER":     provider,
     })
+    if provider != "gmail":
+        env.update({
+            "IMAP_SERVER":   c.get("imap_server", ""),
+            "IMAP_PORT":     str(c.get("imap_port", "993")),
+            "SMTP_SERVER":   c.get("smtp_server", ""),
+            "SMTP_PORT":     str(c.get("smtp_port", "465")),
+            "IMAP_PASSWORD": c.get("imap_password", ""),
+        })
 
     logs_par_compte[compte_id] = []
     emails_comptes[compte_id]  = 0
 
+    cmd = [sys.executable, "mailpilot.py"]
+    if provider == "gmail":
+        cmd += ["--token", c["token"]]
+
     p = subprocess.Popen(
-        [sys.executable, "mailpilot.py", "--token", c["token"]],
+        cmd,
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
         text=True,

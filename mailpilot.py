@@ -20,9 +20,14 @@ import base64
 import logging
 import json
 import argparse
+import imaplib
+import smtplib
+import ssl
+import email as email_lib
 from datetime import datetime, date
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
+from email.header import decode_header
 
 import anthropic
 from dotenv import load_dotenv
@@ -643,6 +648,140 @@ def traiter_email(service, client_anthropic, email, label_ids):
     return {"categorie": categorie, "brouillon_cree": brouillon_cree}
 
 
+# ============================================================
+# ADAPTATEUR IMAP / SMTP (Outlook, OVH, Orange, Free, etc.)
+# ============================================================
+
+def _decode_header_str(valeur):
+    """Décode un header email encodé (ex: =?utf-8?b?...?=)."""
+    if not valeur:
+        return ""
+    parties = decode_header(valeur)
+    resultat = ""
+    for partie, charset in parties:
+        if isinstance(partie, bytes):
+            resultat += partie.decode(charset or "utf-8", errors="replace")
+        else:
+            resultat += partie
+    return resultat
+
+def authentifier_imap():
+    """Connexion IMAP SSL avec les variables d'environnement."""
+    ctx = ssl.create_default_context()
+    conn = imaplib.IMAP4_SSL(
+        os.getenv("IMAP_SERVER"),
+        int(os.getenv("IMAP_PORT", "993")),
+        ssl_context=ctx
+    )
+    conn.login(os.getenv("AGENT_EMAIL"), os.getenv("IMAP_PASSWORD"))
+    logger.info(f"✓ IMAP connecté ({os.getenv('IMAP_SERVER')})")
+    return conn
+
+def lire_emails_non_lus_imap(imap_conn):
+    """Lit les emails non lus via IMAP et retourne une liste de dicts."""
+    imap_conn.select("INBOX")
+    _, data = imap_conn.uid("search", None, "UNSEEN")
+    uids = data[0].split()
+    emails = []
+    for uid in uids:
+        try:
+            _, msg_data = imap_conn.uid("fetch", uid, "(RFC822)")
+            raw = msg_data[0][1]
+            msg = email_lib.message_from_bytes(raw)
+            sujet      = _decode_header_str(msg.get("Subject", ""))
+            expediteur = _decode_header_str(msg.get("From", ""))
+            message_id = msg.get("Message-ID", uid.decode())
+
+            # Extraction du corps texte
+            corps = ""
+            if msg.is_multipart():
+                for part in msg.walk():
+                    if part.get_content_type() == "text/plain":
+                        charset = part.get_content_charset() or "utf-8"
+                        corps = part.get_payload(decode=True).decode(charset, errors="replace")
+                        break
+            else:
+                charset = msg.get_content_charset() or "utf-8"
+                corps = msg.get_payload(decode=True).decode(charset, errors="replace")
+
+            emails.append({
+                "uid_imap":   uid,
+                "id":         uid.decode(),
+                "sujet":      sujet,
+                "expediteur": expediteur,
+                "corps":      corps[:3000],
+                "message_id": message_id,
+            })
+        except Exception as e:
+            logger.error(f"  ✗ Erreur lecture email IMAP uid={uid} : {e}")
+    return emails
+
+def appliquer_label_imap(imap_conn, uid, categorie):
+    """Copie l'email dans un dossier MailPilot/catégorie via IMAP."""
+    try:
+        dossier = f"MailPilot/{categorie}"
+        imap_conn.create(dossier)
+    except Exception:
+        pass  # dossier existe déjà
+    try:
+        imap_conn.uid("copy", uid, f"MailPilot/{categorie}")
+    except Exception as e:
+        logger.error(f"  ✗ Erreur dossier IMAP : {e}")
+
+def marquer_comme_lu_imap(imap_conn, uid):
+    """Marque l'email comme lu via IMAP."""
+    imap_conn.uid("store", uid, "+FLAGS", "\\Seen")
+
+def creer_brouillon_imap(imap_conn, email_data, texte_reponse):
+    """Sauvegarde un brouillon dans le dossier Drafts via IMAP."""
+    msg = MIMEMultipart()
+    msg["To"]      = email_data["expediteur"]
+    msg["From"]    = os.getenv("AGENT_EMAIL")
+    msg["Subject"] = f"Re: {email_data['sujet']}"
+    if email_data.get("message_id"):
+        msg["In-Reply-To"] = email_data["message_id"]
+    msg.attach(MIMEText(texte_reponse, "plain", "utf-8"))
+
+    raw_bytes = msg.as_bytes()
+    # Essai des noms courants pour le dossier Brouillons
+    for dossier in ["Drafts", "Draft", "Brouillons", "[Gmail]/Drafts", "INBOX.Drafts"]:
+        try:
+            imap_conn.append(dossier, "\\Draft", None, raw_bytes)
+            logger.info(f"  ✓ Brouillon IMAP créé dans '{dossier}'")
+            return True
+        except Exception:
+            continue
+    logger.error("  ✗ Impossible de créer le brouillon IMAP (dossier Drafts introuvable)")
+    return False
+
+def envoyer_notification_smtp(sujet, corps):
+    """Envoie un email de notification via SMTP."""
+    email_agent = os.getenv("AGENT_EMAIL")
+    smtp_server = os.getenv("SMTP_SERVER")
+    smtp_port   = int(os.getenv("SMTP_PORT", "465"))
+    password    = os.getenv("IMAP_PASSWORD")
+
+    msg = MIMEMultipart()
+    msg["To"]      = email_agent
+    msg["From"]    = email_agent
+    msg["Subject"] = sujet
+    msg.attach(MIMEText(corps, "plain", "utf-8"))
+
+    try:
+        if smtp_port == 587:
+            with smtplib.SMTP(smtp_server, smtp_port) as server:
+                server.starttls()
+                server.login(email_agent, password)
+                server.sendmail(email_agent, email_agent, msg.as_bytes())
+        else:
+            with smtplib.SMTP_SSL(smtp_server, smtp_port) as server:
+                server.login(email_agent, password)
+                server.sendmail(email_agent, email_agent, msg.as_bytes())
+        logger.info(f"✉️  Notification SMTP envoyée à {email_agent}")
+    except Exception as e:
+        logger.error(f"Erreur envoi notification SMTP : {e}")
+
+
 def boucle_principale():
     """
     Boucle infinie qui surveille les emails toutes les N secondes.
@@ -650,39 +789,50 @@ def boucle_principale():
     """
     intervalle = int(os.getenv("CHECK_INTERVAL", "60"))
 
+    mail_provider = os.getenv("MAIL_PROVIDER", "gmail")
+
     logger.info("=" * 60)
     logger.info("  MailPilot — Démarrage")
-    logger.info(f"  Agent    : {os.getenv('AGENT_NOM')}")
-    logger.info(f"  Agence   : {os.getenv('AGENT_AGENCE')}")
-    logger.info(f"  Zone     : {os.getenv('AGENT_ZONE')}")
-    logger.info(f"  Email    : {os.getenv('AGENT_EMAIL')}")
+    logger.info(f"  Agent      : {os.getenv('AGENT_NOM')}")
+    logger.info(f"  Agence     : {os.getenv('AGENT_AGENCE')}")
+    logger.info(f"  Zone       : {os.getenv('AGENT_ZONE')}")
+    logger.info(f"  Email      : {os.getenv('AGENT_EMAIL')}")
+    logger.info(f"  Provider   : {mail_provider.upper()}")
     logger.info(f"  Intervalle : toutes les {intervalle}s")
     logger.info("=" * 60)
 
-    # --- Connexion Gmail ---
-    logger.info("Connexion à Gmail...")
-    try:
-        service = authentifier_gmail()
-        logger.info("✓ Gmail connecté")
-    except Exception as e:
-        logger.critical(f"Impossible de se connecter à Gmail : {e}")
-        raise
+    # --- Connexion au service mail ---
+    service    = None  # Gmail API (mode gmail)
+    imap_conn  = None  # Connexion IMAP (mode imap)
+    label_ids  = {}
 
-    # --- Création/vérification des labels ---
-    logger.info("Vérification des labels Gmail...")
-    try:
-        label_ids = obtenir_ou_creer_labels(service)
-        logger.info(f"✓ {len(label_ids)} labels prêts")
-    except Exception as e:
-        logger.critical(f"Impossible de créer les labels : {e}")
-        raise
+    if mail_provider == "gmail":
+        logger.info("Connexion à Gmail...")
+        try:
+            service = authentifier_gmail()
+            logger.info("✓ Gmail connecté")
+        except Exception as e:
+            logger.critical(f"Impossible de se connecter à Gmail : {e}")
+            raise
+        logger.info("Vérification des labels Gmail...")
+        try:
+            label_ids = obtenir_ou_creer_labels(service)
+            logger.info(f"✓ {len(label_ids)} labels prêts")
+        except Exception as e:
+            logger.critical(f"Impossible de créer les labels : {e}")
+            raise
+    else:
+        logger.info(f"Connexion IMAP ({os.getenv('IMAP_SERVER')})...")
+        try:
+            imap_conn = authentifier_imap()
+        except Exception as e:
+            logger.critical(f"Impossible de se connecter en IMAP : {e}")
+            raise
 
     # --- Connexion Claude (Anthropic) ---
     logger.info("Connexion à l'API Claude...")
     try:
-        client_anthropic = anthropic.Anthropic(
-            api_key=os.getenv("ANTHROPIC_API_KEY")
-        )
+        client_anthropic = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
         logger.info("✓ Claude connecté")
     except Exception as e:
         logger.critical(f"Impossible de se connecter à Claude : {e}")
@@ -690,33 +840,76 @@ def boucle_principale():
 
     logger.info("\n🚀 MailPilot actif ! Surveillance en cours...\n")
 
-    dernier_bilan_lundi = None  # pour n'envoyer le bilan qu'une seule fois le lundi
+    dernier_bilan_lundi = None
 
     # --- Boucle infinie ---
     while True:
         try:
-            maintenant = datetime.now()
+            maintenant  = datetime.now()
             email_agent = os.getenv("AGENT_EMAIL")
 
-            # --- Bilan hebdomadaire (lundi matin entre 8h et 9h, une seule fois) ---
+            # --- Bilan hebdomadaire (lundi à 8h, une seule fois) ---
             if maintenant.weekday() == 0 and maintenant.hour == 8:
                 lundi_actuel = maintenant.date()
                 if dernier_bilan_lundi != lundi_actuel:
-                    envoyer_bilan_hebdo(service, email_agent)
+                    if mail_provider == "gmail":
+                        envoyer_bilan_hebdo(service, email_agent)
+                    else:
+                        stats_h = charger_stats_semaine()
+                        if stats_h["traites"] > 0:
+                            # Construire le corps du bilan et envoyer via SMTP
+                            nb = stats_h["traites"]; nb_b = stats_h["brouillons"]
+                            semaine = stats_h["semaine"]
+                            lignes = "".join(
+                                f"  {TOUS_LES_LABELS.get(c,{}).get('emoji','•')} "
+                                f"{TOUS_LES_LABELS.get(c,{}).get('nom',c)} : {n} email(s)\n"
+                                for c, n in sorted(stats_h.get("categories",{}).items(), key=lambda x: -x[1])
+                            )
+                            corps = (f"Bonjour,\n\nVoici votre bilan MailPilot semaine {semaine}.\n\n"
+                                     f"📊 {nb} email(s) traité(s), {nb_b} brouillon(s)\n\n{lignes}\n"
+                                     f"---\nMailPilot — Assistant email IA\n")
+                            envoyer_notification_smtp(f"MailPilot — Bilan semaine {semaine}", corps)
+                            sauver_stats_semaine({"semaine": semaine, "annee": maintenant.year,
+                                                  "traites": 0, "brouillons": 0, "categories": {}})
                     dernier_bilan_lundi = lundi_actuel
 
-            logger.info(f"🔍 Vérification des emails non lus...")
+            logger.info("🔍 Vérification des emails non lus...")
 
-            emails = lire_emails_non_lus(service)
+            # --- Lecture des emails selon le provider ---
+            if mail_provider == "gmail":
+                emails = lire_emails_non_lus(service)
+            else:
+                # Reconnexion IMAP si la session a expiré
+                try:
+                    imap_conn.noop()
+                except Exception:
+                    logger.info("  Reconnexion IMAP...")
+                    imap_conn = authentifier_imap()
+                emails = lire_emails_non_lus_imap(imap_conn)
 
             if not emails:
                 logger.info("  Aucun email non lu.")
             else:
                 logger.info(f"  {len(emails)} email(s) à traiter.")
                 stats = {"traites": 0, "brouillons": 0, "categories": {}}
-                for email in emails:
+
+                for em in emails:
                     try:
-                        resultat = traiter_email(service, client_anthropic, email, label_ids)
+                        if mail_provider == "gmail":
+                            resultat = traiter_email(service, client_anthropic, em, label_ids)
+                        else:
+                            # --- Pipeline IMAP ---
+                            categorie = classifier_email(client_anthropic, em)
+                            logger.info(f"  → Catégorie : {categorie}")
+                            appliquer_label_imap(imap_conn, em["uid_imap"], categorie)
+                            marquer_comme_lu_imap(imap_conn, em["uid_imap"])
+                            brouillon_cree = False
+                            if categorie != "INUTILE":
+                                texte = rediger_reponse(client_anthropic, em, categorie)
+                                if texte:
+                                    brouillon_cree = creer_brouillon_imap(imap_conn, em, texte)
+                            resultat = {"categorie": categorie, "brouillon_cree": brouillon_cree}
+
                         if resultat:
                             stats["traites"] += 1
                             cat = resultat.get("categorie", "inconnu")
@@ -724,20 +917,29 @@ def boucle_principale():
                             if resultat.get("brouillon_cree"):
                                 stats["brouillons"] += 1
                     except Exception as e:
-                        # Une erreur sur un email n'arrête pas le programme
-                        logger.error(
-                            f"  ✗ Erreur inattendue sur l'email "
-                            f"'{email.get('sujet', '?')}' : {e}"
-                        )
+                        logger.error(f"  ✗ Erreur sur '{em.get('sujet','?')}' : {e}")
+
                 if stats["traites"] > 0:
-                    envoyer_notification(service, email_agent, stats)
+                    if mail_provider == "gmail":
+                        envoyer_notification(service, email_agent, stats)
+                    else:
+                        nb = stats["traites"]; nb_b = stats["brouillons"]
+                        lignes = "".join(
+                            f"  {TOUS_LES_LABELS.get(c,{}).get('emoji','•')} "
+                            f"{TOUS_LES_LABELS.get(c,{}).get('nom',c)} : {n} email(s)\n"
+                            for c, n in sorted(stats["categories"].items(), key=lambda x: -x[1])
+                        )
+                        corps = (f"Bonjour,\n\nMailPilot vient de traiter votre boîte mail.\n\n"
+                                 f"📊 {nb} email(s) traité(s), {nb_b} brouillon(s)\n\n{lignes}\n"
+                                 f"👉 Consultez vos brouillons pour valider les réponses.\n\n"
+                                 f"---\nMailPilot — Assistant email IA\n")
+                        envoyer_notification_smtp(
+                            f"MailPilot — {nb} email(s) traité(s), {nb_b} brouillon(s)", corps)
                     accumuler_stats_semaine(stats)
 
         except Exception as e:
-            # Une erreur générale ne stoppe pas la boucle
             logger.error(f"Erreur dans le cycle de vérification : {e}")
 
-        # Attente avant le prochain cycle
         logger.info(f"\n⏳ Prochain cycle dans {intervalle} secondes...\n")
         time.sleep(intervalle)
 
