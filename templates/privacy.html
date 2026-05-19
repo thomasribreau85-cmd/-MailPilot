@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Politique de confidentialité — MailPilot Pro</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root { --bg:#0e0e0e; --card:#181818; --border:#2a2a2a; --text:#e8e8e8; --muted:#888; --blue:#3b82f6; }
+    body {
+      background: var(--bg); color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif;
+      padding: 48px 20px 80px; line-height: 1.7;
+    }
+    .container { max-width: 760px; margin: 0 auto; }
+    header { display: flex; align-items: center; gap: 12px; margin-bottom: 48px; }
+    header a { color: var(--muted); font-size: 13px; text-decoration: none; margin-left: auto; }
+    header a:hover { color: var(--text); }
+    .logo { font-size: 28px; }
+    h1 { font-size: 28px; font-weight: 700; margin-bottom: 6px; }
+    .updated { font-size: 13px; color: var(--muted); margin-bottom: 40px; }
+    h2 { font-size: 18px; font-weight: 700; margin: 36px 0 12px; color: var(--text); }
+    h3 { font-size: 15px; font-weight: 600; margin: 20px 0 8px; color: var(--text); }
+    p { font-size: 14px; color: var(--muted); margin-bottom: 12px; }
+    ul { margin: 8px 0 12px 20px; }
+    ul li { font-size: 14px; color: var(--muted); margin-bottom: 6px; }
+    .highlight {
+      background: #1a2540; border: 1px solid #2a3f6f;
+      border-radius: 10px; padding: 16px 20px; margin: 24px 0;
+    }
+    .highlight p { color: #93b4f0; margin: 0; }
+    a { color: var(--blue); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    .divider { border: none; border-top: 1px solid var(--border); margin: 32px 0; }
+    .contact-box {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 12px; padding: 20px 24px; margin-top: 40px;
+    }
+    .contact-box h3 { margin-top: 0; }
+  </style>
+</head>
+<body>
+  <div class="container">
+
+    <header>
+      <span class="logo">🛩️</span>
+      <div>
+        <div style="font-size:18px;font-weight:700">MailPilot Pro</div>
+        <div style="font-size:12px;color:var(--muted)">Assistant email IA</div>
+      </div>
+      <a href="/login">← Retour à l'app</a>
+    </header>
+
+    <h1>Politique de confidentialité</h1>
+    <p class="updated">Dernière mise à jour : mai 2025</p>
+
+    <div class="highlight">
+      <p>
+        <strong>Résumé :</strong> MailPilot Pro utilise votre boîte mail uniquement pour lire, classer et rédiger des réponses à vos emails. Nous ne vendons, ne partageons ni ne transmettons vos données à des tiers. Votre contenu email ne quitte jamais notre infrastructure sécurisée, sauf pour être envoyé à l'API Claude (Anthropic) pour analyse.
+      </p>
+    </div>
+
+    <h2>1. Qui sommes-nous</h2>
+    <p>
+      MailPilot Pro est un service d'assistance email par intelligence artificielle, édité par Thomas Ribreau.
+      Contact : <a href="mailto:thomas.ribreau85@gmail.com">thomas.ribreau85@gmail.com</a>
+    </p>
+
+    <h2>2. Données collectées</h2>
+
+    <h3>2.1 Données de compte</h3>
+    <ul>
+      <li>Nom et prénom</li>
+      <li>Adresse email (identifiant de connexion)</li>
+      <li>Mot de passe (stocké sous forme de hash bcrypt, non lisible)</li>
+      <li>Nom d'agence, téléphone, zone géographique (facultatifs)</li>
+    </ul>
+
+    <h3>2.2 Données de connexion aux boîtes mail</h3>
+    <ul>
+      <li><strong>Gmail :</strong> Token OAuth Google (accès délégué, jamais votre mot de passe)</li>
+      <li><strong>Outlook / Microsoft 365 :</strong> Token OAuth Microsoft (accès délégué)</li>
+      <li><strong>IMAP / SMTP :</strong> Identifiants de connexion chiffrés sur le serveur</li>
+    </ul>
+
+    <h3>2.3 Contenu des emails traités</h3>
+    <p>
+      MailPilot Pro lit le contenu de vos emails non lus pour les analyser et générer des réponses.
+      Ces données sont transmises de manière chiffrée à l'API Claude (Anthropic) pour traitement,
+      puis immédiatement supprimées de la mémoire. Aucun contenu email n'est stocké de façon permanente.
+    </p>
+
+    <h3>2.4 Statistiques d'utilisation</h3>
+    <p>
+      Nous conservons des statistiques agrégées (nombre d'emails traités, catégories détectées) par compte,
+      sans stocker le contenu des emails.
+    </p>
+
+    <hr class="divider" />
+
+    <h2>3. Utilisation des données Google (Gmail API)</h2>
+
+    <div class="highlight">
+      <p>
+        L'utilisation par MailPilot Pro des informations reçues via les APIs Google respecte la
+        <a href="https://developers.google.com/terms/api-services-user-data-policy" target="_blank">
+        politique de données utilisateur des services API Google</a>, y compris les exigences d'utilisation limitée (Limited Use).
+      </p>
+    </div>
+
+    <p>MailPilot Pro demande les autorisations Gmail suivantes :</p>
+    <ul>
+      <li><strong>gmail.modify</strong> — Lire, archiver et modifier les emails (nécessaire pour marquer comme lu et appliquer des labels)</li>
+    </ul>
+
+    <p>Ces autorisations sont utilisées <strong>exclusivement</strong> pour :</p>
+    <ul>
+      <li>Lire les emails non lus et analyser leur contenu avec l'IA</li>
+      <li>Appliquer des labels de classification aux emails</li>
+      <li>Marquer les emails comme lus après traitement</li>
+      <li>Créer des brouillons de réponse dans votre boîte mail</li>
+    </ul>
+
+    <p>
+      Les données Gmail <strong>ne sont pas</strong> utilisées pour :
+    </p>
+    <ul>
+      <li>La publicité ciblée</li>
+      <li>La vente à des tiers</li>
+      <li>L'entraînement de modèles d'IA</li>
+      <li>Toute autre finalité que le service décrit ci-dessus</li>
+    </ul>
+
+    <hr class="divider" />
+
+    <h2>4. Partage des données</h2>
+    <p>Nous ne vendons, ne louons et ne partageons pas vos données personnelles avec des tiers, sauf :</p>
+    <ul>
+      <li>
+        <strong>Anthropic (API Claude) :</strong> Le contenu de vos emails est transmis pour analyse IA.
+        Anthropic ne stocke pas ces données au-delà du traitement immédiat.
+        <a href="https://www.anthropic.com/privacy" target="_blank">Politique de confidentialité Anthropic →</a>
+      </li>
+      <li>
+        <strong>Railway (hébergement) :</strong> Notre infrastructure est hébergée sur Railway.app.
+        <a href="https://railway.app/legal/privacy" target="_blank">Politique de confidentialité Railway →</a>
+      </li>
+      <li>
+        <strong>Obligations légales :</strong> Si la loi nous y oblige (décision de justice, autorité compétente).
+      </li>
+    </ul>
+
+    <hr class="divider" />
+
+    <h2>5. Sécurité des données</h2>
+    <ul>
+      <li>Toutes les communications sont chiffrées via HTTPS (TLS)</li>
+      <li>Les tokens OAuth sont stockés sur un volume sécurisé, non accessibles publiquement</li>
+      <li>Les mots de passe sont hashés avec bcrypt (irréversible)</li>
+      <li>L'accès aux données est restreint aux seuls administrateurs autorisés</li>
+    </ul>
+
+    <hr class="divider" />
+
+    <h2>6. Conservation des données</h2>
+    <ul>
+      <li><strong>Données de compte :</strong> Conservées tant que votre compte est actif</li>
+      <li><strong>Tokens OAuth :</strong> Conservés jusqu'à révocation de l'accès ou suppression du compte</li>
+      <li><strong>Statistiques :</strong> Conservées 12 semaines glissantes</li>
+      <li><strong>Contenu des emails :</strong> Non stocké — traitement en mémoire uniquement</li>
+    </ul>
+
+    <hr class="divider" />
+
+    <h2>7. Vos droits (RGPD)</h2>
+    <p>Conformément au RGPD, vous disposez des droits suivants :</p>
+    <ul>
+      <li><strong>Accès :</strong> Obtenir une copie de vos données</li>
+      <li><strong>Rectification :</strong> Corriger vos informations</li>
+      <li><strong>Suppression :</strong> Supprimer votre compte et toutes vos données</li>
+      <li><strong>Portabilité :</strong> Recevoir vos données dans un format structuré</li>
+      <li><strong>Opposition :</strong> Vous opposer au traitement de vos données</li>
+      <li><strong>Révocation OAuth :</strong> Révoquer l'accès à votre Gmail ou Outlook à tout moment depuis les paramètres Google/Microsoft</li>
+    </ul>
+    <p>Pour exercer ces droits, contactez-nous à : <a href="mailto:thomas.ribreau85@gmail.com">thomas.ribreau85@gmail.com</a></p>
+
+    <hr class="divider" />
+
+    <h2>8. Cookies</h2>
+    <p>
+      MailPilot Pro utilise uniquement un cookie de session sécurisé (HttpOnly) pour maintenir votre connexion.
+      Aucun cookie de tracking ou publicitaire n'est utilisé.
+    </p>
+
+    <hr class="divider" />
+
+    <h2>9. Modifications</h2>
+    <p>
+      Nous pouvons mettre à jour cette politique. En cas de modification importante,
+      vous serez informé par email. La date de dernière mise à jour est indiquée en haut de cette page.
+    </p>
+
+    <div class="contact-box">
+      <h3>📬 Contact</h3>
+      <p>Pour toute question relative à la confidentialité de vos données :</p>
+      <p><strong>Thomas Ribreau</strong><br />
+      Email : <a href="mailto:thomas.ribreau85@gmail.com">thomas.ribreau85@gmail.com</a><br />
+      Application : <a href="https://mailpilot-production-981d.up.railway.app">mailpilot-production-981d.up.railway.app</a>
+      </p>
+    </div>
+
+  </div>
+</body>
+</html>

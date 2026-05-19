@@ -298,6 +298,11 @@ def home():
     return redirect("/login")
 
 
+@app.route("/privacy")
+def privacy():
+    return render_template("privacy.html")
+
+
 @app.route("/sauvegarder_api", methods=["POST"])
 def sauvegarder_api():
     if not session.get("admin"):
