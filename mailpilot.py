@@ -1072,24 +1072,6 @@ def boucle_principale():
                         logger.error(f"  ✗ Erreur sur '{em.get('sujet','?')}' : {e}")
 
                 if stats["traites"] > 0:
-                    nb = stats["traites"]; nb_b = stats["brouillons"]
-                    if mail_provider == "gmail":
-                        envoyer_notification(service, email_agent, stats)
-                    else:
-                        lignes = "".join(
-                            f"  {TOUS_LES_LABELS.get(c,{}).get('emoji','•')} "
-                            f"{TOUS_LES_LABELS.get(c,{}).get('nom',c)} : {n} email(s)\n"
-                            for c, n in sorted(stats["categories"].items(), key=lambda x: -x[1])
-                        )
-                        corps = (f"Bonjour,\n\nMailPilot vient de traiter votre boîte mail.\n\n"
-                                 f"📊 {nb} email(s) traité(s), {nb_b} brouillon(s)\n\n{lignes}\n"
-                                 f"👉 Consultez vos brouillons pour valider les réponses.\n\n"
-                                 f"---\nMailPilot — Assistant email IA\n")
-                        sujet_notif = f"MailPilot — {nb} email(s) traité(s), {nb_b} brouillon(s)"
-                        if mail_provider == "microsoft":
-                            envoyer_notification_microsoft(sujet_notif, corps)
-                        else:
-                            envoyer_notification_smtp(sujet_notif, corps)
                     accumuler_stats_semaine(stats)
 
         except Exception as e:
