@@ -269,6 +269,44 @@
     </div>
   </div>
 
+  <!-- Modal Bilan hebdo -->
+  <div class="overlay" id="overlay-bilan" onclick="if(event.target===this)fermerBilan()">
+    <div class="modal" style="max-width:380px">
+      <h2>⏰ Bilan hebdomadaire</h2>
+      <p class="subtitle">Choisis quand recevoir ton récapitulatif email chaque semaine.</p>
+
+      <label class="form-label">Jour d'envoi</label>
+      <select id="bilan-jour" class="form-input">
+        <option value="0">Lundi</option>
+        <option value="1">Mardi</option>
+        <option value="2">Mercredi</option>
+        <option value="3">Jeudi</option>
+        <option value="4">Vendredi</option>
+        <option value="5">Samedi</option>
+        <option value="6">Dimanche</option>
+      </select>
+
+      <label class="form-label">Heure d'envoi</label>
+      <select id="bilan-heure" class="form-input">
+        <option value="6">6h00</option>
+        <option value="7">7h00</option>
+        <option value="8">8h00</option>
+        <option value="9">9h00</option>
+        <option value="10">10h00</option>
+        <option value="12">12h00</option>
+        <option value="17">17h00</option>
+        <option value="18">18h00</option>
+        <option value="19">19h00</option>
+        <option value="20">20h00</option>
+      </select>
+
+      <div class="modal-btns">
+        <button class="btn-cancel" onclick="fermerBilan()">Annuler</button>
+        <button class="btn-save" onclick="sauvegarderBilan()">Sauvegarder</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Modal Ajouter boîte -->
   <div class="overlay" id="overlay-ajout" onclick="if(event.target===this)fermerAjoutBoite()">
     <div class="modal">
@@ -440,6 +478,7 @@
           <div class="boite-actions">
             <button class="action-btn" onclick="ouvrirLabels('${id}')">⚙️ Catégories</button>
             <button class="action-btn" onclick="ouvrirStats('${id}', '${email}')">📊 Stats</button>
+            <button class="action-btn" onclick="ouvrirBilan('${id}')">⏰ Bilan hebdo</button>
             <button class="action-btn" onclick="toggleLogs('${id}')">▾ Journal</button>
           </div>
           <div class="log-feed ${logsHtml}" id="log-${id}">
@@ -672,6 +711,41 @@
             }
           }
         });
+      }
+    }
+
+    // ── Bilan hebdomadaire ────────────────────────────────────
+    let currentBilanBoiteId = null;
+
+    function ouvrirBilan(boiteId) {
+      currentBilanBoiteId = boiteId;
+      const b = boitesState[boiteId] || {};
+      document.getElementById('bilan-jour').value  = b.bilan_jour  || '0';
+      document.getElementById('bilan-heure').value = b.bilan_heure || '8';
+      document.getElementById('overlay-bilan').classList.add('open');
+    }
+
+    function fermerBilan() { document.getElementById('overlay-bilan').classList.remove('open'); }
+
+    async function sauvegarderBilan() {
+      const jour  = document.getElementById('bilan-jour').value;
+      const heure = document.getElementById('bilan-heure').value;
+      const jours = ['Lundi','Mardi','Mercredi','Jeudi','Vendredi','Samedi','Dimanche'];
+      const res  = await fetch(`/parametres_bilan/${COMPTE_ID}/${currentBilanBoiteId}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ bilan_jour: jour, bilan_heure: heure })
+      });
+      const json = await res.json();
+      if (json.ok) {
+        fermerBilan();
+        toast(`✓ Bilan programmé le ${jours[jour]} à ${heure}h`);
+        if (boitesState[currentBilanBoiteId]) {
+          boitesState[currentBilanBoiteId].bilan_jour  = jour;
+          boitesState[currentBilanBoiteId].bilan_heure = heure;
+        }
+      } else {
+        toast('⚠️ ' + (json.message || 'Erreur'));
       }
     }
 

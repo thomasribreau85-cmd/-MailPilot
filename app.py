@@ -205,6 +205,8 @@ def register():
             "connecte":      provider == "imap",
             "labels_actifs": LABELS_DEFAUT,
             "intervalle":    "60",
+            "bilan_jour":    "0",   # 0=lundi par défaut
+            "bilan_heure":   "8",   # 8h par défaut
         }
         if provider == "imap":
             boite.update({
@@ -416,6 +418,8 @@ def ajouter_boite(compte_id):
         "connecte":      provider == "imap",
         "labels_actifs": LABELS_DEFAUT,
         "intervalle":    "60",
+        "bilan_jour":    "0",
+        "bilan_heure":   "8",
     }
     if provider == "imap":
         imap_server = d.get("imap_server", "").strip()
@@ -684,6 +688,8 @@ def demarrer(compte_id, boite_id):
         "MAIL_PROVIDER":     provider,
         "COMPTE_ID":         pk,
         "STATS_DIR":         str(DATA_DIR),
+        "BILAN_JOUR":        str(b.get("bilan_jour",  "0")),
+        "BILAN_HEURE":       str(b.get("bilan_heure", "8")),
     })
     if provider == "microsoft":
         env.update({
@@ -761,8 +767,34 @@ def statut_compte(compte_id):
             "emails_traites": emails_comptes.get(pk, 0),
             "logs":           logs,
             "oauth":          oauth_statut.get(pk, ""),
+            "bilan_jour":     b.get("bilan_jour",  "0"),
+            "bilan_heure":    b.get("bilan_heure", "8"),
         })
     return jsonify({"boites": boites_statut})
+
+
+# ── Paramètres bilan ──────────────────────────────────────────
+
+@app.route("/parametres_bilan/<compte_id>/<boite_id>", methods=["POST"])
+def parametres_bilan(compte_id, boite_id):
+    if not check_access(compte_id):
+        return jsonify({"ok": False, "message": "Accès refusé"}), 403
+    d    = request.json
+    data = charger_comptes()
+    c    = trouver_compte(data, compte_id)
+    b    = trouver_boite(c, boite_id) if c else None
+    if not b:
+        return jsonify({"ok": False, "message": "Boîte introuvable"}), 404
+    jour  = str(d.get("bilan_jour",  "0"))
+    heure = str(d.get("bilan_heure", "8"))
+    if jour not in [str(i) for i in range(7)]:
+        return jsonify({"ok": False, "message": "Jour invalide"})
+    if heure not in [str(i) for i in range(24)]:
+        return jsonify({"ok": False, "message": "Heure invalide"})
+    b["bilan_jour"]  = jour
+    b["bilan_heure"] = heure
+    sauver_comptes(data)
+    return jsonify({"ok": True})
 
 
 # ── Labels ────────────────────────────────────────────────────

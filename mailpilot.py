@@ -1009,7 +1009,9 @@ def boucle_principale():
 
     logger.info("\n🚀 MailPilot actif ! Surveillance en cours...\n")
 
-    dernier_bilan_lundi = None
+    dernier_bilan_date = None
+    bilan_jour  = int(os.getenv("BILAN_JOUR",  "0"))   # 0=lundi … 6=dimanche
+    bilan_heure = int(os.getenv("BILAN_HEURE", "8"))   # heure 0-23
 
     # --- Boucle infinie ---
     while True:
@@ -1017,10 +1019,10 @@ def boucle_principale():
             maintenant  = datetime.now()
             email_agent = os.getenv("AGENT_EMAIL")
 
-            # --- Bilan hebdomadaire (lundi à 8h, une seule fois) ---
-            if maintenant.weekday() == 0 and maintenant.hour == 8:
-                lundi_actuel = maintenant.date()
-                if dernier_bilan_lundi != lundi_actuel:
+            # --- Bilan hebdomadaire (jour/heure configurables) ---
+            if maintenant.weekday() == bilan_jour and maintenant.hour == bilan_heure:
+                jour_actuel = maintenant.date()
+                if dernier_bilan_date != jour_actuel:
                     if mail_provider == "gmail":
                         envoyer_bilan_hebdo(service, email_agent)
                     else:
@@ -1044,7 +1046,7 @@ def boucle_principale():
                             archiver_semaine_dans_historique(stats_h)
                             sauver_stats_semaine({"semaine": semaine, "annee": maintenant.year,
                                                   "traites": 0, "brouillons": 0, "categories": {}})
-                    dernier_bilan_lundi = lundi_actuel
+                    dernier_bilan_date = jour_actuel
 
             logger.info("🔍 Vérification des emails non lus...")
 
