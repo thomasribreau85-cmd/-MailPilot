@@ -198,6 +198,12 @@ def dashboard():
     if not compte:
         session.clear()
         return redirect("/login")
+    # Pour Microsoft : si le fichier token n'existe plus, on remet à zéro
+    if compte.get("provider") == "microsoft" and compte.get("token"):
+        if not Path(compte["token"]).exists():
+            compte["token"]    = ""
+            compte["connecte"] = False
+            sauver_comptes(data)
     return render_template("client.html", compte=compte)
 
 @app.route("/logout")
