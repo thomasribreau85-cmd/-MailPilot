@@ -8,16 +8,24 @@ import sys
 import os
 import uuid
 import json
+import time
 import secrets
 import threading
 import subprocess
 from pathlib import Path
+from urllib.parse import urlencode
 
+import requests as http_requests
 from flask import Flask, render_template, request, jsonify, redirect, session
 from werkzeug.security import generate_password_hash, check_password_hash
 from google_auth_oauthlib.flow import InstalledAppFlow, Flow
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
+
+# --- Microsoft OAuth ---
+MS_AUTH_URL   = "https://login.microsoftonline.com/common/oauth2/v2.0/authorize"
+MS_TOKEN_URL  = "https://login.microsoftonline.com/common/oauth2/v2.0/token"
+MS_SCOPES     = "https://graph.microsoft.com/Mail.Read https://graph.microsoft.com/Mail.ReadWrite https://graph.microsoft.com/Mail.Send offline_access"
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY", secrets.token_hex(32))
@@ -418,6 +426,95 @@ def statut_oauth(compte_id):
     return jsonify({"statut": oauth_statut.get(compte_id, "")})
 
 
+# ── OAuth Microsoft ────────────────────────────────────────────
+
+@app.route("/connecter_microsoft/<compte_id>", methods=["POST"])
+def connecter_microsoft(compte_id):
+    """Lance le flux OAuth Microsoft."""
+    if not check_access(compte_id):
+        return jsonify({"ok": False, "message": "Accès refusé"}), 403
+    if oauth_statut.get(compte_id) == "en_cours":
+        return jsonify({"ok": False, "message": "Connexion déjà en cours…"})
+
+    client_id = os.environ.get("MICROSOFT_CLIENT_ID", "")
+    if not client_id:
+        return jsonify({"ok": False, "message": "Microsoft OAuth non configuré (MICROSOFT_CLIENT_ID manquant dans Railway)"})
+
+    is_local   = request.host.startswith('127') or request.host.startswith('localhost')
+    scheme     = 'http' if is_local else 'https'
+    redirect_uri = f'{scheme}://{request.host}/oauth/microsoft/callback'
+
+    state = secrets.token_urlsafe(16)
+    oauth_flows[state] = {"compte_id": compte_id, "provider": "microsoft", "redirect_uri": redirect_uri}
+    oauth_statut[compte_id] = "en_cours"
+
+    params = {
+        "client_id":     client_id,
+        "response_type": "code",
+        "redirect_uri":  redirect_uri,
+        "scope":         MS_SCOPES,
+        "state":         state,
+        "response_mode": "query",
+    }
+    auth_url = MS_AUTH_URL + "?" + urlencode(params)
+    return jsonify({"ok": True, "auth_url": auth_url})
+
+
+@app.route("/oauth/microsoft/callback")
+def microsoft_callback():
+    """Reçoit le code OAuth de Microsoft et enregistre le token."""
+    state = request.args.get("state")
+    code  = request.args.get("code")
+    error = request.args.get("error")
+
+    flow_data = oauth_flows.pop(state, None)
+    compte_id = flow_data["compte_id"] if flow_data else None
+
+    if error or not flow_data or not code:
+        if compte_id:
+            oauth_statut[compte_id] = "erreur"
+        return redirect("/dashboard")
+
+    redirect_uri = flow_data["redirect_uri"]
+    try:
+        resp = http_requests.post(MS_TOKEN_URL, data={
+            "client_id":     os.environ.get("MICROSOFT_CLIENT_ID", ""),
+            "client_secret": os.environ.get("MICROSOFT_CLIENT_SECRET", ""),
+            "code":          code,
+            "redirect_uri":  redirect_uri,
+            "grant_type":    "authorization_code",
+        })
+        token_data = resp.json()
+        if "access_token" not in token_data:
+            raise Exception(f"Réponse Microsoft invalide : {token_data}")
+
+        token_path = str(TOKENS_DIR / f"token_ms_{compte_id}.json")
+        with open(token_path, "w") as f:
+            json.dump({
+                "access_token":  token_data["access_token"],
+                "refresh_token": token_data.get("refresh_token", ""),
+                "expires_at":    time.time() + token_data.get("expires_in", 3600),
+            }, f)
+
+        data = charger_comptes()
+        c = trouver_compte(data, compte_id)
+        if c:
+            c["connecte"] = True
+            c["token"]    = token_path
+            sauver_comptes(data)
+
+        oauth_statut[compte_id] = "ok"
+
+    except Exception as e:
+        oauth_statut[compte_id] = "erreur"
+        with lock:
+            logs_par_compte.setdefault(compte_id, []).append(f"[ERREUR OAuth Microsoft] {e}")
+
+    if session.get("admin"):
+        return redirect("/admin-dashboard")
+    return redirect("/dashboard")
+
+
 @app.route("/demarrer/<compte_id>", methods=["POST"])
 def demarrer(compte_id):
     if not check_access(compte_id):
@@ -448,7 +545,13 @@ def demarrer(compte_id):
         "LABELS_ACTIFS":     ",".join(c.get("labels_actifs", list(TOUS_LES_LABELS.keys())[:7])),
         "MAIL_PROVIDER":     provider,
     })
-    if provider != "gmail":
+    if provider == "microsoft":
+        env.update({
+            "MICROSOFT_TOKEN_PATH":   c.get("token", ""),
+            "MICROSOFT_CLIENT_ID":    os.environ.get("MICROSOFT_CLIENT_ID", ""),
+            "MICROSOFT_CLIENT_SECRET": os.environ.get("MICROSOFT_CLIENT_SECRET", ""),
+        })
+    elif provider == "imap":
         env.update({
             "IMAP_SERVER":   c.get("imap_server", ""),
             "IMAP_PORT":     str(c.get("imap_port", "993")),

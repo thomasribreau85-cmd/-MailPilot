@@ -24,6 +24,7 @@ import imaplib
 import smtplib
 import ssl
 import email as email_lib
+import requests as http_requests
 from datetime import datetime, date
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
@@ -649,7 +650,133 @@ def traiter_email(service, client_anthropic, email, label_ids):
 
 
 # ============================================================
-# ADAPTATEUR IMAP / SMTP (Outlook, OVH, Orange, Free, etc.)
+# ADAPTATEUR MICROSOFT GRAPH API (Outlook / Microsoft 365)
+# ============================================================
+
+MS_GRAPH = "https://graph.microsoft.com/v1.0"
+
+def ms_get_token():
+    """Retourne un access token Microsoft valide (rafraîchi si nécessaire)."""
+    token_path = os.getenv("MICROSOFT_TOKEN_PATH", "")
+    if not token_path or not os.path.exists(token_path):
+        raise Exception("Token Microsoft introuvable")
+    with open(token_path) as f:
+        data = json.load(f)
+    # Rafraîchit si expiré (avec 5 min de marge)
+    if data.get("expires_at", 0) < time.time() + 300:
+        resp = http_requests.post(
+            "https://login.microsoftonline.com/common/oauth2/v2.0/token",
+            data={
+                "client_id":     os.getenv("MICROSOFT_CLIENT_ID", ""),
+                "client_secret": os.getenv("MICROSOFT_CLIENT_SECRET", ""),
+                "refresh_token": data["refresh_token"],
+                "grant_type":    "refresh_token",
+            }
+        )
+        new_token = resp.json()
+        if "access_token" not in new_token:
+            raise Exception(f"Refresh Microsoft échoué : {new_token}")
+        data["access_token"] = new_token["access_token"]
+        data["expires_at"]   = time.time() + new_token.get("expires_in", 3600)
+        if "refresh_token" in new_token:
+            data["refresh_token"] = new_token["refresh_token"]
+        with open(token_path, "w") as f:
+            json.dump(data, f)
+    return data["access_token"]
+
+def ms_headers():
+    return {"Authorization": f"Bearer {ms_get_token()}", "Content-Type": "application/json"}
+
+def lire_emails_non_lus_microsoft():
+    """Lit les emails non lus via Microsoft Graph API."""
+    url = f"{MS_GRAPH}/me/messages?$filter=isRead eq false&$top=50&$select=id,subject,from,body,receivedDateTime"
+    resp = http_requests.get(url, headers=ms_headers())
+    resp.raise_for_status()
+    messages = resp.json().get("value", [])
+    emails = []
+    for m in messages:
+        corps = m.get("body", {}).get("content", "")
+        # Nettoie le HTML basique
+        import re
+        corps = re.sub(r'<[^>]+>', ' ', corps)[:3000]
+        emails.append({
+            "id":         m["id"],
+            "sujet":      m.get("subject", ""),
+            "expediteur": m.get("from", {}).get("emailAddress", {}).get("address", ""),
+            "corps":      corps.strip(),
+            "message_id": m["id"],
+        })
+    return emails
+
+def appliquer_label_microsoft(msg_id, categorie):
+    """Déplace l'email dans un dossier MailPilot/catégorie via Graph API."""
+    # Crée le dossier si besoin
+    try:
+        http_requests.post(f"{MS_GRAPH}/me/mailFolders", headers=ms_headers(),
+                           json={"displayName": "MailPilot"})
+    except Exception:
+        pass
+    # Récupère l'ID du dossier MailPilot
+    r = http_requests.get(f"{MS_GRAPH}/me/mailFolders?$filter=displayName eq 'MailPilot'",
+                          headers=ms_headers())
+    dossiers = r.json().get("value", [])
+    if not dossiers:
+        return
+    dossier_id = dossiers[0]["id"]
+    # Crée le sous-dossier catégorie
+    try:
+        http_requests.post(f"{MS_GRAPH}/me/mailFolders/{dossier_id}/childFolders",
+                           headers=ms_headers(), json={"displayName": categorie})
+    except Exception:
+        pass
+    r2 = http_requests.get(f"{MS_GRAPH}/me/mailFolders/{dossier_id}/childFolders?$filter=displayName eq '{categorie}'",
+                           headers=ms_headers())
+    sous_dossiers = r2.json().get("value", [])
+    if not sous_dossiers:
+        return
+    sous_id = sous_dossiers[0]["id"]
+    http_requests.post(f"{MS_GRAPH}/me/messages/{msg_id}/move",
+                       headers=ms_headers(), json={"destinationId": sous_id})
+
+def marquer_comme_lu_microsoft(msg_id):
+    """Marque l'email comme lu via Graph API."""
+    http_requests.patch(f"{MS_GRAPH}/me/messages/{msg_id}",
+                        headers=ms_headers(), json={"isRead": True})
+
+def creer_brouillon_microsoft(email_data, texte_reponse):
+    """Crée un brouillon de réponse via Graph API."""
+    body = {
+        "subject": f"Re: {email_data['sujet']}",
+        "body": {"contentType": "Text", "content": texte_reponse},
+        "toRecipients": [{"emailAddress": {"address": email_data["expediteur"]}}],
+        "isDraft": True,
+    }
+    resp = http_requests.post(f"{MS_GRAPH}/me/messages", headers=ms_headers(), json=body)
+    if resp.status_code in (200, 201):
+        logger.info("  ✓ Brouillon Microsoft créé")
+        return True
+    logger.error(f"  ✗ Erreur brouillon Microsoft : {resp.text}")
+    return False
+
+def envoyer_notification_microsoft(sujet, corps):
+    """Envoie un email de notification via Graph API."""
+    email_agent = os.getenv("AGENT_EMAIL")
+    body = {
+        "message": {
+            "subject": sujet,
+            "body": {"contentType": "Text", "content": corps},
+            "toRecipients": [{"emailAddress": {"address": email_agent}}],
+        }
+    }
+    try:
+        http_requests.post(f"{MS_GRAPH}/me/sendMail", headers=ms_headers(), json=body)
+        logger.info(f"✉️  Notification Microsoft envoyée à {email_agent}")
+    except Exception as e:
+        logger.error(f"Erreur notification Microsoft : {e}")
+
+
+# ============================================================
+# ADAPTATEUR IMAP / SMTP (OVH, Orange, Free, etc.)
 # ============================================================
 
 def _decode_header_str(valeur):
@@ -821,6 +948,14 @@ def boucle_principale():
         except Exception as e:
             logger.critical(f"Impossible de créer les labels : {e}")
             raise
+    elif mail_provider == "microsoft":
+        logger.info("Vérification token Microsoft...")
+        try:
+            ms_get_token()
+            logger.info("✓ Microsoft Graph connecté")
+        except Exception as e:
+            logger.critical(f"Impossible de se connecter à Microsoft Graph : {e}")
+            raise
     else:
         logger.info(f"Connexion IMAP ({os.getenv('IMAP_SERVER')})...")
         try:
@@ -857,7 +992,6 @@ def boucle_principale():
                     else:
                         stats_h = charger_stats_semaine()
                         if stats_h["traites"] > 0:
-                            # Construire le corps du bilan et envoyer via SMTP
                             nb = stats_h["traites"]; nb_b = stats_h["brouillons"]
                             semaine = stats_h["semaine"]
                             lignes = "".join(
@@ -868,7 +1002,11 @@ def boucle_principale():
                             corps = (f"Bonjour,\n\nVoici votre bilan MailPilot semaine {semaine}.\n\n"
                                      f"📊 {nb} email(s) traité(s), {nb_b} brouillon(s)\n\n{lignes}\n"
                                      f"---\nMailPilot — Assistant email IA\n")
-                            envoyer_notification_smtp(f"MailPilot — Bilan semaine {semaine}", corps)
+                            sujet_bilan = f"MailPilot — Bilan semaine {semaine}"
+                            if mail_provider == "microsoft":
+                                envoyer_notification_microsoft(sujet_bilan, corps)
+                            else:
+                                envoyer_notification_smtp(sujet_bilan, corps)
                             sauver_stats_semaine({"semaine": semaine, "annee": maintenant.year,
                                                   "traites": 0, "brouillons": 0, "categories": {}})
                     dernier_bilan_lundi = lundi_actuel
@@ -878,6 +1016,8 @@ def boucle_principale():
             # --- Lecture des emails selon le provider ---
             if mail_provider == "gmail":
                 emails = lire_emails_non_lus(service)
+            elif mail_provider == "microsoft":
+                emails = lire_emails_non_lus_microsoft()
             else:
                 # Reconnexion IMAP si la session a expiré
                 try:
@@ -897,6 +1037,18 @@ def boucle_principale():
                     try:
                         if mail_provider == "gmail":
                             resultat = traiter_email(service, client_anthropic, em, label_ids)
+                        elif mail_provider == "microsoft":
+                            # --- Pipeline Microsoft Graph ---
+                            categorie = classifier_email(client_anthropic, em)
+                            logger.info(f"  → Catégorie : {categorie}")
+                            appliquer_label_microsoft(em["id"], categorie)
+                            marquer_comme_lu_microsoft(em["id"])
+                            brouillon_cree = False
+                            if categorie != "INUTILE":
+                                texte = rediger_reponse(client_anthropic, em, categorie)
+                                if texte:
+                                    brouillon_cree = creer_brouillon_microsoft(em, texte)
+                            resultat = {"categorie": categorie, "brouillon_cree": brouillon_cree}
                         else:
                             # --- Pipeline IMAP ---
                             categorie = classifier_email(client_anthropic, em)
@@ -920,10 +1072,10 @@ def boucle_principale():
                         logger.error(f"  ✗ Erreur sur '{em.get('sujet','?')}' : {e}")
 
                 if stats["traites"] > 0:
+                    nb = stats["traites"]; nb_b = stats["brouillons"]
                     if mail_provider == "gmail":
                         envoyer_notification(service, email_agent, stats)
                     else:
-                        nb = stats["traites"]; nb_b = stats["brouillons"]
                         lignes = "".join(
                             f"  {TOUS_LES_LABELS.get(c,{}).get('emoji','•')} "
                             f"{TOUS_LES_LABELS.get(c,{}).get('nom',c)} : {n} email(s)\n"
@@ -933,8 +1085,11 @@ def boucle_principale():
                                  f"📊 {nb} email(s) traité(s), {nb_b} brouillon(s)\n\n{lignes}\n"
                                  f"👉 Consultez vos brouillons pour valider les réponses.\n\n"
                                  f"---\nMailPilot — Assistant email IA\n")
-                        envoyer_notification_smtp(
-                            f"MailPilot — {nb} email(s) traité(s), {nb_b} brouillon(s)", corps)
+                        sujet_notif = f"MailPilot — {nb} email(s) traité(s), {nb_b} brouillon(s)"
+                        if mail_provider == "microsoft":
+                            envoyer_notification_microsoft(sujet_notif, corps)
+                        else:
+                            envoyer_notification_smtp(sujet_notif, corps)
                     accumuler_stats_semaine(stats)
 
         except Exception as e:

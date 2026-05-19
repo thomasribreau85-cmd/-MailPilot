@@ -105,7 +105,7 @@
       <button class="provider-btn active" onclick="setProvider('gmail')" id="btn-gmail">
         <span class="icon">📧</span>Gmail
       </button>
-      <button class="provider-btn" onclick="setProvider('outlook')" id="btn-outlook">
+      <button class="provider-btn" onclick="setProvider('microsoft')" id="btn-microsoft">
         <span class="icon">💼</span>Outlook
       </button>
       <button class="provider-btn" onclick="setProvider('imap')" id="btn-imap">
@@ -117,20 +117,25 @@
     <label>Adresse email à connecter *</label>
     <input type="email" id="email" placeholder="votre@email.com" autocomplete="email" />
 
-    <!-- Section IMAP (Outlook + Autre) -->
+    <!-- Info Microsoft OAuth -->
+    <div class="imap-section" id="microsoft-section">
+      <div class="info-box">
+        💼 Vous serez redirigé vers Microsoft pour autoriser l'accès à votre boîte mail après la création du compte.
+      </div>
+    </div>
+
+    <!-- Section IMAP (Autre uniquement) -->
     <div class="imap-section" id="imap-section">
       <div class="section-title">Connexion IMAP / SMTP</div>
 
       <div class="info-box">
         💡 Utilisez un <strong>mot de passe d'application</strong> (pas votre mot de passe habituel).
-        Outlook : Paramètres → Sécurité → Mots de passe d'application.
       </div>
 
       <div class="preset-row">
         <label>Préconfigurer :</label>
         <select onchange="appliquerPreset(this.value)">
           <option value="">Choisir un fournisseur...</option>
-          <option value="outlook">Outlook / Hotmail / Live</option>
           <option value="ovh">OVH Mail</option>
           <option value="orange">Orange</option>
           <option value="free">Free</option>
@@ -193,18 +198,14 @@
 
     function setProvider(p) {
       provider = p;
-      ['gmail','outlook','imap'].forEach(id => {
-        document.getElementById('btn-' + id).classList.toggle('active', id === p);
+      ['gmail','microsoft','imap'].forEach(id => {
+        const btn = document.getElementById('btn-' + id);
+        if (btn) btn.classList.toggle('active', id === p);
       });
-      const imapSection = document.getElementById('imap-section');
-      if (p === 'gmail') {
-        imapSection.classList.remove('visible');
-        document.getElementById('email').placeholder = 'votre@gmail.com';
-      } else {
-        imapSection.classList.add('visible');
-        document.getElementById('email').placeholder = p === 'outlook' ? 'votre@outlook.com' : 'votre@email.com';
-        if (p === 'outlook') appliquerPreset('outlook');
-      }
+      document.getElementById('microsoft-section').classList.toggle('visible', p === 'microsoft');
+      document.getElementById('imap-section').classList.toggle('visible', p === 'imap');
+      const placeholders = { gmail: 'votre@gmail.com', microsoft: 'votre@outlook.com', imap: 'votre@email.com' };
+      document.getElementById('email').placeholder = placeholders[p] || 'votre@email.com';
     }
 
     function appliquerPreset(val) {
@@ -238,7 +239,7 @@
 
       const body = { nom, email, agence, tel, zone, password: pwd, provider };
 
-      if (provider !== 'gmail') {
+      if (provider === 'imap') {
         const imap_server   = document.getElementById('imap_server').value.trim();
         const imap_port     = document.getElementById('imap_port').value.trim();
         const smtp_server   = document.getElementById('smtp_server').value.trim();

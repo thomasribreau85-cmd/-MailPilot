@@ -170,7 +170,9 @@
       <div id="btn-zone">
         {% if compte.connecte %}
         <button class="btn btn-start" onclick="demarrer()">▶ Démarrer</button>
-        {% elif compte.provider == 'gmail' or not compte.provider %}
+        {% elif compte.provider == 'microsoft' %}
+        <button class="btn btn-connect" id="btn-connect" onclick="connecterMicrosoft()">🔗 Connecter Outlook</button>
+        {% elif not compte.provider or compte.provider == 'gmail' %}
         <button class="btn btn-connect" id="btn-connect" onclick="connecterGmail()">🔗 Connecter Gmail</button>
         {% else %}
         <button class="btn btn-start" onclick="demarrer()">▶ Démarrer</button>
@@ -239,6 +241,24 @@
       }
     }
 
+    async function connecterMicrosoft() {
+      const btn = document.getElementById('btn-connect');
+      if (btn) { btn.disabled = true; btn.textContent = '⏳ Connexion…'; }
+      const res  = await fetch(`/connecter_microsoft/${COMPTE_ID}`, { method: 'POST' });
+      const json = await res.json();
+      if (!json.ok) {
+        toast('❌ ' + (json.message || 'Erreur'));
+        if (btn) { btn.disabled = false; btn.textContent = '🔗 Connecter Outlook'; }
+        return;
+      }
+      if (json.auth_url) {
+        window.location.href = json.auth_url;
+      } else {
+        toast('✓ ' + (json.message || 'Outlook connecté !'));
+        rafraichir();
+      }
+    }
+
     async function demarrer() {
       const res  = await fetch(`/demarrer/${COMPTE_ID}`, { method: 'POST' });
       const json = await res.json();
@@ -279,8 +299,9 @@
         bar.className = 'status-bar';
         bar.textContent = '⏸ Agent arrêté — cliquez Démarrer pour lancer';
       } else {
+        const msgs = { gmail: '🔗 Gmail non connecté', microsoft: '🔗 Outlook non connecté' };
         bar.className = 'status-bar warn';
-        bar.textContent = d.provider === 'gmail' || !d.provider ? '🔗 Gmail non connecté' : '⚠️ Configuration incomplète';
+        bar.textContent = msgs[d.provider] || '⚠️ Boîte mail non connectée';
       }
 
       // Bouton
@@ -289,7 +310,9 @@
         zone.innerHTML = `<button class="btn btn-stop" onclick="arreter()">⏹ Arrêter</button>`;
       } else if (d.connecte) {
         zone.innerHTML = `<button class="btn btn-start" onclick="demarrer()">▶ Démarrer</button>`;
-      } else if (d.provider === 'gmail' || !d.provider) {
+      } else if (d.provider === 'microsoft') {
+        zone.innerHTML = `<button class="btn btn-connect" id="btn-connect" onclick="connecterMicrosoft()">🔗 Connecter Outlook</button>`;
+      } else if (!d.provider || d.provider === 'gmail') {
         zone.innerHTML = `<button class="btn btn-connect" id="btn-connect" onclick="connecterGmail()">🔗 Connecter Gmail</button>`;
       } else {
         zone.innerHTML = `<button class="btn btn-start" onclick="demarrer()">▶ Démarrer</button>`;
