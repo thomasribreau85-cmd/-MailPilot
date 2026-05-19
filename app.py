@@ -507,6 +507,7 @@ def statut_compte(compte_id):
         "emails_traites": emails_comptes.get(compte_id, 0),
         "logs":           logs,
         "oauth":          oauth_statut.get(compte_id, ""),
+        "provider":       c.get("provider", "gmail") if c else "gmail",
     })
 
 
