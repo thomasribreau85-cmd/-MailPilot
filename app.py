@@ -167,11 +167,11 @@ def register():
             "zone":          d.get("zone", ""),
             "intervalle":    "60",
             "provider":      provider,
-            "connecte":      provider != "gmail",  # IMAP : connecté dès l'inscription
+            "connecte":      provider == "imap",    # IMAP : connecté dès l'inscription, Microsoft/Gmail nécessitent OAuth
             "token":         "",
             "labels_actifs": LABELS_DEFAUT,
         }
-        if provider != "gmail":
+        if provider == "imap":
             compte["imap_server"]   = d.get("imap_server", "")
             compte["imap_port"]     = d.get("imap_port", "993")
             compte["smtp_server"]   = d.get("smtp_server", "")
@@ -529,7 +529,9 @@ def demarrer(compte_id):
     provider = c.get("provider", "gmail")
     if provider == "gmail" and (not c.get("connecte") or not c.get("token")):
         return jsonify({"ok": False, "message": "Connecte d'abord Gmail !"})
-    if provider != "gmail" and not c.get("imap_server"):
+    elif provider == "microsoft" and not c.get("token"):
+        return jsonify({"ok": False, "message": "Connecte d'abord Outlook ! (bouton 🔗 Connecter Outlook)"})
+    elif provider == "imap" and not c.get("imap_server"):
         return jsonify({"ok": False, "message": "Configuration IMAP incomplète."})
 
     # Prépare les variables d'environnement pour ce compte

@@ -191,7 +191,7 @@
 
     <div class="card-btns">
       <div id="btn-zone">
-        {% if compte.connecte %}
+        {% if compte.connecte and (compte.provider not in ['gmail', 'microsoft'] or compte.token) %}
         <button class="btn btn-start" onclick="demarrer()">▶ Démarrer</button>
         {% elif compte.provider == 'microsoft' %}
         <button class="btn btn-connect" id="btn-connect" onclick="connecterMicrosoft()">🔗 Connecter Outlook</button>
