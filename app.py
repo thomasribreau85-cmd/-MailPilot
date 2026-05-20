@@ -205,8 +205,9 @@ def register():
             "connecte":      provider == "imap",
             "labels_actifs": LABELS_DEFAUT,
             "intervalle":    "60",
-            "bilan_jour":    "0",   # 0=lundi par défaut
-            "bilan_heure":   "8",   # 8h par défaut
+            "bilan_jour":    "0",
+            "bilan_heure":   "8",
+            "instructions":  "",
         }
         if provider == "imap":
             boite.update({
@@ -420,6 +421,7 @@ def ajouter_boite(compte_id):
         "intervalle":    "60",
         "bilan_jour":    "0",
         "bilan_heure":   "8",
+        "instructions":  "",
     }
     if provider == "imap":
         imap_server = d.get("imap_server", "").strip()
@@ -688,8 +690,9 @@ def demarrer(compte_id, boite_id):
         "MAIL_PROVIDER":     provider,
         "COMPTE_ID":         pk,
         "STATS_DIR":         str(DATA_DIR),
-        "BILAN_JOUR":        str(b.get("bilan_jour",  "0")),
-        "BILAN_HEURE":       str(b.get("bilan_heure", "8")),
+        "BILAN_JOUR":          str(b.get("bilan_jour",  "0")),
+        "BILAN_HEURE":         str(b.get("bilan_heure", "8")),
+        "AGENT_INSTRUCTIONS":  b.get("instructions", ""),
     })
     if provider == "microsoft":
         env.update({
@@ -767,8 +770,9 @@ def statut_compte(compte_id):
             "emails_traites": emails_comptes.get(pk, 0),
             "logs":           logs,
             "oauth":          oauth_statut.get(pk, ""),
-            "bilan_jour":     b.get("bilan_jour",  "0"),
-            "bilan_heure":    b.get("bilan_heure", "8"),
+            "bilan_jour":     b.get("bilan_jour",    "0"),
+            "bilan_heure":    b.get("bilan_heure",   "8"),
+            "instructions":   b.get("instructions",  ""),
         })
     return jsonify({"boites": boites_statut})
 
@@ -793,6 +797,23 @@ def parametres_bilan(compte_id, boite_id):
         return jsonify({"ok": False, "message": "Heure invalide"})
     b["bilan_jour"]  = jour
     b["bilan_heure"] = heure
+    sauver_comptes(data)
+    return jsonify({"ok": True})
+
+
+# ── Instructions IA ───────────────────────────────────────────
+
+@app.route("/sauvegarder_instructions/<compte_id>/<boite_id>", methods=["POST"])
+def sauvegarder_instructions(compte_id, boite_id):
+    if not check_access(compte_id):
+        return jsonify({"ok": False, "message": "Accès refusé"}), 403
+    d    = request.json or {}
+    data = charger_comptes()
+    c    = trouver_compte(data, compte_id)
+    b    = trouver_boite(c, boite_id) if c else None
+    if not b:
+        return jsonify({"ok": False, "message": "Boîte introuvable"}), 404
+    b["instructions"] = d.get("instructions", "").strip()[:2000]  # max 2000 chars
     sauver_comptes(data)
     return jsonify({"ok": True})
 

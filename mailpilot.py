@@ -334,6 +334,11 @@ def rediger_reponse(client_anthropic, email, categorie):
         zone=os.getenv("AGENT_ZONE", "la région"),
     )
 
+    # Ajoute les instructions personnalisées du client si définies
+    instructions = os.getenv("AGENT_INSTRUCTIONS", "").strip()
+    if instructions:
+        prompt += f"\n\n--- CONSIGNES PERSONNALISÉES (à respecter impérativement) ---\n{instructions}\n---"
+
     # Ajoute le contenu de l'email reçu
     contenu_email = f"""SUJET : {email['sujet']}
 EXPÉDITEUR : {email['expediteur']}

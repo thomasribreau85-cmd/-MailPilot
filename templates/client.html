@@ -307,6 +307,27 @@
     </div>
   </div>
 
+  <!-- Modal Instructions IA -->
+  <div class="overlay" id="overlay-instructions" onclick="if(event.target===this)fermerInstructions()">
+    <div class="modal" style="max-width:460px">
+      <h2>✍️ Instructions personnalisées</h2>
+      <p class="subtitle">Donne des consignes à l'IA pour cette boîte mail. Elle les respectera à chaque réponse.</p>
+
+      <label class="form-label">Tes consignes</label>
+      <textarea id="instr-texte" class="form-input" rows="6" maxlength="2000"
+        placeholder="Exemples :&#10;• Réponds toujours en français formel&#10;• Signe avec « Cordialement, Jean Dupont »&#10;• Mentionne nos horaires : lun-ven 9h-18h&#10;• Ne jamais promettre de délai sans valider avec moi"
+        style="resize:vertical;font-size:13px;line-height:1.5;"></textarea>
+      <div style="font-size:11px;color:var(--muted);text-align:right;margin-top:4px;">
+        <span id="instr-count">0</span>/2000 caractères
+      </div>
+
+      <div class="modal-btns">
+        <button class="btn-cancel" onclick="fermerInstructions()">Annuler</button>
+        <button class="btn-save" onclick="sauvegarderInstructions()">Sauvegarder</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Modal Ajouter boîte -->
   <div class="overlay" id="overlay-ajout" onclick="if(event.target===this)fermerAjoutBoite()">
     <div class="modal">
@@ -479,6 +500,7 @@
             <button class="action-btn" onclick="ouvrirLabels('${id}')">⚙️ Catégories</button>
             <button class="action-btn" onclick="ouvrirStats('${id}', '${email}')">📊 Stats</button>
             <button class="action-btn" onclick="ouvrirBilan('${id}')">⏰ Bilan hebdo</button>
+            <button class="action-btn" onclick="ouvrirInstructions('${id}')">✍️ Instructions IA</button>
             <button class="action-btn" onclick="toggleLogs('${id}')">▾ Journal</button>
           </div>
           <div class="log-feed ${logsHtml}" id="log-${id}">
@@ -743,6 +765,45 @@
         if (boitesState[currentBilanBoiteId]) {
           boitesState[currentBilanBoiteId].bilan_jour  = jour;
           boitesState[currentBilanBoiteId].bilan_heure = heure;
+        }
+      } else {
+        toast('⚠️ ' + (json.message || 'Erreur'));
+      }
+    }
+
+    // ── Instructions IA ───────────────────────────────────────
+    let currentInstrBoiteId = null;
+
+    function ouvrirInstructions(boiteId) {
+      currentInstrBoiteId = boiteId;
+      const b = boitesState[boiteId] || {};
+      const ta = document.getElementById('instr-texte');
+      ta.value = b.instructions || '';
+      document.getElementById('instr-count').textContent = ta.value.length;
+      document.getElementById('overlay-instructions').classList.add('open');
+    }
+
+    function fermerInstructions() {
+      document.getElementById('overlay-instructions').classList.remove('open');
+    }
+
+    document.getElementById('instr-texte').addEventListener('input', function() {
+      document.getElementById('instr-count').textContent = this.value.length;
+    });
+
+    async function sauvegarderInstructions() {
+      const texte = document.getElementById('instr-texte').value.trim();
+      const res = await fetch(`/sauvegarder_instructions/${COMPTE_ID}/${currentInstrBoiteId}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ instructions: texte })
+      });
+      const json = await res.json();
+      if (json.ok) {
+        fermerInstructions();
+        toast(texte ? '✓ Instructions enregistrées' : '✓ Instructions effacées');
+        if (boitesState[currentInstrBoiteId]) {
+          boitesState[currentInstrBoiteId].instructions = texte;
         }
       } else {
         toast('⚠️ ' + (json.message || 'Erreur'));
