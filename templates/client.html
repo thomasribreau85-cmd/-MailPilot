@@ -209,6 +209,55 @@
     .cat-count  { font-size: 12px; color: var(--muted); min-width: 30px; text-align: right; }
     .stats-semaine-label { font-size: 11px; color: var(--muted); margin-bottom: 8px; }
 
+    /* ── Onboarding wizard ── */
+    .wizard-overlay {
+      display: none; position: fixed; inset: 0;
+      background: rgba(0,0,0,.92); z-index: 300;
+      align-items: center; justify-content: center; padding: 20px;
+    }
+    .wizard-overlay.open { display: flex; }
+    .wizard-box {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 20px; padding: 36px 32px; width: 100%; max-width: 480px;
+    }
+    .wizard-steps {
+      display: flex; gap: 6px; margin-bottom: 32px;
+    }
+    .wizard-step-dot {
+      flex: 1; height: 3px; border-radius: 2px; background: var(--border);
+      transition: background .3s;
+    }
+    .wizard-step-dot.active  { background: var(--blue); }
+    .wizard-step-dot.done    { background: var(--green); }
+    .wizard-icon { font-size: 40px; margin-bottom: 16px; }
+    .wizard-title { font-size: 20px; font-weight: 700; margin-bottom: 8px; }
+    .wizard-sub   { font-size: 13px; color: var(--muted); margin-bottom: 28px; line-height: 1.6; }
+    .wizard-provider-grid {
+      display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 24px;
+    }
+    .wizard-provider-card {
+      border: 2px solid var(--border); border-radius: 12px;
+      padding: 16px 8px; text-align: center; cursor: pointer;
+      background: #111; transition: all .15s;
+    }
+    .wizard-provider-card:hover  { border-color: var(--blue); }
+    .wizard-provider-card.active { border-color: var(--blue); background: #0d1a2e; }
+    .wizard-provider-card .wp-icon  { font-size: 24px; display: block; margin-bottom: 6px; }
+    .wizard-provider-card .wp-label { font-size: 12px; font-weight: 600; }
+    .wizard-btn {
+      width: 100%; padding: 13px; background: var(--blue); border: none;
+      border-radius: 10px; color: #fff; font-size: 15px; font-weight: 600;
+      cursor: pointer; font-family: inherit; margin-top: 4px; transition: opacity .15s;
+    }
+    .wizard-btn:disabled { opacity: .4; cursor: not-allowed; }
+    .wizard-btn-skip {
+      width: 100%; padding: 10px; background: transparent; border: none;
+      color: var(--muted); font-size: 13px; cursor: pointer;
+      font-family: inherit; margin-top: 8px;
+    }
+    .wizard-btn-skip:hover { color: var(--text); }
+    .wizard-success { text-align: center; padding: 12px 0; }
+
     /* Toast */
     #toast {
       position: fixed; bottom: 28px; left: 50%;
@@ -244,6 +293,86 @@
   <button class="add-boite-btn" onclick="ouvrirAjoutBoite()">
     + Ajouter une boîte mail
   </button>
+
+  <!-- ── Wizard Onboarding ── -->
+  <div class="wizard-overlay" id="wizard-overlay">
+    <div class="wizard-box">
+      <div class="wizard-steps">
+        <div class="wizard-step-dot active" id="wdot-1"></div>
+        <div class="wizard-step-dot" id="wdot-2"></div>
+        <div class="wizard-step-dot" id="wdot-3"></div>
+      </div>
+
+      <!-- Étape 1 : choix provider -->
+      <div id="wstep-1">
+        <div class="wizard-icon">🛩️</div>
+        <div class="wizard-title">Bienvenue sur MailPilot Pro !</div>
+        <div class="wizard-sub">En quelques secondes, ton IA va gérer tes emails à ta place.<br>Commence par choisir ta boîte mail.</div>
+        <div class="wizard-provider-grid">
+          <div class="wizard-provider-card active" id="wp-gmail" onclick="wSetProvider('gmail')">
+            <span class="wp-icon">📧</span>
+            <span class="wp-label">Gmail</span>
+          </div>
+          <div class="wizard-provider-card" id="wp-microsoft" onclick="wSetProvider('microsoft')">
+            <span class="wp-icon">💼</span>
+            <span class="wp-label">Outlook</span>
+          </div>
+          <div class="wizard-provider-card" id="wp-imap" onclick="wSetProvider('imap')">
+            <span class="wp-icon">🌐</span>
+            <span class="wp-label">Autre</span>
+          </div>
+        </div>
+        <button class="wizard-btn" onclick="wStep1Next()">Continuer →</button>
+      </div>
+
+      <!-- Étape 2 : email + connexion -->
+      <div id="wstep-2" style="display:none">
+        <div class="wizard-icon" id="w2-icon">📧</div>
+        <div class="wizard-title" id="w2-title">Connecte ton Gmail</div>
+        <div class="wizard-sub" id="w2-sub">Saisis ton adresse email, puis clique sur le bouton de connexion.</div>
+        <label class="form-label">Adresse email *</label>
+        <input id="w-email" type="email" class="form-input" placeholder="toi@gmail.com" />
+        <div id="w-imap-section" style="display:none">
+          <label class="form-label">Preset</label>
+          <select class="form-input" onchange="wAppliquerPreset(this.value)">
+            <option value="">— Choisir un preset —</option>
+            <option value="ovh">OVH</option>
+            <option value="orange">Orange</option>
+            <option value="free">Free</option>
+            <option value="yahoo">Yahoo</option>
+            <option value="sfr">SFR</option>
+          </select>
+          <div class="form-row">
+            <div><label class="form-label">Serveur IMAP</label><input id="w-imap-server" class="form-input" placeholder="imap.example.com" /></div>
+            <div><label class="form-label">Port</label><input id="w-imap-port" class="form-input" value="993" /></div>
+          </div>
+          <div class="form-row">
+            <div><label class="form-label">Serveur SMTP</label><input id="w-smtp-server" class="form-input" placeholder="smtp.example.com" /></div>
+            <div><label class="form-label">Port</label><input id="w-smtp-port" class="form-input" value="465" /></div>
+          </div>
+          <label class="form-label">Mot de passe</label>
+          <input id="w-imap-pwd" type="password" class="form-input" placeholder="Mot de passe de messagerie" />
+        </div>
+        <div id="w-erreur" style="color:var(--red);font-size:12px;margin-bottom:12px;display:none"></div>
+        <button class="wizard-btn" id="w2-btn" onclick="wStep2Connect()">🔗 Connecter</button>
+        <button class="wizard-btn-skip" onclick="wBack()">← Retour</button>
+      </div>
+
+      <!-- Étape 3 : instructions + fin -->
+      <div id="wstep-3" style="display:none">
+        <div class="wizard-icon">✍️</div>
+        <div class="wizard-title">Personnalise ton IA</div>
+        <div class="wizard-sub">Optionnel — donne des consignes à l'IA. Tu pourras les modifier plus tard.</div>
+        <label class="form-label">Consignes (optionnel)</label>
+        <textarea id="w-instructions" class="form-input" rows="4"
+          placeholder="Ex: Réponds en français formel. Signe avec mon prénom. Mentionne nos horaires si on les demande."
+          style="resize:vertical;font-size:13px;line-height:1.5;"></textarea>
+        <button class="wizard-btn" onclick="wTerminer()">🚀 C'est parti !</button>
+        <button class="wizard-btn-skip" onclick="wTerminer()">Passer cette étape</button>
+      </div>
+
+    </div>
+  </div>
 
   <!-- Modal Labels -->
   <div class="overlay" id="overlay-labels" onclick="if(event.target===this)fermerLabels()">
@@ -888,7 +1017,146 @@
 
     // ── Init ──────────────────────────────────────────────────
     setInterval(rafraichir, 3000);
-    rafraichir();
+    rafraichir().then(() => {
+      // Afficher le wizard si aucune boite connectée et pas déjà fait
+      const key = `onboarded_${COMPTE_ID}`;
+      if (!localStorage.getItem(key)) {
+        const hasConnected = Object.values(boitesState).some(b => b.connecte);
+        if (!hasConnected) {
+          setTimeout(() => ouvrirWizard(), 600);
+        } else {
+          localStorage.setItem(key, '1');
+        }
+      }
+    });
+
+    // ── Wizard onboarding ─────────────────────────────────────
+    let wProvider  = 'gmail';
+    let wBoiteId   = null;
+
+    function ouvrirWizard() {
+      document.getElementById('wizard-overlay').classList.add('open');
+    }
+    function fermerWizard() {
+      document.getElementById('wizard-overlay').classList.remove('open');
+      localStorage.setItem(`onboarded_${COMPTE_ID}`, '1');
+    }
+
+    function wSetProvider(p) {
+      wProvider = p;
+      ['gmail','microsoft','imap'].forEach(x =>
+        document.getElementById(`wp-${x}`).classList.toggle('active', x === p)
+      );
+    }
+
+    function wDots(etape) {
+      [1,2,3].forEach(i => {
+        const d = document.getElementById(`wdot-${i}`);
+        d.className = 'wizard-step-dot' + (i < etape ? ' done' : i === etape ? ' active' : '');
+      });
+    }
+
+    function wShowStep(n) {
+      [1,2,3].forEach(i => {
+        document.getElementById(`wstep-${i}`).style.display = i === n ? 'block' : 'none';
+      });
+      wDots(n);
+    }
+
+    function wStep1Next() {
+      const icons  = { gmail:'📧', microsoft:'💼', imap:'🌐' };
+      const titles = { gmail:'Connecte ton Gmail', microsoft:'Connecte ton Outlook', imap:'Configure ta boîte IMAP' };
+      const subs   = {
+        gmail:     'Saisis ton adresse Gmail, puis clique sur le bouton de connexion.',
+        microsoft: 'Saisis ton adresse Outlook / Microsoft 365, puis connecte-toi.',
+        imap:      'Saisis tes identifiants de messagerie IMAP/SMTP.',
+      };
+      document.getElementById('w2-icon').textContent  = icons[wProvider];
+      document.getElementById('w2-title').textContent = titles[wProvider];
+      document.getElementById('w2-sub').textContent   = subs[wProvider];
+      document.getElementById('w-imap-section').style.display = wProvider === 'imap' ? 'block' : 'none';
+      document.getElementById('w-email').placeholder = wProvider === 'microsoft' ? 'toi@outlook.com' : wProvider === 'gmail' ? 'toi@gmail.com' : 'toi@exemple.com';
+      document.getElementById('w-erreur').style.display = 'none';
+      wShowStep(2);
+    }
+
+    function wBack() { wShowStep(1); }
+
+    function wAppliquerPreset(val) {
+      if (!val || !PRESETS_IMAP[val]) return;
+      const p = PRESETS_IMAP[val];
+      document.getElementById('w-imap-server').value = p.imap_server;
+      document.getElementById('w-imap-port').value   = p.imap_port;
+      document.getElementById('w-smtp-server').value = p.smtp_server;
+      document.getElementById('w-smtp-port').value   = p.smtp_port;
+    }
+
+    async function wStep2Connect() {
+      const email = document.getElementById('w-email').value.trim().toLowerCase();
+      if (!email) { wErreur('Adresse email requise'); return; }
+
+      const btn = document.getElementById('w2-btn');
+      btn.disabled = true; btn.textContent = '⏳ En cours…';
+
+      // Créer la boite
+      const body = { email, provider: wProvider };
+      if (wProvider === 'imap') {
+        body.imap_server   = document.getElementById('w-imap-server').value.trim();
+        body.imap_port     = document.getElementById('w-imap-port').value.trim();
+        body.smtp_server   = document.getElementById('w-smtp-server').value.trim();
+        body.smtp_port     = document.getElementById('w-smtp-port').value.trim();
+        body.imap_password = document.getElementById('w-imap-pwd').value;
+        if (!body.imap_server || !body.smtp_server || !body.imap_password) {
+          wErreur('Serveur IMAP, SMTP et mot de passe requis'); btn.disabled = false; btn.textContent = '🔗 Connecter'; return;
+        }
+      }
+
+      const r1 = await fetch(`/ajouter_boite/${COMPTE_ID}`, {
+        method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body)
+      });
+      const j1 = await r1.json();
+      if (!j1.ok) { wErreur(j1.message || 'Erreur'); btn.disabled = false; btn.textContent = '🔗 Connecter'; return; }
+
+      wBoiteId = j1.boite.id;
+      await rafraichir();
+
+      if (wProvider === 'imap') {
+        // IMAP : pas d'OAuth, passer à l'étape 3
+        wShowStep(3);
+      } else if (wProvider === 'gmail') {
+        // Lancer OAuth Gmail → redirige, wizard se ferme
+        fermerWizard();
+        const r2 = await fetch(`/connecter_gmail/${COMPTE_ID}/${wBoiteId}`, { method:'POST' });
+        const j2 = await r2.json();
+        if (j2.auth_url) window.location.href = j2.auth_url;
+        else { toast('✓ Gmail connecté !'); rafraichir(); }
+      } else {
+        // Microsoft OAuth
+        fermerWizard();
+        const r2 = await fetch(`/connecter_microsoft/${COMPTE_ID}/${wBoiteId}`, { method:'POST' });
+        const j2 = await r2.json();
+        if (j2.auth_url) window.location.href = j2.auth_url;
+        else { toast('✓ Outlook connecté !'); rafraichir(); }
+      }
+    }
+
+    function wErreur(msg) {
+      const el = document.getElementById('w-erreur');
+      el.textContent = msg; el.style.display = 'block';
+    }
+
+    async function wTerminer() {
+      const instr = document.getElementById('w-instructions').value.trim();
+      if (instr && wBoiteId) {
+        await fetch(`/sauvegarder_instructions/${COMPTE_ID}/${wBoiteId}`, {
+          method:'POST', headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({ instructions: instr })
+        });
+      }
+      fermerWizard();
+      rafraichir();
+      toast('🎉 Tout est prêt ! Tu peux démarrer ton IA.');
+    }
   </script>
 </body>
 </html>
