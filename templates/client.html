@@ -327,7 +327,7 @@
 
       <!-- Étape 2 : email + connexion -->
       <div id="wstep-2" style="display:none">
-        <div class="wizard-icon" id="w2-icon">📧</div>
+        <div class="wizard-icon" id="w2-icon">🔗</div>
         <div class="wizard-title" id="w2-title">Connecte ton Gmail</div>
         <div class="wizard-sub" id="w2-sub">Saisis ton adresse email, puis clique sur le bouton de connexion.</div>
         <label class="form-label">Adresse email *</label>
@@ -1064,7 +1064,7 @@
     }
 
     function wStep1Next() {
-      const icons  = { gmail:'📧', microsoft:'💼', imap:'🌐' };
+      const icons  = { gmail:'📧', microsoft:'📨', imap:'🌐' };
       const titles = { gmail:'Connecte ton Gmail', microsoft:'Connecte ton Outlook', imap:'Configure ta boîte IMAP' };
       const subs   = {
         gmail:     'Saisis ton adresse Gmail, puis clique sur le bouton de connexion.',
@@ -1115,9 +1115,18 @@
         method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body)
       });
       const j1 = await r1.json();
-      if (!j1.ok) { wErreur(j1.message || 'Erreur'); btn.disabled = false; btn.textContent = '🔗 Connecter'; return; }
-
-      wBoiteId = j1.boite.id;
+      if (!j1.ok) {
+        // Si la boite existe déjà, on la réutilise pour la connexion
+        if (j1.message && j1.message.includes('déjà ajoutée')) {
+          const existing = Object.values(boitesState).find(b => b.email.toLowerCase() === email);
+          if (existing) { wBoiteId = existing.id; }
+          else { wErreur(j1.message); btn.disabled = false; btn.textContent = '🔗 Connecter'; return; }
+        } else {
+          wErreur(j1.message || 'Erreur'); btn.disabled = false; btn.textContent = '🔗 Connecter'; return;
+        }
+      } else {
+        wBoiteId = j1.boite.id;
+      }
       await rafraichir();
 
       if (wProvider === 'imap') {
