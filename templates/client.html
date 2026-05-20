@@ -84,14 +84,15 @@
     .status-bar.warn { color: var(--yellow); }
 
     .boite-actions {
-      display: flex; border-top: 1px solid var(--border);
+      display: flex; flex-wrap: wrap; border-top: 1px solid var(--border);
     }
     .action-btn {
-      flex: 1; background: transparent; border: none; border-right: 1px solid var(--border);
+      flex: 1 1 auto; background: transparent; border: none;
+      border-right: 1px solid var(--border); border-bottom: 1px solid var(--border);
       color: var(--muted); font-size: 11px; font-family: inherit;
-      padding: 9px 10px; cursor: pointer; text-align: center;
+      padding: 9px 6px; cursor: pointer; text-align: center; white-space: nowrap;
     }
-    .action-btn:last-child { border-right: none; }
+    .boite-actions .action-btn:last-child { border-right: none; }
     .action-btn:hover { color: var(--text); background: #1e1e1e; }
 
     .log-feed {
