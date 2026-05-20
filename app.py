@@ -52,6 +52,33 @@ oauth_flows     = {}  # state -> {compte_id, boite_id, ...}
 lock            = threading.Lock()
 MAX_LOGS        = 150
 
+# ── Persistance agents actifs (auto-restart après reboot) ─────
+AGENTS_ACTIFS_FILE = DATA_DIR / "agents_actifs.json"
+
+def charger_agents_actifs():
+    if AGENTS_ACTIFS_FILE.exists():
+        try:
+            return json.loads(AGENTS_ACTIFS_FILE.read_text())
+        except Exception:
+            return {}
+    return {}
+
+def sauver_agents_actifs(agents):
+    try:
+        AGENTS_ACTIFS_FILE.write_text(json.dumps(agents, indent=2))
+    except Exception:
+        pass
+
+def marquer_agent_actif(compte_id, boite_id):
+    agents = charger_agents_actifs()
+    agents[pkey(compte_id, boite_id)] = {"compte_id": compte_id, "boite_id": boite_id}
+    sauver_agents_actifs(agents)
+
+def marquer_agent_inactif(compte_id, boite_id):
+    agents = charger_agents_actifs()
+    agents.pop(pkey(compte_id, boite_id), None)
+    sauver_agents_actifs(agents)
+
 
 # ── Helpers ───────────────────────────────────────────────────
 
@@ -156,6 +183,108 @@ def capturer_logs(pk, process):
             if "Brouillon créé" in ligne:
                 emails_comptes[pk] = emails_comptes.get(pk, 0) + 1
     process.wait()
+    # Agent terminé — le retirer de la liste des actifs
+    parts = pk.split("_", 1)
+    if len(parts) == 2:
+        marquer_agent_inactif(parts[0], parts[1])
+
+
+def _lancer_agent(compte_id, boite_id, c, b, data):
+    """Lance le subprocess mailpilot pour une boite donnée."""
+    pk       = pkey(compte_id, boite_id)
+    provider = b.get("provider", "gmail")
+
+    env = os.environ.copy()
+    env.update({
+        "AGENT_NOM":           c["nom"],
+        "AGENT_AGENCE":        c.get("agence", ""),
+        "AGENT_TEL":           c.get("tel", ""),
+        "AGENT_EMAIL":         b["email"],
+        "AGENT_ZONE":          c.get("zone", ""),
+        "ANTHROPIC_API_KEY":   data.get("api_key", ""),
+        "CHECK_INTERVAL":      b.get("intervalle", "60"),
+        "LABELS_ACTIFS":       ",".join(b.get("labels_actifs", LABELS_DEFAUT)),
+        "MAIL_PROVIDER":       provider,
+        "COMPTE_ID":           pk,
+        "STATS_DIR":           str(DATA_DIR),
+        "BILAN_JOUR":          str(b.get("bilan_jour",  "0")),
+        "BILAN_HEURE":         str(b.get("bilan_heure", "8")),
+        "AGENT_INSTRUCTIONS":  b.get("instructions", ""),
+    })
+    if provider == "microsoft":
+        env.update({
+            "MICROSOFT_TOKEN_PATH":    b.get("token", ""),
+            "MICROSOFT_CLIENT_ID":     os.environ.get("MICROSOFT_CLIENT_ID", ""),
+            "MICROSOFT_CLIENT_SECRET": os.environ.get("MICROSOFT_CLIENT_SECRET", ""),
+        })
+    elif provider == "imap":
+        env.update({
+            "IMAP_SERVER":   b.get("imap_server", ""),
+            "IMAP_PORT":     str(b.get("imap_port", "993")),
+            "SMTP_SERVER":   b.get("smtp_server", ""),
+            "SMTP_PORT":     str(b.get("smtp_port", "465")),
+            "IMAP_PASSWORD": b.get("imap_password", ""),
+        })
+
+    logs_par_compte[pk] = logs_par_compte.get(pk, [])
+    emails_comptes[pk]  = emails_comptes.get(pk, 0)
+
+    cmd = [sys.executable, "mailpilot.py"]
+    if provider == "gmail":
+        cmd += ["--token", b["token"]]
+
+    p = subprocess.Popen(
+        cmd,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        text=True,
+        bufsize=1,
+        cwd=str(BASE_DIR),
+        env=env,
+    )
+    processus[pk] = p
+    threading.Thread(target=capturer_logs, args=(pk, p), daemon=True).start()
+    return p
+
+
+def auto_restart_agents():
+    """Redémarre automatiquement les agents actifs après un reboot Railway."""
+    import time as _time
+    _time.sleep(5)  # laisser Flask démarrer complètement
+    agents = charger_agents_actifs()
+    if not agents:
+        return
+    data      = charger_comptes()
+    restarted = 0
+    for pk, info in list(agents.items()):
+        compte_id = info.get("compte_id")
+        boite_id  = info.get("boite_id")
+        if not compte_id or not boite_id:
+            continue
+        c = trouver_compte(data, compte_id)
+        b = trouver_boite(c, boite_id) if c else None
+        if not c or not b:
+            marquer_agent_inactif(compte_id, boite_id)
+            continue
+        provider = b.get("provider", "gmail")
+        if provider == "gmail" and (not b.get("connecte") or not b.get("token")):
+            marquer_agent_inactif(compte_id, boite_id)
+            continue
+        if provider == "microsoft" and not b.get("token"):
+            marquer_agent_inactif(compte_id, boite_id)
+            continue
+        if provider == "imap" and not b.get("imap_server"):
+            marquer_agent_inactif(compte_id, boite_id)
+            continue
+        try:
+            _lancer_agent(compte_id, boite_id, c, b, data)
+            restarted += 1
+            print(f"🔄 Auto-restart: {b['email']} ({provider})")
+        except Exception as e:
+            print(f"❌ Auto-restart échec {pk}: {e}")
+            marquer_agent_inactif(compte_id, boite_id)
+    if restarted:
+        print(f"✅ Auto-restart terminé: {restarted} agent(s) relancé(s)")
 
 
 # ── Routes ────────────────────────────────────────────────────
@@ -677,56 +806,10 @@ def demarrer(compte_id, boite_id):
     elif provider == "imap" and not b.get("imap_server"):
         return jsonify({"ok": False, "message": "Configuration IMAP incomplète."})
 
-    env = os.environ.copy()
-    env.update({
-        "AGENT_NOM":         c["nom"],
-        "AGENT_AGENCE":      c.get("agence", ""),
-        "AGENT_TEL":         c.get("tel", ""),
-        "AGENT_EMAIL":       b["email"],
-        "AGENT_ZONE":        c.get("zone", ""),
-        "ANTHROPIC_API_KEY": data.get("api_key", ""),
-        "CHECK_INTERVAL":    b.get("intervalle", "60"),
-        "LABELS_ACTIFS":     ",".join(b.get("labels_actifs", LABELS_DEFAUT)),
-        "MAIL_PROVIDER":     provider,
-        "COMPTE_ID":         pk,
-        "STATS_DIR":         str(DATA_DIR),
-        "BILAN_JOUR":          str(b.get("bilan_jour",  "0")),
-        "BILAN_HEURE":         str(b.get("bilan_heure", "8")),
-        "AGENT_INSTRUCTIONS":  b.get("instructions", ""),
-    })
-    if provider == "microsoft":
-        env.update({
-            "MICROSOFT_TOKEN_PATH":    b.get("token", ""),
-            "MICROSOFT_CLIENT_ID":     os.environ.get("MICROSOFT_CLIENT_ID", ""),
-            "MICROSOFT_CLIENT_SECRET": os.environ.get("MICROSOFT_CLIENT_SECRET", ""),
-        })
-    elif provider == "imap":
-        env.update({
-            "IMAP_SERVER":   b.get("imap_server", ""),
-            "IMAP_PORT":     str(b.get("imap_port", "993")),
-            "SMTP_SERVER":   b.get("smtp_server", ""),
-            "SMTP_PORT":     str(b.get("smtp_port", "465")),
-            "IMAP_PASSWORD": b.get("imap_password", ""),
-        })
-
     logs_par_compte[pk] = []
     emails_comptes[pk]  = 0
-
-    cmd = [sys.executable, "mailpilot.py"]
-    if provider == "gmail":
-        cmd += ["--token", b["token"]]
-
-    p = subprocess.Popen(
-        cmd,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.STDOUT,
-        text=True,
-        bufsize=1,
-        cwd=str(BASE_DIR),
-        env=env,
-    )
-    processus[pk] = p
-    threading.Thread(target=capturer_logs, args=(pk, p), daemon=True).start()
+    _lancer_agent(compte_id, boite_id, c, b, data)
+    marquer_agent_actif(compte_id, boite_id)
     return jsonify({"ok": True})
 
 
@@ -740,6 +823,7 @@ def arreter(compte_id, boite_id):
         p.terminate()
         with lock:
             logs_par_compte.setdefault(pk, []).append("── Arrêté manuellement ──")
+    marquer_agent_inactif(compte_id, boite_id)
     return jsonify({"ok": True})
 
 
@@ -888,6 +972,9 @@ def statut_global():
 if __name__ == "__main__":
     port     = int(os.environ.get("PORT", 5001))
     is_local = port == 5001
+
+    # Auto-restart des agents après reboot (Railway ou local)
+    threading.Thread(target=auto_restart_agents, daemon=True).start()
 
     if is_local:
         import webbrowser
