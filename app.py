@@ -875,7 +875,7 @@ def parametres_bilan(compte_id, boite_id):
         return jsonify({"ok": False, "message": "Boîte introuvable"}), 404
     jour  = str(d.get("bilan_jour",  "0"))
     heure = str(d.get("bilan_heure", "8"))
-    if jour not in [str(i) for i in range(7)]:
+    if jour not in ["-1"] + [str(i) for i in range(7)]:
         return jsonify({"ok": False, "message": "Jour invalide"})
     if heure not in [str(i) for i in range(24)]:
         return jsonify({"ok": False, "message": "Heure invalide"})

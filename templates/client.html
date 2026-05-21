@@ -406,7 +406,8 @@
       <p class="subtitle">Choisis quand recevoir ton récapitulatif email chaque semaine.</p>
 
       <label class="form-label">Jour d'envoi</label>
-      <select id="bilan-jour" class="form-input">
+      <select id="bilan-jour" class="form-input" onchange="toggleBilanHeure()">
+        <option value="-1">— Désactivé (aucun bilan) —</option>
         <option value="0">Lundi</option>
         <option value="1">Mardi</option>
         <option value="2">Mercredi</option>
@@ -416,19 +417,21 @@
         <option value="6">Dimanche</option>
       </select>
 
-      <label class="form-label">Heure d'envoi</label>
-      <select id="bilan-heure" class="form-input">
-        <option value="6">6h00</option>
-        <option value="7">7h00</option>
-        <option value="8">8h00</option>
-        <option value="9">9h00</option>
-        <option value="10">10h00</option>
-        <option value="12">12h00</option>
-        <option value="17">17h00</option>
-        <option value="18">18h00</option>
-        <option value="19">19h00</option>
-        <option value="20">20h00</option>
-      </select>
+      <div id="bilan-heure-zone">
+        <label class="form-label">Heure d'envoi</label>
+        <select id="bilan-heure" class="form-input">
+          <option value="6">6h00</option>
+          <option value="7">7h00</option>
+          <option value="8">8h00</option>
+          <option value="9">9h00</option>
+          <option value="10">10h00</option>
+          <option value="12">12h00</option>
+          <option value="17">17h00</option>
+          <option value="18">18h00</option>
+          <option value="19">19h00</option>
+          <option value="20">20h00</option>
+        </select>
+      </div>
 
       <div class="modal-btns">
         <button class="btn-cancel" onclick="fermerBilan()">Annuler</button>
@@ -869,11 +872,17 @@
     // ── Bilan hebdomadaire ────────────────────────────────────
     let currentBilanBoiteId = null;
 
+    function toggleBilanHeure() {
+      const desactive = document.getElementById('bilan-jour').value === '-1';
+      document.getElementById('bilan-heure-zone').style.display = desactive ? 'none' : 'block';
+    }
+
     function ouvrirBilan(boiteId) {
       currentBilanBoiteId = boiteId;
       const b = boitesState[boiteId] || {};
-      document.getElementById('bilan-jour').value  = b.bilan_jour  || '0';
+      document.getElementById('bilan-jour').value  = b.bilan_jour  ?? '-1';
       document.getElementById('bilan-heure').value = b.bilan_heure || '8';
+      toggleBilanHeure();
       document.getElementById('overlay-bilan').classList.add('open');
     }
 
@@ -891,7 +900,7 @@
       const json = await res.json();
       if (json.ok) {
         fermerBilan();
-        toast(`✓ Bilan programmé le ${jours[jour]} à ${heure}h`);
+        toast(jour === '-1' ? '✓ Bilan désactivé' : `✓ Bilan programmé le ${jours[jour]} à ${heure}h`);
         if (boitesState[currentBilanBoiteId]) {
           boitesState[currentBilanBoiteId].bilan_jour  = jour;
           boitesState[currentBilanBoiteId].bilan_heure = heure;
