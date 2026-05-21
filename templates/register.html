@@ -3,57 +3,68 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>MailPilot Pro — Créer un compte</title>
+  <title>MailPilot — Créer un compte</title>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     :root {
-      --bg: #0e0e0e; --card: #181818; --border: #2a2a2a;
-      --text: #e8e8e8; --muted: #666; --blue: #3b82f6; --red: #ef4444;
+      --bg: #0a0f1e; --card: #0d1525; --border: #1e2d4a;
+      --text: #f1f5f9; --muted: #64748b; --blue: #4f6ef7; --blue2: #7c4ff8; --red: #ef4444;
     }
     body {
       background: var(--bg); color: var(--text);
-      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif;
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Inter", sans-serif;
       min-height: 100vh; display: flex; align-items: center; justify-content: center;
       padding: 20px;
     }
     .card {
       background: var(--card); border: 1px solid var(--border);
-      border-radius: 16px; padding: 36px 32px; width: 100%; max-width: 440px;
+      border-radius: 20px; padding: 36px 32px; width: 100%; max-width: 440px;
+      box-shadow: 0 24px 60px rgba(0,0,0,.5);
     }
-    .logo { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
-    .logo span { font-size: 28px; }
-    .logo h1 { font-size: 20px; font-weight: 700; }
+    .logo { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
+    .logo-icon {
+      width: 42px; height: 42px; background: linear-gradient(135deg, var(--blue), var(--blue2));
+      border-radius: 12px; display: flex; align-items: center; justify-content: center;
+      font-size: 20px; flex-shrink: 0; box-shadow: 0 0 20px rgba(79,110,247,.4);
+    }
+    .logo h1 {
+      font-size: 22px; font-weight: 800; letter-spacing: -.3px;
+      background: linear-gradient(90deg, #fff 40%, var(--blue));
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    }
     .subtitle { font-size: 13px; color: var(--muted); margin-bottom: 24px; }
     label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 6px; font-weight: 500; }
     input, select {
-      width: 100%; background: #111; border: 1px solid var(--border);
-      border-radius: 8px; color: var(--text); font-size: 14px;
-      padding: 10px 12px; outline: none; font-family: inherit; margin-bottom: 14px;
+      width: 100%; background: #060d1c; border: 1px solid var(--border);
+      border-radius: 10px; color: var(--text); font-size: 14px;
+      padding: 10px 14px; outline: none; font-family: inherit; margin-bottom: 14px;
+      transition: border-color .15s, box-shadow .15s;
     }
-    input:focus, select:focus { border-color: var(--blue); }
-    select option { background: #111; }
+    input:focus, select:focus { border-color: var(--blue); box-shadow: 0 0 0 3px rgba(79,110,247,.15); }
+    select option { background: #0d1525; }
     .row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
     button.btn-main {
-      width: 100%; background: var(--blue); color: #fff; border: none;
-      border-radius: 8px; padding: 11px; font-size: 14px; font-weight: 600;
-      cursor: pointer; font-family: inherit; margin-top: 4px;
+      width: 100%; background: linear-gradient(135deg, var(--blue), var(--blue2));
+      color: #fff; border: none; border-radius: 10px; padding: 12px;
+      font-size: 15px; font-weight: 700; cursor: pointer; font-family: inherit; margin-top: 4px;
+      box-shadow: 0 4px 16px rgba(79,110,247,.4); transition: all .15s;
     }
-    button.btn-main:hover { opacity: .88; }
+    button.btn-main:hover { transform: translateY(-1px); opacity: .92; }
     #erreur { color: var(--red); font-size: 13px; margin-top: 12px; text-align: center; display: none; }
     .login-link { text-align: center; margin-top: 18px; }
-    .login-link a { color: var(--muted); font-size: 13px; }
+    .login-link a { color: var(--muted); font-size: 13px; text-decoration: none; transition: color .15s; }
     .login-link a:hover { color: var(--text); }
 
     /* Provider selector */
     .provider-label { font-size: 12px; color: var(--muted); margin-bottom: 8px; font-weight: 500; }
     .provider-btns { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 20px; }
     .provider-btn {
-      background: #111; border: 1px solid var(--border); border-radius: 8px;
+      background: #060d1c; border: 1px solid var(--border); border-radius: 10px;
       color: var(--muted); font-size: 13px; font-weight: 500; padding: 10px 6px;
       cursor: pointer; text-align: center; transition: all .15s; font-family: inherit;
     }
     .provider-btn:hover { border-color: var(--blue); color: var(--text); }
-    .provider-btn.active { border-color: var(--blue); color: var(--text); background: #1a2540; }
+    .provider-btn.active { border-color: var(--blue); color: var(--text); background: rgba(79,110,247,.1); }
     .provider-btn .icon { font-size: 18px; display: block; margin-bottom: 4px; }
 
     /* IMAP section */
@@ -65,8 +76,8 @@
       border-top: 1px solid var(--border);
     }
     .info-box {
-      background: #1a2540; border: 1px solid #2a3f6f; border-radius: 8px;
-      padding: 10px 12px; font-size: 12px; color: #93b4f0; margin-bottom: 14px; line-height: 1.5;
+      background: rgba(79,110,247,.08); border: 1px solid rgba(79,110,247,.2); border-radius: 10px;
+      padding: 10px 14px; font-size: 12px; color: #93b4f0; margin-bottom: 14px; line-height: 1.5;
     }
     .preset-row { display: flex; align-items: center; gap: 8px; margin-bottom: 14px; }
     .preset-row label { margin: 0; white-space: nowrap; font-size: 12px; }
@@ -76,8 +87,8 @@
 <body>
   <div class="card">
     <div class="logo">
-      <span>🛩️</span>
-      <div><h1>MailPilot Pro</h1></div>
+      <div class="logo-icon">✉️</div>
+      <div><h1>MailPilot</h1></div>
     </div>
     <p class="subtitle">Créez votre compte pour gérer votre boite mail avec l'IA.</p>
 
