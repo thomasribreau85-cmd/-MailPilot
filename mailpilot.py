@@ -644,7 +644,7 @@ def detecter_rdv(client_anthropic, email, categorie):
     Si l'email contient une demande de RDV (VISITE, REUNION, etc.),
     extrait les infos et les ajoute dans l'agenda en statut 'attente'.
     """
-    CATEGORIES_RDV = {"VISITE", "REUNION", "DEVIS", "URGENT"}
+    CATEGORIES_RDV = {"VISITE", "RENDEZ_VOUS", "DEVIS", "URGENT", "PROSPECT"}
     if categorie not in CATEGORIES_RDV:
         return
 
@@ -679,7 +679,7 @@ CORPS : {email['corps'][:1000]}"""
 
     try:
         rep = client_anthropic.messages.create(
-            model="claude-haiku-4-5",
+            model=MODEL_CLASSIFICATION,
             max_tokens=400,
             messages=[{"role": "user", "content": prompt}]
         )
@@ -1181,6 +1181,10 @@ def boucle_principale():
                             # --- Pipeline Microsoft Graph ---
                             categorie = classifier_email(client_anthropic, em)
                             logger.info(f"  → Catégorie : {categorie}")
+                            try:
+                                detecter_rdv(client_anthropic, em, categorie)
+                            except Exception as e:
+                                logger.error(f"  ✗ Erreur détection RDV : {e}")
                             appliquer_label_microsoft(em["id"], categorie)
                             marquer_comme_lu_microsoft(em["id"])
                             brouillon_cree = False
@@ -1193,6 +1197,10 @@ def boucle_principale():
                             # --- Pipeline IMAP ---
                             categorie = classifier_email(client_anthropic, em)
                             logger.info(f"  → Catégorie : {categorie}")
+                            try:
+                                detecter_rdv(client_anthropic, em, categorie)
+                            except Exception as e:
+                                logger.error(f"  ✗ Erreur détection RDV : {e}")
                             appliquer_label_imap(imap_conn, em["uid_imap"], categorie)
                             marquer_comme_lu_imap(imap_conn, em["uid_imap"])
                             brouillon_cree = False
