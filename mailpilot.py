@@ -394,6 +394,52 @@ def marquer_comme_lu(service, message_id):
         logger.error(f"Erreur marquage comme lu : {e}")
 
 
+def sauver_brouillon_local(email, categorie, texte_reponse):
+    """
+    Sauvegarde le brouillon généré par l'IA dans un fichier JSON local
+    pour revue dans l'interface MailPilot (mode Aperçu brouillons).
+    """
+    stats_dir   = os.getenv("STATS_DIR", os.path.dirname(os.path.abspath(__file__)))
+    compte_id   = os.getenv("COMPTE_ID", "default")
+    # COMPTE_ID est au format "compte_boite" — on prend juste la partie compte
+    compte_part = compte_id.split("_")[0] if "_" in compte_id else compte_id
+    brouillons_file = os.path.join(stats_dir, f"brouillons_{compte_part}.json")
+
+    try:
+        brouillons = []
+        if os.path.exists(brouillons_file):
+            try:
+                brouillons = json.loads(open(brouillons_file, encoding="utf-8").read())
+            except Exception:
+                brouillons = []
+
+        brouillon = {
+            "id":               str(uuid.uuid4())[:8],
+            "email_sujet":      email.get("sujet", ""),
+            "email_expediteur": email.get("expediteur", ""),
+            "email_id":         email.get("id", ""),
+            "thread_id":        email.get("thread_id", ""),
+            "boite_id":         compte_id,
+            "boite_email":      os.getenv("AGENT_EMAIL", ""),
+            "provider":         os.getenv("MAIL_PROVIDER", "gmail"),
+            "categorie":        categorie,
+            "texte":            texte_reponse,
+            "statut":           "en_attente",
+            "created_at":       datetime.now().isoformat(),
+        }
+        brouillons.append(brouillon)
+
+        with open(brouillons_file, "w", encoding="utf-8") as f:
+            json.dump(brouillons, f, indent=2, ensure_ascii=False)
+
+        logger.info(f"  📝 Brouillon sauvegardé pour revue (ID: {brouillon['id']}) | {categorie} | {email.get('sujet','')[:40]}")
+        return True
+
+    except Exception as e:
+        logger.error(f"  ✗ Erreur sauvegarde brouillon local : {e}")
+        return False
+
+
 def creer_brouillon(service, email, texte_reponse, categorie):
     """
     Crée un brouillon de réponse dans le bon fil de discussion Gmail.
@@ -980,7 +1026,10 @@ def traiter_email(service, client_anthropic, email, label_ids):
         try:
             texte_reponse = rediger_reponse(client_anthropic, email, categorie)
             if texte_reponse:
-                creer_brouillon(service, email, texte_reponse, categorie)
+                if os.getenv("APERCU_BROUILLONS", "0") == "1":
+                    sauver_brouillon_local(email, categorie, texte_reponse)
+                else:
+                    creer_brouillon(service, email, texte_reponse, categorie)
                 brouillon_cree = True
             else:
                 logger.warning("  ✗ Brouillon non créé (réponse vide)")
@@ -1412,7 +1461,10 @@ def boucle_principale():
                             if categorie != "INUTILE":
                                 texte = rediger_reponse(client_anthropic, em, categorie)
                                 if texte:
-                                    brouillon_cree = creer_brouillon_microsoft(em, texte)
+                                    if os.getenv("APERCU_BROUILLONS", "0") == "1":
+                                        brouillon_cree = sauver_brouillon_local(em, categorie, texte)
+                                    else:
+                                        brouillon_cree = creer_brouillon_microsoft(em, texte)
                             resultat = {"categorie": categorie, "brouillon_cree": brouillon_cree}
                         else:
                             # --- Pipeline IMAP ---
@@ -1433,7 +1485,10 @@ def boucle_principale():
                             if categorie != "INUTILE":
                                 texte = rediger_reponse(client_anthropic, em, categorie)
                                 if texte:
-                                    brouillon_cree = creer_brouillon_imap(imap_conn, em, texte)
+                                    if os.getenv("APERCU_BROUILLONS", "0") == "1":
+                                        brouillon_cree = sauver_brouillon_local(em, categorie, texte)
+                                    else:
+                                        brouillon_cree = creer_brouillon_imap(imap_conn, em, texte)
                             resultat = {"categorie": categorie, "brouillon_cree": brouillon_cree}
 
                         if resultat:

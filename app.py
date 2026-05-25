@@ -211,6 +211,7 @@ def _lancer_agent(compte_id, boite_id, c, b, data):
         "BILAN_HEURE":         str(b.get("bilan_heure", "8")),
         "AGENT_INSTRUCTIONS":  b.get("instructions", ""),
         "AGENDA_ACTIF":        "1" if c.get("agenda_actif", True) else "0",
+        "APERCU_BROUILLONS":   "1" if c.get("apercu_brouillons", False) else "0",
         **_nettoyage_env(compte_id),
         "TRANSFERTS_RULES":    "|".join(
             f"{r['categorie']}:{r['to']}"
@@ -1173,6 +1174,176 @@ def toggle_agenda(compte_id):
     c["agenda_actif"] = not c.get("agenda_actif", True)
     sauver_comptes(data)
     return jsonify({"ok": True, "agenda_actif": c["agenda_actif"]})
+
+@app.route("/api/toggle_brouillons/<compte_id>", methods=["POST"])
+def toggle_brouillons(compte_id):
+    if not check_access(compte_id):
+        return jsonify({"ok": False}), 403
+    data = charger_comptes()
+    c = trouver_compte(data, compte_id)
+    if not c:
+        return jsonify({"ok": False, "message": "Compte introuvable"}), 404
+    c["apercu_brouillons"] = not c.get("apercu_brouillons", False)
+    sauver_comptes(data)
+    return jsonify({"ok": True, "apercu_brouillons": c["apercu_brouillons"]})
+
+
+# ── Brouillons IA ─────────────────────────────────────────────
+
+def brouillons_file(compte_id):
+    return DATA_DIR / f"brouillons_{compte_id}.json"
+
+def charger_brouillons(compte_id):
+    f = brouillons_file(compte_id)
+    if f.exists():
+        try:
+            return json.loads(f.read_text())
+        except Exception:
+            return []
+    return []
+
+def sauver_brouillons(compte_id, liste):
+    brouillons_file(compte_id).write_text(json.dumps(liste, indent=2, ensure_ascii=False))
+
+
+@app.route("/api/brouillons/<compte_id>", methods=["GET"])
+def get_brouillons(compte_id):
+    if not check_access(compte_id):
+        return jsonify({"ok": False}), 403
+    return jsonify({"ok": True, "brouillons": charger_brouillons(compte_id)})
+
+
+@app.route("/api/brouillons/<compte_id>/<brou_id>", methods=["PUT"])
+def modifier_brouillon(compte_id, brou_id):
+    if not check_access(compte_id):
+        return jsonify({"ok": False}), 403
+    d = request.json or {}
+    liste = charger_brouillons(compte_id)
+    for b in liste:
+        if b["id"] == brou_id:
+            if "texte" in d:
+                b["texte"] = d["texte"]
+            sauver_brouillons(compte_id, liste)
+            return jsonify({"ok": True})
+    return jsonify({"ok": False, "message": "Brouillon introuvable"}), 404
+
+
+@app.route("/api/brouillons/<compte_id>/<brou_id>", methods=["DELETE"])
+def supprimer_brouillon(compte_id, brou_id):
+    if not check_access(compte_id):
+        return jsonify({"ok": False}), 403
+    liste = charger_brouillons(compte_id)
+    liste = [b for b in liste if b["id"] != brou_id]
+    sauver_brouillons(compte_id, liste)
+    return jsonify({"ok": True})
+
+
+@app.route("/api/brouillons/<compte_id>/<brou_id>/envoyer", methods=["POST"])
+def envoyer_brouillon(compte_id, brou_id):
+    """Envoie le brouillon via l'API du provider et le supprime de la liste locale."""
+    if not check_access(compte_id):
+        return jsonify({"ok": False}), 403
+
+    data  = charger_comptes()
+    c     = trouver_compte(data, compte_id)
+    liste = charger_brouillons(compte_id)
+    brou  = next((b for b in liste if b["id"] == brou_id), None)
+    if not brou:
+        return jsonify({"ok": False, "message": "Brouillon introuvable"}), 404
+
+    texte     = brou.get("texte", "")
+    sujet_rep = brou.get("email_sujet", "")
+    if not sujet_rep.lower().startswith("re:"):
+        sujet_rep = f"Re: {sujet_rep}"
+    expediteur = brou.get("email_expediteur", "")
+    thread_id  = brou.get("thread_id", "")
+    provider   = brou.get("provider", "gmail")
+    boite_email = brou.get("boite_email", "")
+    boite_id_raw = brou.get("boite_id", "")
+    # boite_id_raw peut être "compteid_boiteid"
+    parts = boite_id_raw.split("_", 1)
+    boite_id = parts[1] if len(parts) == 2 else boite_id_raw
+    b = trouver_boite(c, boite_id) if c else None
+
+    try:
+        import base64
+        from email.mime.text import MIMEText
+        from email.mime.multipart import MIMEMultipart
+
+        if provider == "gmail" and b and b.get("token"):
+            creds = Credentials.from_authorized_user_file(b["token"], ["https://www.googleapis.com/auth/gmail.modify"])
+            if creds.expired and creds.refresh_token:
+                creds.refresh(Request())
+            from googleapiclient.discovery import build
+            svc = build("gmail", "v1", credentials=creds)
+            msg = MIMEMultipart()
+            msg["To"]      = expediteur
+            msg["From"]    = boite_email
+            msg["Subject"] = sujet_rep
+            msg.attach(MIMEText(texte, "plain", "utf-8"))
+            raw = base64.urlsafe_b64encode(msg.as_bytes()).decode("utf-8")
+            body = {"raw": raw}
+            if thread_id:
+                body["threadId"] = thread_id
+            svc.users().messages().send(userId="me", body=body).execute()
+
+        elif provider == "microsoft" and b and b.get("token"):
+            import requests as _req, time as _time
+            token_path = b["token"]
+            token_data = json.loads(open(token_path).read())
+            if token_data.get("expires_at", 0) < _time.time() + 300:
+                resp = _req.post(
+                    "https://login.microsoftonline.com/common/oauth2/v2.0/token",
+                    data={
+                        "client_id":     os.environ.get("MICROSOFT_CLIENT_ID",""),
+                        "client_secret": os.environ.get("MICROSOFT_CLIENT_SECRET",""),
+                        "refresh_token": token_data["refresh_token"],
+                        "grant_type":    "refresh_token",
+                    }
+                )
+                token_data.update(resp.json())
+                token_data["expires_at"] = _time.time() + token_data.get("expires_in", 3600)
+                open(token_path, "w").write(json.dumps(token_data))
+            headers = {"Authorization": f"Bearer {token_data['access_token']}", "Content-Type": "application/json"}
+            body_ms = {
+                "message": {
+                    "subject": sujet_rep,
+                    "body": {"contentType": "Text", "content": texte},
+                    "toRecipients": [{"emailAddress": {"address": expediteur}}],
+                }
+            }
+            _req.post("https://graph.microsoft.com/v1.0/me/sendMail", headers=headers, json=body_ms)
+
+        elif provider == "imap" and b:
+            import smtplib, ssl as _ssl
+            smtp_server = b.get("smtp_server", "")
+            smtp_port   = int(b.get("smtp_port", 465))
+            password    = b.get("imap_password", "")
+            msg = MIMEMultipart()
+            msg["To"]      = expediteur
+            msg["From"]    = boite_email
+            msg["Subject"] = sujet_rep
+            msg.attach(MIMEText(texte, "plain", "utf-8"))
+            if smtp_port == 587:
+                with smtplib.SMTP(smtp_server, smtp_port) as server:
+                    server.starttls()
+                    server.login(boite_email, password)
+                    server.sendmail(boite_email, expediteur, msg.as_bytes())
+            else:
+                with smtplib.SMTP_SSL(smtp_server, smtp_port, context=_ssl.create_default_context()) as server:
+                    server.login(boite_email, password)
+                    server.sendmail(boite_email, expediteur, msg.as_bytes())
+        else:
+            return jsonify({"ok": False, "message": "Provider non supporté ou boite non trouvée"})
+
+        # Supprimer de la liste
+        liste = [b2 for b2 in liste if b2["id"] != brou_id]
+        sauver_brouillons(compte_id, liste)
+        return jsonify({"ok": True, "message": f"Email envoyé à {expediteur}"})
+
+    except Exception as e:
+        return jsonify({"ok": False, "message": str(e)}), 500
+
 
 @app.route("/api/horaires/<compte_id>", methods=["GET"])
 def get_horaires(compte_id):
