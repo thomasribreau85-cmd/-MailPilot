@@ -416,6 +416,39 @@
     .wizard-btn-skip:hover { color: var(--text); }
     .wizard-success { text-align: center; padding: 12px 0; }
 
+    /* ── Responsive mobile ── */
+    @media (max-width: 700px) {
+      .deco-left, .deco-right { display: none; }
+      header { padding: 14px 16px 14px; margin-bottom: 20px; }
+      .logo-text h1 { font-size: 17px; }
+      .nav-btn { padding: 6px 10px; font-size: 11px; }
+      .page-wrap { padding: 0 14px; }
+      .stats-bar { grid-template-columns: repeat(3,1fr); gap: 8px; margin-bottom: 20px; }
+      .stat-card { padding: 12px 10px; gap: 8px; flex-direction: column; align-items: flex-start; }
+      .stat-icon { width: 32px; height: 32px; font-size: 14px; border-radius: 8px; }
+      .stat-num { font-size: 20px; }
+      .stat-lbl { font-size: 10px; }
+      .boite-header { padding: 14px 14px 10px; gap: 10px; }
+      .provider-avatar { width: 36px; height: 36px; font-size: 16px; border-radius: 10px; }
+      .boite-email { font-size: 13px; }
+      .boite-counter .num { font-size: 20px; }
+      .boite-btns { padding: 0 12px 12px; }
+      .btn { padding: 10px 10px; font-size: 12px; }
+      .status-bar { margin: 0 12px 12px; font-size: 11px; }
+      .action-btn { font-size: 10px; padding: 9px 4px; }
+      .param-card { padding: 13px 14px; gap: 12px; }
+      .param-card-icon { width: 34px; height: 34px; font-size: 16px; }
+      .param-card-title { font-size: 13px; }
+      .param-card-desc { font-size: 10px; }
+      .section-label { font-size: 10px; }
+      .add-boite-btn { font-size: 13px; padding: 12px; }
+    }
+    @media (max-width: 420px) {
+      .stats-bar { grid-template-columns: 1fr 1fr; }
+      .stats-bar .stat-card:last-child { grid-column: span 2; flex-direction: row; align-items: center; }
+      .nav-btns .nav-btn:not(.primary) { display: none; }
+    }
+
     /* Toast */
     #toast {
       position: fixed; bottom: 28px; left: 50%;
