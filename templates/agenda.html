@@ -299,7 +299,14 @@
       <button class="toggle-btn active" id="btn-liste" onclick="setVue('liste')">☰ Liste</button>
       <button class="toggle-btn" id="btn-semaine" onclick="setVue('semaine')">⊞ Semaine</button>
     </div>
+    <button class="btn-icon" onclick="document.getElementById('import-ics').click()">📥 Importer .ics</button>
+    <input type="file" id="import-ics" accept=".ics" style="display:none" onchange="importerICS(this)" />
     <button class="btn-primary" onclick="ouvrirModal()">+ Nouveau RDV</button>
+  </div>
+
+  <!-- Résultat import -->
+  <div id="import-result" style="display:none; max-width:1000px; margin: 0 auto 16px;">
+    <div style="background:rgba(34,197,94,.08); border:1px solid rgba(34,197,94,.2); border-radius:12px; padding:12px 18px; font-size:13px; color:#86efac;" id="import-msg"></div>
   </div>
 
   <!-- Alertes en attente / conflits -->
@@ -757,6 +764,118 @@
       });
       toast(`✅ RDV déplacé à ${debut} – ${fin}`);
       charger();
+    }
+
+    // ── Import .ics ──────────────────────────────────────────
+    function importerICS(input) {
+      const file = input.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = async e => {
+        const texte = e.target.result;
+        const evenements = parserICS(texte);
+        if (!evenements.length) {
+          afficherImportMsg('⚠️ Aucun événement trouvé dans ce fichier.', false);
+          return;
+        }
+        let ok = 0, err = 0;
+        for (const ev of evenements) {
+          try {
+            const res = await fetch(`/api/rdv/${COMPTE_ID}`, {
+              method: 'POST',
+              headers: {'Content-Type': 'application/json'},
+              body: JSON.stringify(ev)
+            });
+            const j = await res.json();
+            if (j.ok) ok++; else err++;
+          } catch { err++; }
+        }
+        afficherImportMsg(`✅ ${ok} RDV importé(s) avec succès${err ? ` · ${err} ignoré(s)` : ''}.`, true);
+        charger();
+        input.value = '';
+      };
+      reader.readAsText(file);
+    }
+
+    function afficherImportMsg(msg, success) {
+      const box = document.getElementById('import-result');
+      const el  = document.getElementById('import-msg');
+      el.textContent = msg;
+      el.style.cssText = success
+        ? 'background:rgba(34,197,94,.08);border:1px solid rgba(34,197,94,.2);border-radius:12px;padding:12px 18px;font-size:13px;color:#86efac;'
+        : 'background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.2);border-radius:12px;padding:12px 18px;font-size:13px;color:#fca5a5;';
+      box.style.display = 'block';
+      setTimeout(() => box.style.display = 'none', 5000);
+    }
+
+    function parserICS(texte) {
+      // Unfold lines (RFC 5545 : continuation lines start with space/tab)
+      texte = texte.replace(/\r\n[ \t]/g, '').replace(/\n[ \t]/g, '');
+      const lignes = texte.split(/\r?\n/);
+      const events = [];
+      let ev = null;
+
+      for (const ligne of lignes) {
+        if (ligne === 'BEGIN:VEVENT') { ev = {}; continue; }
+        if (ligne === 'END:VEVENT' && ev) {
+          const rdv = convertirEvenement(ev);
+          if (rdv) events.push(rdv);
+          ev = null; continue;
+        }
+        if (!ev) continue;
+        const sep = ligne.indexOf(':');
+        if (sep < 0) continue;
+        const cle = ligne.slice(0, sep).split(';')[0].toUpperCase();
+        const val = ligne.slice(sep + 1).trim();
+        ev[cle] = val;
+      }
+      return events;
+    }
+
+    function convertirEvenement(ev) {
+      try {
+        const dtstart = ev['DTSTART'] || ev['DTSTART;TZID'] || '';
+        const dtend   = ev['DTEND']   || ev['DTEND;TZID']   || '';
+        if (!dtstart) return null;
+
+        const parseDate = str => {
+          // Formats : 20260526T090000Z ou 20260526T090000 ou 20260526
+          const s = str.replace('Z','');
+          const date = s.slice(0,4)+'-'+s.slice(4,6)+'-'+s.slice(6,8);
+          const heure = s.length >= 13 ? s.slice(9,11)+':'+s.slice(11,13) : '09:00';
+          return { date, heure };
+        };
+
+        const debut = parseDate(dtstart);
+        const fin   = dtend ? parseDate(dtend) : null;
+
+        // Deviner le type
+        const titre = (ev['SUMMARY'] || 'RDV importé').trim();
+        const tl = titre.toLowerCase();
+        let type = 'autre';
+        if (tl.includes('visite') || tl.includes('bien') || tl.includes('appartement') || tl.includes('maison')) type = 'visite';
+        else if (tl.includes('réunion') || tl.includes('reunion') || tl.includes('meeting')) type = 'reunion';
+        else if (tl.includes('appel') || tl.includes('call') || tl.includes('téléphone') || tl.includes('tel ')) type = 'appel';
+
+        return {
+          titre:        titre,
+          type:         type,
+          statut:       'confirme',
+          date:         debut.date,
+          heure_debut:  debut.heure,
+          heure_fin:    fin ? fin.heure : minuterApres(debut.heure, 60),
+          adresse:      (ev['LOCATION'] || '').trim(),
+          client_nom:   '',
+          client_email: '',
+          notes:        (ev['DESCRIPTION'] || '').replace(/\\n/g, '\n').replace(/\\,/g, ',').trim(),
+        };
+      } catch { return null; }
+    }
+
+    function minuterApres(heure, minutes) {
+      const [h, m] = heure.split(':').map(Number);
+      const total = h * 60 + m + minutes;
+      return minEnHeure(total);
     }
 
     // ── Init ─────────────────────────────────────────────────
