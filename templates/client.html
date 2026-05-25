@@ -3,6 +3,13 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="manifest" href="/static/manifest.json" />
+  <link rel="icon" type="image/svg+xml" href="/static/icon.svg" />
+  <link rel="apple-touch-icon" href="/static/icon.svg" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="MailPilot" />
+  <meta name="theme-color" content="#4f6ef7" />
   <title>MailPilot — {{ compte.nom }}</title>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -428,13 +435,6 @@
         </div>
       </a>
       {% endif %}
-      <div onclick="ouvrirAjoutBoite()" style="cursor:pointer;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px;display:flex;align-items:center;gap:12px;transition:all .15s" onmouseover="this.style.borderColor='#4f6ef7'" onmouseout="this.style.borderColor='var(--border)'">
-        <span style="font-size:24px">📬</span>
-        <div>
-          <div style="font-size:13px;font-weight:700;color:var(--text)">Ajouter une boîte</div>
-          <div style="font-size:11px;color:var(--muted);margin-top:2px">Connecter un email</div>
-        </div>
-      </div>
       <div onclick="toggleNettoyagePanel();document.getElementById('nettoyage-panel').parentElement.scrollIntoView({behavior:'smooth'})" style="cursor:pointer;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px;display:flex;align-items:center;gap:12px;transition:all .15s" onmouseover="this.style.borderColor='#ef4444'" onmouseout="this.style.borderColor='var(--border)'">
         <span style="font-size:24px">🗑️</span>
         <div>
@@ -442,13 +442,6 @@
           <div style="font-size:11px;color:var(--muted);margin-top:2px">Supprimer vieux emails</div>
         </div>
       </div>
-      <a href="/logout" style="text-decoration:none;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px;display:flex;align-items:center;gap:12px;transition:all .15s" onmouseover="this.style.borderColor='#2a3d6a'" onmouseout="this.style.borderColor='var(--border)'">
-        <span style="font-size:24px">🔒</span>
-        <div>
-          <div style="font-size:13px;font-weight:700;color:var(--text)">Déconnexion</div>
-          <div style="font-size:11px;color:var(--muted);margin-top:2px">Quitter MailPilot</div>
-        </div>
-      </a>
     </div>
   </div>
 
@@ -464,7 +457,7 @@
       <!-- Étape 1 : choix provider -->
       <div id="wstep-1">
         <div class="wizard-icon">🛩️</div>
-        <div class="wizard-title">Bienvenue sur MailPilot Pro !</div>
+        <div class="wizard-title">Bienvenue sur MailPilot !</div>
         <div class="wizard-sub">En quelques secondes, ton IA va gérer tes emails à ta place.<br>Commence par choisir ta boîte mail.</div>
         <div class="wizard-provider-grid">
           <div class="wizard-provider-card active" id="wp-gmail" onclick="wSetProvider('gmail')">

@@ -1,0 +1,17 @@
+{
+  "name": "MailPilot",
+  "short_name": "MailPilot",
+  "description": "Gérez votre boîte mail avec l'IA",
+  "start_url": "/dashboard",
+  "display": "standalone",
+  "background_color": "#0a0f1e",
+  "theme_color": "#4f6ef7",
+  "icons": [
+    {
+      "src": "/static/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
