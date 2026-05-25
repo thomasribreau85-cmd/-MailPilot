@@ -530,6 +530,13 @@
             <input type="email" id="tr-email" class="form-input" style="margin-bottom:0" placeholder="email@destinataire.fr" />
           </div>
         </div>
+        <div style="margin-bottom:10px">
+          <label class="form-label" style="display:flex;align-items:center;gap:6px">
+            Filtre <span style="font-weight:400;color:var(--muted)">(optionnel)</span>
+          </label>
+          <input type="text" id="tr-filtre" class="form-input" style="margin-bottom:4px" placeholder="ex: client@gmail.com  ou  12 rue des Lilas" />
+          <div style="font-size:11px;color:var(--muted)">Si renseigné, transfère uniquement si l'expéditeur ou le sujet contient ce texte. Laisser vide = tous les emails de la catégorie.</div>
+        </div>
         <button onclick="ajouterRegle()" style="width:100%;padding:9px;background:rgba(79,110,247,.12);border:1px solid rgba(79,110,247,.25);border-radius:8px;color:#93b4f0;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;transition:all .15s" onmouseover="this.style.background='rgba(79,110,247,.22)'" onmouseout="this.style.background='rgba(79,110,247,.12)'">+ Ajouter</button>
       </div>
 
@@ -1077,23 +1084,25 @@
         return;
       }
       el.innerHTML = transfertsRegles.map((r, i) => `
-        <div style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:#060d1c;border:1px solid var(--border);border-radius:10px;margin-bottom:8px">
-          <span style="font-size:12px;font-weight:700;padding:3px 10px;background:rgba(79,110,247,.12);color:#93b4f0;border-radius:20px">${r.categorie}</span>
-          <span style="font-size:12px;color:var(--muted)">→</span>
-          <span style="font-size:13px;flex:1;font-weight:500">${r.to}</span>
-          <button onclick="supprimerRegle(${i})" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:16px;padding:2px 6px;border-radius:6px;transition:all .15s" onmouseover="this.style.color='var(--red)'" onmouseout="this.style.color='var(--muted)'">✕</button>
+        <div style="padding:10px 14px;background:#060d1c;border:1px solid var(--border);border-radius:10px;margin-bottom:8px">
+          <div style="display:flex;align-items:center;gap:10px">
+            <span style="font-size:12px;font-weight:700;padding:3px 10px;background:rgba(79,110,247,.12);color:#93b4f0;border-radius:20px">${r.categorie}</span>
+            <span style="font-size:12px;color:var(--muted)">→</span>
+            <span style="font-size:13px;flex:1;font-weight:500">${r.to}</span>
+            <button onclick="supprimerRegle(${i})" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:16px;padding:2px 6px;border-radius:6px;transition:all .15s" onmouseover="this.style.color='var(--red)'" onmouseout="this.style.color='var(--muted)'">✕</button>
+          </div>
+          ${r.filtre ? `<div style="margin-top:5px;font-size:11px;color:var(--muted)">🔍 Filtre : <span style="color:#93b4f0">${r.filtre}</span></div>` : '<div style="margin-top:4px;font-size:11px;color:var(--muted)">Tous les emails de cette catégorie</div>'}
         </div>`).join('');
     }
 
     function ajouterRegle() {
-      const cat   = document.getElementById('tr-categorie').value;
-      const email = document.getElementById('tr-email').value.trim();
+      const cat    = document.getElementById('tr-categorie').value;
+      const email  = document.getElementById('tr-email').value.trim();
+      const filtre = document.getElementById('tr-filtre').value.trim();
       if (!cat || !email) { toast('⚠️ Catégorie et email requis'); return; }
-      if (transfertsRegles.some(r => r.categorie === cat && r.to === email)) {
-        toast('⚠️ Cette règle existe déjà'); return;
-      }
-      transfertsRegles.push({ categorie: cat, to: email });
-      document.getElementById('tr-email').value = '';
+      transfertsRegles.push({ categorie: cat, to: email, filtre });
+      document.getElementById('tr-email').value  = '';
+      document.getElementById('tr-filtre').value = '';
       rendreTransferts();
     }
 

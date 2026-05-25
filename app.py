@@ -1006,7 +1006,7 @@ def sauver_transferts(compte_id, boite_id):
     regles = d.get("transferts", [])
     # Validation basique
     regles_valides = [
-        {"categorie": r["categorie"], "to": r["to"].strip()}
+        {"categorie": r["categorie"], "to": r["to"].strip(), "filtre": r.get("filtre", "").strip()}
         for r in regles
         if r.get("categorie") and r.get("to", "").strip()
     ]

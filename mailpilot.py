@@ -655,7 +655,21 @@ def transferer_email(email, categorie, service=None, imap_conn=None, mail_provid
             cat, dest = r.split(":", 1)
             regles.append({"categorie": cat.strip(), "to": dest.strip()})
 
-    destinataires = [r["to"] for r in regles if r["categorie"] == categorie and r["to"]]
+    # Filtrer les règles : catégorie + filtre optionnel (expéditeur ou sujet)
+    expediteur = email.get("expediteur", "").lower()
+    sujet      = email.get("sujet", "").lower()
+    corps      = email.get("corps", "").lower()
+
+    destinataires = []
+    for r in regles:
+        if r["categorie"] != categorie:
+            continue
+        filtre = r.get("filtre", "").strip().lower()
+        if filtre:
+            if filtre not in expediteur and filtre not in sujet and filtre not in corps:
+                continue  # filtre ne correspond pas → on skip
+        destinataires.append(r["to"])
+
     if not destinataires:
         return
 
