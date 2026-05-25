@@ -305,6 +305,22 @@
     <a href="/logout" style="color:var(--muted);font-size:12px;text-decoration:none;padding:7px 14px;border:1px solid #1e2d4a;border-radius:8px;transition:all .15s;" onmouseover="this.style.borderColor='#2a3d6a'" onmouseout="this.style.borderColor='#1e2d4a'">Déconnexion</a>
   </header>
 
+  <!-- Barre de stats -->
+  <div style="max-width:620px;margin:0 auto 24px;display:grid;grid-template-columns:repeat(3,1fr);gap:10px" id="stats-bar">
+    <div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px 16px;text-align:center">
+      <div style="font-size:22px;font-weight:800;color:var(--blue)" id="stat-emails">—</div>
+      <div style="font-size:11px;color:var(--muted);margin-top:2px">Emails traités</div>
+    </div>
+    <div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px 16px;text-align:center">
+      <div style="font-size:22px;font-weight:800;color:var(--green)" id="stat-actifs">—</div>
+      <div style="font-size:11px;color:var(--muted);margin-top:2px">Agents actifs</div>
+    </div>
+    <div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px 16px;text-align:center">
+      <div style="font-size:22px;font-weight:800;color:var(--yellow)" id="stat-rdvs">—</div>
+      <div style="font-size:11px;color:var(--muted);margin-top:2px">RDVs en attente</div>
+    </div>
+  </div>
+
   <div class="section-header">
     <h2>📬 Mes boîtes mail</h2>
   </div>
@@ -396,6 +412,43 @@
         <button onclick="nettoyerMaintenant()" id="btn-nettoyer-now" style="width:100%;margin-top:10px;padding:9px;background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.25);border-radius:9px;color:#fca5a5;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;transition:all .15s" onmouseover="this.style.background='rgba(239,68,68,.2)'" onmouseout="this.style.background='rgba(239,68,68,.1)'">🗑️ Nettoyer maintenant</button>
         <div id="nettoyage-status" style="font-size:12px;color:var(--muted);text-align:center;margin-top:10px"></div>
       </div>
+    </div>
+  </div>
+
+  <!-- Accès rapides -->
+  <div style="max-width:620px;margin:20px auto 0;">
+    <div style="font-size:13px;color:var(--muted);font-weight:600;margin-bottom:10px;text-transform:uppercase;letter-spacing:.05em;">⚡ Accès rapides</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+      {% if compte.agenda_actif != false %}
+      <a href="/agenda/{{ compte.id }}" style="text-decoration:none;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px;display:flex;align-items:center;gap:12px;transition:all .15s" onmouseover="this.style.borderColor='#4f6ef7'" onmouseout="this.style.borderColor='var(--border)'">
+        <span style="font-size:24px">🗓️</span>
+        <div>
+          <div style="font-size:13px;font-weight:700;color:var(--text)">Agenda</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:2px">Gérer les RDVs</div>
+        </div>
+      </a>
+      {% endif %}
+      <div onclick="ouvrirAjoutBoite()" style="cursor:pointer;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px;display:flex;align-items:center;gap:12px;transition:all .15s" onmouseover="this.style.borderColor='#4f6ef7'" onmouseout="this.style.borderColor='var(--border)'">
+        <span style="font-size:24px">📬</span>
+        <div>
+          <div style="font-size:13px;font-weight:700;color:var(--text)">Ajouter une boîte</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:2px">Connecter un email</div>
+        </div>
+      </div>
+      <div onclick="toggleNettoyagePanel();document.getElementById('nettoyage-panel').parentElement.scrollIntoView({behavior:'smooth'})" style="cursor:pointer;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px;display:flex;align-items:center;gap:12px;transition:all .15s" onmouseover="this.style.borderColor='#ef4444'" onmouseout="this.style.borderColor='var(--border)'">
+        <span style="font-size:24px">🗑️</span>
+        <div>
+          <div style="font-size:13px;font-weight:700;color:var(--text)">Nettoyage</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:2px">Supprimer vieux emails</div>
+        </div>
+      </div>
+      <a href="/logout" style="text-decoration:none;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px;display:flex;align-items:center;gap:12px;transition:all .15s" onmouseover="this.style.borderColor='#2a3d6a'" onmouseout="this.style.borderColor='var(--border)'">
+        <span style="font-size:24px">🔒</span>
+        <div>
+          <div style="font-size:13px;font-weight:700;color:var(--text)">Déconnexion</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:2px">Quitter MailPilot</div>
+        </div>
+      </a>
     </div>
   </div>
 
@@ -1109,6 +1162,29 @@
       }
     }
 
+    // ── Stats bar ─────────────────────────────────────────────
+    async function chargerStats() {
+      try {
+        // Total emails traités (somme des compteurs)
+        const totalEmails = Object.values(boitesState).reduce((s, b) => s + (b.emails_traites || 0), 0);
+        document.getElementById('stat-emails').textContent = totalEmails;
+
+        // Agents actifs
+        const actifs = Object.values(boitesState).filter(b => b.actif).length;
+        document.getElementById('stat-actifs').textContent = actifs;
+
+        // RDVs en attente (si agenda actif)
+        {% if compte.agenda_actif != false %}
+        const r = await fetch(`/api/rdv/${COMPTE_ID}`);
+        const j = await r.json();
+        const attente = (j.rdvs || []).filter(r => r.statut === 'attente').length;
+        document.getElementById('stat-rdvs').textContent = attente;
+        {% else %}
+        document.getElementById('stat-rdvs').textContent = '—';
+        {% endif %}
+      } catch(e) {}
+    }
+
     // ── Nettoyage automatique ─────────────────────────────────
     function toggleNettoyagePanel() {
       const panel   = document.getElementById('nettoyage-panel');
@@ -1347,7 +1423,9 @@
 
     // ── Init ──────────────────────────────────────────────────
     setInterval(rafraichir, 3000);
+    setInterval(chargerStats, 10000);
     rafraichir().then(() => {
+      chargerStats();
       // Afficher le wizard si aucune boite connectée et pas déjà fait
       const key = `onboarded_${COMPTE_ID}`;
       if (!localStorage.getItem(key)) {
