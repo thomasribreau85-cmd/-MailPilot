@@ -14,88 +14,150 @@
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     :root {
-      --bg: #0a0f1e; --card: #0d1525; --border: #1e2d4a;
-      --text: #f1f5f9; --muted: #64748b; --blue: #4f6ef7; --blue2: #7c4ff8; --red: #ef4444;
+      --bg: #060b18; --card: #0d1526; --card2: #111d35; --border: #1a2c47;
+      --text: #f0f4ff; --muted: #5a7090; --blue: #4f6ef7; --blue2: #7c4ff8; --red: #ef4444;
     }
     body {
       background: var(--bg); color: var(--text);
       font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Inter", sans-serif;
       min-height: 100vh; display: flex; align-items: center; justify-content: center;
-      padding: 20px;
+      padding: 20px; position: relative; overflow: hidden;
+      background-image:
+        radial-gradient(ellipse 70% 50% at 15% 20%, rgba(79,110,247,.18) 0%, transparent 65%),
+        radial-gradient(ellipse 60% 45% at 85% 80%, rgba(124,79,248,.14) 0%, transparent 65%),
+        radial-gradient(ellipse 50% 40% at 55% 45%, rgba(79,110,247,.07) 0%, transparent 60%);
     }
+
+    /* Background decorations */
+    .bg-orb {
+      position: fixed; border-radius: 50%; filter: blur(90px);
+      pointer-events: none; z-index: 0;
+    }
+    .bg-dots {
+      position: fixed; pointer-events: none; z-index: 0; opacity: .07;
+    }
+
+    /* Card */
     .card {
-      background: var(--card); border: 1px solid var(--border);
-      border-radius: 20px; padding: 40px 36px; width: 100%; max-width: 400px;
-      box-shadow: 0 24px 60px rgba(0,0,0,.5);
+      position: relative; z-index: 1;
+      background: rgba(13,21,38,.92); border: 1px solid var(--border);
+      border-radius: 24px; padding: 42px 38px; width: 100%; max-width: 400px;
+      box-shadow: 0 32px 80px rgba(0,0,0,.6), 0 0 0 1px rgba(79,110,247,.06);
+      backdrop-filter: blur(20px);
     }
-    .logo { display: flex; align-items: center; gap: 12px; margin-bottom: 32px; }
+
+    /* Logo */
+    .logo { display: flex; align-items: center; gap: 14px; margin-bottom: 10px; }
     .logo-icon {
-      width: 42px; height: 42px; background: linear-gradient(135deg, var(--blue), var(--blue2));
-      border-radius: 12px; display: flex; align-items: center; justify-content: center;
-      font-size: 20px; flex-shrink: 0; box-shadow: 0 0 20px rgba(79,110,247,.4);
+      width: 46px; height: 46px; background: linear-gradient(135deg, var(--blue), var(--blue2));
+      border-radius: 13px; display: flex; align-items: center; justify-content: center;
+      font-size: 22px; flex-shrink: 0;
+      box-shadow: 0 0 28px rgba(79,110,247,.5), 0 4px 12px rgba(0,0,0,.4);
     }
     .logo h1 {
-      font-size: 22px; font-weight: 800; letter-spacing: -.3px;
-      background: linear-gradient(90deg, #fff 40%, var(--blue));
+      font-size: 24px; font-weight: 800; letter-spacing: -.4px;
+      background: linear-gradient(90deg, #fff 35%, var(--blue));
       -webkit-background-clip: text; -webkit-text-fill-color: transparent;
     }
-    .logo p { font-size: 12px; color: var(--muted); margin-top: 2px; }
 
-    label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 6px; font-weight: 500; }
+    .page-subtitle {
+      font-size: 13px; color: var(--muted); margin-bottom: 32px; line-height: 1.5;
+    }
+
+    /* Divider label */
+    .field-group { margin-bottom: 18px; }
+    label {
+      display: block; font-size: 11px; color: var(--muted);
+      margin-bottom: 7px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase;
+    }
     input {
-      width: 100%; background: #060d1c; border: 1px solid var(--border);
-      border-radius: 10px; color: var(--text); font-size: 14px;
-      padding: 11px 14px; outline: none; font-family: inherit; margin-bottom: 16px;
+      width: 100%; background: rgba(5,9,26,.8); border: 1px solid var(--border);
+      border-radius: 11px; color: var(--text); font-size: 14px;
+      padding: 12px 15px; outline: none; font-family: inherit;
       transition: border-color .15s, box-shadow .15s;
     }
     input:focus { border-color: var(--blue); box-shadow: 0 0 0 3px rgba(79,110,247,.15); }
+    input::placeholder { color: #2e4060; }
 
     button.btn-main {
       width: 100%; background: linear-gradient(135deg, var(--blue), var(--blue2));
-      color: #fff; border: none; border-radius: 10px; padding: 12px;
+      color: #fff; border: none; border-radius: 11px; padding: 13px;
       font-size: 15px; font-weight: 700; cursor: pointer; font-family: inherit;
-      box-shadow: 0 4px 16px rgba(79,110,247,.4); transition: all .15s;
+      box-shadow: 0 4px 20px rgba(79,110,247,.45); transition: all .15s;
+      letter-spacing: .01em; margin-top: 4px;
     }
-    button.btn-main:hover { transform: translateY(-1px); opacity: .92; }
+    button.btn-main:hover { transform: translateY(-1px); box-shadow: 0 6px 28px rgba(79,110,247,.55); }
+    button.btn-main:active { transform: translateY(0); }
 
-    .divider { text-align: center; color: var(--muted); font-size: 12px; margin: 20px 0; }
+    .divider {
+      display: flex; align-items: center; gap: 12px;
+      color: var(--muted); font-size: 11px; font-weight: 600;
+      margin: 22px 0; letter-spacing: .05em;
+    }
+    .divider::before, .divider::after {
+      content: ''; flex: 1; height: 1px; background: var(--border);
+    }
 
     .btn-register {
-      display: block; text-align: center; width: 100%;
-      background: transparent; border: 1px solid var(--border);
-      border-radius: 10px; padding: 11px; font-size: 14px; font-weight: 600;
+      display: flex; align-items: center; justify-content: center;
+      width: 100%; background: transparent; border: 1px solid var(--border);
+      border-radius: 11px; padding: 12px; font-size: 14px; font-weight: 600;
       color: var(--text); text-decoration: none; cursor: pointer;
-      font-family: inherit; transition: all .15s;
+      font-family: inherit; transition: all .15s; letter-spacing: .01em;
     }
-    .btn-register:hover { border-color: var(--blue); color: var(--blue); background: rgba(79,110,247,.07); }
+    .btn-register:hover {
+      border-color: rgba(79,110,247,.5); color: var(--blue);
+      background: rgba(79,110,247,.07);
+    }
 
-    #erreur { color: var(--red); font-size: 13px; margin-top: 12px; text-align: center; display: none; }
+    #erreur {
+      color: var(--red); font-size: 13px; margin-top: 14px;
+      text-align: center; display: none;
+      background: rgba(239,68,68,.06); border: 1px solid rgba(239,68,68,.2);
+      border-radius: 8px; padding: 9px 14px;
+    }
 
-    .admin-link { text-align: center; margin-top: 24px; }
-    .admin-link a { color: var(--muted); font-size: 11px; text-decoration: none; transition: color .15s; }
+    .admin-link { text-align: center; margin-top: 22px; }
+    .admin-link a {
+      color: var(--muted); font-size: 11px; text-decoration: none;
+      transition: color .15s; letter-spacing: .02em;
+    }
     .admin-link a:hover { color: var(--text); }
   </style>
 </head>
 <body>
+
+  <!-- Background orbs -->
+  <div class="bg-orb" style="width:380px;height:380px;background:radial-gradient(circle,rgba(79,110,247,.22),transparent);top:-80px;left:-120px"></div>
+  <div class="bg-orb" style="width:300px;height:300px;background:radial-gradient(circle,rgba(124,79,248,.18),transparent);bottom:-60px;right:-80px"></div>
+  <svg class="bg-dots" style="top:0;left:0;width:100%;height:100%" xmlns="http://www.w3.org/2000/svg">
+    <defs><pattern id="dgrid" x="0" y="0" width="28" height="28" patternUnits="userSpaceOnUse"><circle cx="1.5" cy="1.5" r="1.5" fill="#4f6ef7"/></pattern></defs>
+    <rect width="100%" height="100%" fill="url(#dgrid)"/>
+  </svg>
+
   <div class="card">
     <div class="logo">
       <div class="logo-icon">✉️</div>
       <div>
         <h1>MailPilot</h1>
-        <p>Assistant email IA</p>
       </div>
     </div>
+    <p class="page-subtitle">Connectez-vous pour gérer votre boîte mail avec l'IA.</p>
 
-    <label>Adresse email</label>
-    <input type="email" id="email" placeholder="votre@email.com" autocomplete="email" />
+    <div class="field-group">
+      <label>Adresse email</label>
+      <input type="email" id="email" placeholder="votre@email.com" autocomplete="email" />
+    </div>
 
-    <label>Mot de passe</label>
-    <input type="password" id="pwd" placeholder="••••••••" onkeydown="if(event.key==='Enter')connexion()" />
+    <div class="field-group">
+      <label>Mot de passe</label>
+      <input type="password" id="pwd" placeholder="••••••••" onkeydown="if(event.key==='Enter')connexion()" />
+    </div>
 
     <button class="btn-main" onclick="connexion()">Se connecter</button>
     <p id="erreur"></p>
 
-    <div class="divider">— ou —</div>
+    <div class="divider">ou</div>
     <a class="btn-register" href="/register">Créer un compte</a>
 
     <div class="admin-link">

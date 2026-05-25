@@ -14,25 +14,54 @@
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     :root {
-      --bg: #0a0f1e; --card: #0d1525; --border: #1e2d4a;
-      --text: #f1f5f9; --muted: #64748b; --blue: #4f6ef7; --blue2: #7c4ff8;
+      --bg: #060b18; --card: #0d1526; --card2: #111d35; --border: #1a2c47;
+      --text: #f0f4ff; --muted: #5a7090; --blue: #4f6ef7; --blue2: #7c4ff8;
       --green: #22c55e; --red: #ef4444; --yellow: #f59e0b; --radius: 14px;
     }
     body {
       background: var(--bg); color: var(--text);
       font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Inter", sans-serif;
-      min-height: 100vh; padding: 28px 20px 80px;
+      min-height: 100vh; padding: 0 0 80px;
+      background-image:
+        radial-gradient(ellipse 60% 40% at 20% 10%, rgba(79,110,247,.13) 0%, transparent 70%),
+        radial-gradient(ellipse 50% 35% at 80% 85%, rgba(124,79,248,.10) 0%, transparent 70%),
+        radial-gradient(ellipse 40% 30% at 60% 30%, rgba(79,110,247,.06) 0%, transparent 65%);
     }
+
+    /* Decorative side panels */
+    .deco-left, .deco-right {
+      position: fixed; top: 0; width: 220px; height: 100vh;
+      pointer-events: none; z-index: 0; overflow: hidden;
+    }
+    .deco-left { left: 0; }
+    .deco-right { right: 0; }
+    .deco-orb {
+      position: absolute; border-radius: 50%;
+      filter: blur(70px); opacity: .18;
+    }
+    .deco-line {
+      position: absolute; width: 1px; top: 0; bottom: 0;
+      background: linear-gradient(to bottom, transparent 0%, rgba(79,110,247,.25) 30%, rgba(124,79,248,.20) 70%, transparent 100%);
+    }
+    .deco-dots {
+      position: absolute; opacity: .12;
+    }
+
+    /* Page wrapper */
+    .page-wrap { position: relative; z-index: 1; max-width: 1000px; margin: 0 auto; padding: 28px 20px 0; }
 
     /* Header */
     header {
-      max-width: 1000px; margin: 0 auto 28px;
       display: flex; align-items: center; gap: 14px;
+      background: rgba(13,21,38,.85); backdrop-filter: blur(20px);
+      border-bottom: 1px solid var(--border);
+      padding: 18px 32px; margin-bottom: 32px;
+      position: sticky; top: 0; z-index: 50;
     }
     .logo-icon {
       width: 38px; height: 38px; background: linear-gradient(135deg, var(--blue), var(--blue2));
       border-radius: 10px; display: flex; align-items: center; justify-content: center;
-      font-size: 18px; box-shadow: 0 0 16px rgba(79,110,247,.35);
+      font-size: 18px; box-shadow: 0 0 16px rgba(79,110,247,.4); flex-shrink: 0;
     }
     .logo-text h1 {
       font-size: 20px; font-weight: 800;
@@ -40,50 +69,51 @@
       -webkit-background-clip: text; -webkit-text-fill-color: transparent;
     }
     .logo-text p { font-size: 11px; color: var(--muted); margin-top: 1px; }
-    .header-right { margin-left: auto; display: flex; gap: 10px; align-items: center; }
+    .header-right { margin-left: auto; display: flex; gap: 8px; align-items: center; }
     .nav-link {
-      color: var(--muted); font-size: 13px; text-decoration: none;
-      padding: 7px 14px; border: 1px solid var(--border); border-radius: 8px; transition: all .15s;
+      color: var(--muted); font-size: 12px; font-weight: 600; text-decoration: none;
+      padding: 7px 13px; border: 1px solid var(--border); border-radius: 8px;
+      transition: all .15s; letter-spacing: .01em;
     }
-    .nav-link:hover { color: var(--text); border-color: #2a3d6a; }
-    .nav-link.active { color: var(--blue); border-color: var(--blue); background: rgba(79,110,247,.08); }
+    .nav-link:hover { color: var(--text); border-color: rgba(79,110,247,.4); background: rgba(79,110,247,.06); }
+    .nav-link.active { color: var(--blue); border-color: rgba(79,110,247,.5); background: rgba(79,110,247,.1); }
+    .nav-link.logout { border: none; padding: 7px 10px; font-size: 11px; }
 
     /* Toolbar */
     .toolbar {
-      max-width: 1000px; margin: 0 auto 20px;
-      display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+      display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+      margin-bottom: 24px;
     }
-    .toolbar h2 { font-size: 22px; font-weight: 800; flex: 1; }
+    .toolbar h2 { font-size: 22px; font-weight: 800; flex: 1; letter-spacing: -.3px; }
     .btn-icon {
       background: var(--card); border: 1px solid var(--border);
-      border-radius: 10px; padding: 9px 16px; color: var(--muted);
-      font-size: 13px; font-weight: 600; cursor: pointer; font-family: inherit;
+      border-radius: 10px; padding: 9px 15px; color: var(--muted);
+      font-size: 12px; font-weight: 600; cursor: pointer; font-family: inherit;
       transition: all .15s; display: flex; align-items: center; gap: 6px;
     }
-    .btn-icon:hover { border-color: var(--blue); color: var(--blue); }
+    .btn-icon:hover { border-color: rgba(79,110,247,.5); color: var(--blue); background: rgba(79,110,247,.06); }
     .btn-primary {
       background: linear-gradient(135deg, var(--blue), var(--blue2)); border: none;
       border-radius: 10px; padding: 10px 18px; color: #fff;
       font-size: 13px; font-weight: 700; cursor: pointer; font-family: inherit;
-      box-shadow: 0 4px 14px rgba(79,110,247,.35); transition: all .15s;
+      box-shadow: 0 4px 16px rgba(79,110,247,.4); transition: all .15s;
     }
     .btn-primary:hover { transform: translateY(-1px); opacity: .92; }
 
     .toggle-view {
       display: flex; background: var(--card); border: 1px solid var(--border);
-      border-radius: 10px; overflow: hidden;
+      border-radius: 10px; overflow: hidden; padding: 3px; gap: 2px;
     }
     .toggle-btn {
-      padding: 8px 16px; border: none; background: transparent;
-      color: var(--muted); font-size: 13px; font-weight: 600;
-      cursor: pointer; font-family: inherit; transition: all .15s;
+      padding: 7px 14px; border: none; background: transparent;
+      color: var(--muted); font-size: 12px; font-weight: 600;
+      cursor: pointer; font-family: inherit; transition: all .15s; border-radius: 8px;
     }
-    .toggle-btn.active { background: rgba(79,110,247,.15); color: var(--blue); }
+    .toggle-btn.active { background: rgba(79,110,247,.18); color: var(--blue); }
 
     /* Sections en attente / conflits */
     .alerts-row {
-      max-width: 1000px; margin: 0 auto 20px;
-      display: grid; grid-template-columns: 1fr 1fr; gap: 14px;
+      display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 24px;
     }
     @media(max-width:640px) { .alerts-row { grid-template-columns: 1fr; } }
     .alert-box {
@@ -140,7 +170,7 @@
     .creneau-vide { font-size: 12px; color: var(--muted); }
 
     /* Vue liste */
-    #vue-liste { max-width: 1000px; margin: 0 auto; }
+    #vue-liste { }
     .liste-section-title {
       font-size: 12px; font-weight: 700; color: var(--muted);
       text-transform: uppercase; letter-spacing: .06em;
@@ -150,9 +180,9 @@
       background: var(--card); border: 1px solid var(--border);
       border-radius: var(--radius); padding: 16px 20px; margin-bottom: 10px;
       display: flex; align-items: center; gap: 16px; cursor: pointer;
-      transition: all .15s;
+      transition: all .18s;
     }
-    .rdv-card:hover { border-color: #2a3d6a; transform: translateX(2px); }
+    .rdv-card:hover { border-color: rgba(79,110,247,.35); transform: translateX(3px); background: rgba(13,21,38,.95); }
     .rdv-date-col { text-align: center; min-width: 52px; }
     .rdv-day  { font-size: 24px; font-weight: 800; line-height: 1; color: var(--blue); }
     .rdv-mon  { font-size: 11px; color: var(--muted); text-transform: uppercase; }
@@ -176,7 +206,7 @@
     .rdv-btn.danger:hover { border-color: var(--red); color: var(--red); }
 
     /* Vue semaine */
-    #vue-semaine { max-width: 1000px; margin: 0 auto; display: none; }
+    #vue-semaine { display: none; }
     .semaine-nav {
       display: flex; align-items: center; gap: 14px; margin-bottom: 16px;
     }
@@ -231,25 +261,25 @@
     /* Modal */
     .overlay {
       display: none; position: fixed; inset: 0;
-      background: rgba(0,0,0,.8); z-index: 100;
+      background: rgba(0,0,0,.75); backdrop-filter: blur(6px); z-index: 100;
       align-items: center; justify-content: center; padding: 20px;
     }
     .overlay.open { display: flex; }
     .modal {
-      background: #0d1525; border: 1px solid #1e2d4a;
-      border-radius: 18px; padding: 28px; width: 100%; max-width: 480px;
+      background: var(--card2); border: 1px solid var(--border);
+      border-radius: 20px; padding: 28px; width: 100%; max-width: 480px;
       max-height: 90vh; overflow-y: auto;
-      box-shadow: 0 24px 60px rgba(0,0,0,.6);
+      box-shadow: 0 32px 80px rgba(0,0,0,.7);
     }
     .modal h2 { font-size: 17px; font-weight: 700; margin-bottom: 18px; }
     .form-label { font-size: 12px; color: var(--muted); margin-bottom: 6px; font-weight: 500; display: block; }
     .form-input {
-      width: 100%; background: #060d1c; border: 1px solid var(--border);
+      width: 100%; background: #05091a; border: 1px solid var(--border);
       border-radius: 10px; color: var(--text); font-size: 14px;
       padding: 10px 14px; outline: none; font-family: inherit; margin-bottom: 14px;
-      transition: border-color .15s;
+      transition: border-color .15s, box-shadow .15s;
     }
-    .form-input:focus { border-color: var(--blue); }
+    .form-input:focus { border-color: var(--blue); box-shadow: 0 0 0 3px rgba(79,110,247,.12); }
     .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
     .modal-btns { display: flex; gap: 10px; margin-top: 4px; }
     .btn-cancel {
@@ -282,6 +312,30 @@
     .empty-state { text-align: center; padding: 48px 20px; color: var(--muted); }
     .empty-state .big { font-size: 40px; margin-bottom: 12px; }
     .empty-state p { font-size: 14px; }
+
+    /* Mobile */
+    @media (max-width: 700px) {
+      .deco-left, .deco-right { display: none; }
+      header { padding: 14px 16px; margin-bottom: 20px; }
+      .logo-text h1 { font-size: 17px; }
+      .nav-link { padding: 6px 10px; font-size: 11px; }
+      .nav-link.logout { display: none; }
+      .page-wrap { padding: 0 14px; }
+      .toolbar { gap: 8px; margin-bottom: 18px; }
+      .toolbar h2 { font-size: 18px; }
+      .btn-icon { padding: 7px 10px; font-size: 11px; }
+      .btn-primary { padding: 8px 14px; font-size: 12px; }
+      .toggle-btn { padding: 6px 10px; font-size: 11px; }
+      .alerts-row { grid-template-columns: 1fr; gap: 10px; }
+      .rdv-card { padding: 12px 14px; gap: 12px; }
+      .rdv-day { font-size: 20px; }
+      .rdv-titre { font-size: 14px; }
+      .rdv-actions { display: none; }
+      .semaine-grid { grid-template-columns: repeat(4, 1fr); }
+    }
+    @media (max-width: 420px) {
+      .semaine-grid { grid-template-columns: repeat(2, 1fr); }
+    }
 
     /* Horaires modal */
     .horaires-grid { display: flex; flex-direction: column; gap: 10px; margin-bottom: 18px; }
@@ -318,6 +372,26 @@
 </head>
 <body>
 
+  <!-- Decorative side panels -->
+  <div class="deco-left">
+    <div class="deco-orb" style="width:200px;height:200px;background:radial-gradient(circle,#4f6ef7,transparent);top:15%;left:-60px"></div>
+    <div class="deco-orb" style="width:140px;height:140px;background:radial-gradient(circle,#7c4ff8,transparent);top:55%;left:-20px"></div>
+    <div class="deco-line" style="left:200px;opacity:.5"></div>
+    <svg class="deco-dots" style="left:10px;top:120px;width:160px;height:320px" xmlns="http://www.w3.org/2000/svg">
+      <defs><pattern id="dp2" x="0" y="0" width="22" height="22" patternUnits="userSpaceOnUse"><circle cx="1.5" cy="1.5" r="1.5" fill="#4f6ef7"/></pattern></defs>
+      <rect width="160" height="320" fill="url(#dp2)"/>
+    </svg>
+  </div>
+  <div class="deco-right">
+    <div class="deco-orb" style="width:180px;height:180px;background:radial-gradient(circle,#7c4ff8,transparent);top:25%;right:-50px"></div>
+    <div class="deco-orb" style="width:130px;height:130px;background:radial-gradient(circle,#4f6ef7,transparent);top:65%;right:-20px"></div>
+    <div class="deco-line" style="right:200px;opacity:.5"></div>
+    <svg class="deco-dots" style="right:10px;top:160px;width:160px;height:280px" xmlns="http://www.w3.org/2000/svg">
+      <defs><pattern id="dp3" x="0" y="0" width="22" height="22" patternUnits="userSpaceOnUse"><circle cx="1.5" cy="1.5" r="1.5" fill="#7c4ff8"/></pattern></defs>
+      <rect width="160" height="280" fill="url(#dp3)"/>
+    </svg>
+  </div>
+
   <header>
     <div class="logo-icon">✉️</div>
     <div class="logo-text">
@@ -325,11 +399,13 @@
       <p>{{ compte.nom }}{% if compte.agence %} — {{ compte.agence }}{% endif %}</p>
     </div>
     <div class="header-right">
-      <a href="/dashboard" class="nav-link">📬 Boîtes mail</a>
+      <a href="/dashboard" class="nav-link">📬 Boîtes</a>
       <a href="/agenda/{{ compte.id }}" class="nav-link active">🗓️ Agenda</a>
-      <a href="/logout" class="nav-link">Déconnexion</a>
+      <a href="/logout" class="nav-link logout">Déconnexion</a>
     </div>
   </header>
+
+  <div class="page-wrap">
 
   <!-- Toolbar -->
   <div class="toolbar">
@@ -464,6 +540,8 @@
       </div>
     </div>
   </div>
+
+  </div><!-- /page-wrap -->
 
   <div id="toast"></div>
 

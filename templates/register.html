@@ -14,112 +14,179 @@
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     :root {
-      --bg: #0a0f1e; --card: #0d1525; --border: #1e2d4a;
-      --text: #f1f5f9; --muted: #64748b; --blue: #4f6ef7; --blue2: #7c4ff8; --red: #ef4444;
+      --bg: #060b18; --card: #0d1526; --card2: #111d35; --border: #1a2c47;
+      --text: #f0f4ff; --muted: #5a7090; --blue: #4f6ef7; --blue2: #7c4ff8; --red: #ef4444;
     }
     body {
       background: var(--bg); color: var(--text);
       font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Inter", sans-serif;
-      min-height: 100vh; display: flex; align-items: center; justify-content: center;
-      padding: 20px;
+      min-height: 100vh; display: flex; align-items: flex-start; justify-content: center;
+      padding: 40px 20px 60px; position: relative; overflow-x: hidden;
+      background-image:
+        radial-gradient(ellipse 70% 50% at 15% 10%, rgba(79,110,247,.16) 0%, transparent 65%),
+        radial-gradient(ellipse 60% 45% at 85% 90%, rgba(124,79,248,.12) 0%, transparent 65%);
     }
+
+    /* Background decorations */
+    .bg-orb {
+      position: fixed; border-radius: 50%; filter: blur(90px);
+      pointer-events: none; z-index: 0;
+    }
+    .bg-dots {
+      position: fixed; pointer-events: none; z-index: 0; opacity: .06;
+    }
+
+    /* Card */
     .card {
-      background: var(--card); border: 1px solid var(--border);
-      border-radius: 20px; padding: 36px 32px; width: 100%; max-width: 440px;
-      box-shadow: 0 24px 60px rgba(0,0,0,.5);
+      position: relative; z-index: 1;
+      background: rgba(13,21,38,.92); border: 1px solid var(--border);
+      border-radius: 24px; padding: 40px 36px; width: 100%; max-width: 460px;
+      box-shadow: 0 32px 80px rgba(0,0,0,.6), 0 0 0 1px rgba(79,110,247,.06);
+      backdrop-filter: blur(20px);
     }
-    .logo { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
+
+    /* Logo */
+    .logo { display: flex; align-items: center; gap: 14px; margin-bottom: 6px; }
     .logo-icon {
-      width: 42px; height: 42px; background: linear-gradient(135deg, var(--blue), var(--blue2));
-      border-radius: 12px; display: flex; align-items: center; justify-content: center;
-      font-size: 20px; flex-shrink: 0; box-shadow: 0 0 20px rgba(79,110,247,.4);
+      width: 46px; height: 46px; background: linear-gradient(135deg, var(--blue), var(--blue2));
+      border-radius: 13px; display: flex; align-items: center; justify-content: center;
+      font-size: 22px; flex-shrink: 0;
+      box-shadow: 0 0 28px rgba(79,110,247,.5), 0 4px 12px rgba(0,0,0,.4);
     }
     .logo h1 {
-      font-size: 22px; font-weight: 800; letter-spacing: -.3px;
-      background: linear-gradient(90deg, #fff 40%, var(--blue));
+      font-size: 24px; font-weight: 800; letter-spacing: -.4px;
+      background: linear-gradient(90deg, #fff 35%, var(--blue));
       -webkit-background-clip: text; -webkit-text-fill-color: transparent;
     }
-    .subtitle { font-size: 13px; color: var(--muted); margin-bottom: 24px; }
-    label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 6px; font-weight: 500; }
+    .page-subtitle { font-size: 13px; color: var(--muted); margin-bottom: 30px; line-height: 1.5; }
+
+    /* Fields */
+    .field-group { margin-bottom: 16px; }
+    label {
+      display: block; font-size: 11px; color: var(--muted);
+      margin-bottom: 7px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase;
+    }
     input, select {
-      width: 100%; background: #060d1c; border: 1px solid var(--border);
-      border-radius: 10px; color: var(--text); font-size: 14px;
-      padding: 10px 14px; outline: none; font-family: inherit; margin-bottom: 14px;
+      width: 100%; background: rgba(5,9,26,.8); border: 1px solid var(--border);
+      border-radius: 11px; color: var(--text); font-size: 14px;
+      padding: 11px 14px; outline: none; font-family: inherit;
       transition: border-color .15s, box-shadow .15s;
     }
     input:focus, select:focus { border-color: var(--blue); box-shadow: 0 0 0 3px rgba(79,110,247,.15); }
-    select option { background: #0d1525; }
-    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-    button.btn-main {
-      width: 100%; background: linear-gradient(135deg, var(--blue), var(--blue2));
-      color: #fff; border: none; border-radius: 10px; padding: 12px;
-      font-size: 15px; font-weight: 700; cursor: pointer; font-family: inherit; margin-top: 4px;
-      box-shadow: 0 4px 16px rgba(79,110,247,.4); transition: all .15s;
+    input::placeholder { color: #2e4060; }
+    select option { background: #0d1526; }
+
+    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px; }
+    .row .field-group { margin-bottom: 0; }
+
+    /* Section divider */
+    .section-divider {
+      font-size: 11px; color: var(--muted); font-weight: 700; letter-spacing: .08em;
+      text-transform: uppercase; margin: 8px 0 18px;
+      display: flex; align-items: center; gap: 10px;
     }
-    button.btn-main:hover { transform: translateY(-1px); opacity: .92; }
-    #erreur { color: var(--red); font-size: 13px; margin-top: 12px; text-align: center; display: none; }
-    .login-link { text-align: center; margin-top: 18px; }
-    .login-link a { color: var(--muted); font-size: 13px; text-decoration: none; transition: color .15s; }
-    .login-link a:hover { color: var(--text); }
+    .section-divider::after {
+      content: ''; flex: 1; height: 1px; background: var(--border);
+    }
 
     /* Provider selector */
-    .provider-label { font-size: 12px; color: var(--muted); margin-bottom: 8px; font-weight: 500; }
     .provider-btns { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 20px; }
     .provider-btn {
-      background: #060d1c; border: 1px solid var(--border); border-radius: 10px;
-      color: var(--muted); font-size: 13px; font-weight: 500; padding: 10px 6px;
+      background: rgba(5,9,26,.8); border: 1px solid var(--border); border-radius: 11px;
+      color: var(--muted); font-size: 13px; font-weight: 600; padding: 11px 6px;
       cursor: pointer; text-align: center; transition: all .15s; font-family: inherit;
     }
-    .provider-btn:hover { border-color: var(--blue); color: var(--text); }
-    .provider-btn.active { border-color: var(--blue); color: var(--text); background: rgba(79,110,247,.1); }
-    .provider-btn .icon { font-size: 18px; display: block; margin-bottom: 4px; }
+    .provider-btn:hover { border-color: rgba(79,110,247,.4); color: var(--text); }
+    .provider-btn.active {
+      border-color: var(--blue); color: var(--text);
+      background: rgba(79,110,247,.1);
+      box-shadow: 0 0 0 1px rgba(79,110,247,.2);
+    }
+    .provider-btn .icon { font-size: 20px; display: block; margin-bottom: 5px; }
 
     /* IMAP section */
     .imap-section { display: none; }
     .imap-section.visible { display: block; }
-    .section-title {
-      font-size: 11px; color: var(--muted); font-weight: 600; letter-spacing: .05em;
-      text-transform: uppercase; margin-bottom: 12px; padding-top: 4px;
-      border-top: 1px solid var(--border);
-    }
+
     .info-box {
-      background: rgba(79,110,247,.08); border: 1px solid rgba(79,110,247,.2); border-radius: 10px;
-      padding: 10px 14px; font-size: 12px; color: #93b4f0; margin-bottom: 14px; line-height: 1.5;
+      background: rgba(79,110,247,.07); border: 1px solid rgba(79,110,247,.2); border-radius: 11px;
+      padding: 11px 14px; font-size: 12px; color: #93b4f0; margin-bottom: 16px; line-height: 1.5;
     }
-    .preset-row { display: flex; align-items: center; gap: 8px; margin-bottom: 14px; }
-    .preset-row label { margin: 0; white-space: nowrap; font-size: 12px; }
+    .preset-row { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; }
+    .preset-row label { margin: 0; white-space: nowrap; font-size: 11px; text-transform: uppercase; letter-spacing: .04em; }
     .preset-row select { margin: 0; flex: 1; }
+
+    /* Submit */
+    button.btn-main {
+      width: 100%; background: linear-gradient(135deg, var(--blue), var(--blue2));
+      color: #fff; border: none; border-radius: 11px; padding: 13px;
+      font-size: 15px; font-weight: 700; cursor: pointer; font-family: inherit; margin-top: 4px;
+      box-shadow: 0 4px 20px rgba(79,110,247,.45); transition: all .15s; letter-spacing: .01em;
+    }
+    button.btn-main:hover { transform: translateY(-1px); box-shadow: 0 6px 28px rgba(79,110,247,.55); }
+    button.btn-main:active { transform: translateY(0); }
+
+    #erreur {
+      color: var(--red); font-size: 13px; margin-top: 14px;
+      text-align: center; display: none;
+      background: rgba(239,68,68,.06); border: 1px solid rgba(239,68,68,.2);
+      border-radius: 8px; padding: 9px 14px;
+    }
+
+    .login-link { text-align: center; margin-top: 20px; }
+    .login-link a {
+      color: var(--muted); font-size: 13px; text-decoration: none;
+      transition: color .15s;
+    }
+    .login-link a:hover { color: var(--blue); }
   </style>
 </head>
 <body>
+
+  <!-- Background orbs -->
+  <div class="bg-orb" style="width:400px;height:400px;background:radial-gradient(circle,rgba(79,110,247,.2),transparent);top:-100px;left:-140px"></div>
+  <div class="bg-orb" style="width:320px;height:320px;background:radial-gradient(circle,rgba(124,79,248,.16),transparent);bottom:-80px;right:-100px"></div>
+  <svg class="bg-dots" style="top:0;left:0;width:100%;height:100%" xmlns="http://www.w3.org/2000/svg">
+    <defs><pattern id="dgrid" x="0" y="0" width="28" height="28" patternUnits="userSpaceOnUse"><circle cx="1.5" cy="1.5" r="1.5" fill="#4f6ef7"/></pattern></defs>
+    <rect width="100%" height="100%" fill="url(#dgrid)"/>
+  </svg>
+
   <div class="card">
     <div class="logo">
       <div class="logo-icon">✉️</div>
       <div><h1>MailPilot</h1></div>
     </div>
-    <p class="subtitle">Créez votre compte pour gérer votre boite mail avec l'IA.</p>
+    <p class="page-subtitle">Créez votre compte pour gérer votre boîte mail avec l'IA.</p>
 
     <!-- Infos personnelles -->
-    <label>Votre nom *</label>
-    <input type="text" id="nom" placeholder="Jean Dupont" />
+    <div class="section-divider">Votre profil</div>
+
+    <div class="field-group">
+      <label>Votre nom *</label>
+      <input type="text" id="nom" placeholder="Jean Dupont" />
+    </div>
 
     <div class="row">
-      <div>
+      <div class="field-group">
         <label>Agence / Société</label>
         <input type="text" id="agence" placeholder="Nom de l'agence" />
       </div>
-      <div>
+      <div class="field-group">
         <label>Téléphone</label>
         <input type="text" id="tel" placeholder="06 00 00 00" />
       </div>
     </div>
 
-    <label>Ville / Zone</label>
-    <input type="text" id="zone" placeholder="ex: Châtellerault" />
+    <div class="field-group">
+      <label>Ville / Zone</label>
+      <input type="text" id="zone" placeholder="ex: Châtellerault" />
+    </div>
 
     <!-- Choix du fournisseur -->
-    <div class="provider-label">Type de boîte mail *</div>
-    <div class="provider-btns">
+    <div class="section-divider">Boîte mail</div>
+
+    <label>Type de boîte mail *</label>
+    <div class="provider-btns" style="margin-top:8px">
       <button class="provider-btn active" onclick="setProvider('gmail')" id="btn-gmail">
         <span class="icon">📧</span>Gmail
       </button>
@@ -132,8 +199,10 @@
     </div>
 
     <!-- Adresse email (commune à tous) -->
-    <label>Adresse email à connecter *</label>
-    <input type="email" id="email" placeholder="votre@email.com" autocomplete="email" />
+    <div class="field-group">
+      <label>Adresse email à connecter *</label>
+      <input type="email" id="email" placeholder="votre@email.com" autocomplete="email" />
+    </div>
 
     <!-- Info Microsoft OAuth -->
     <div class="imap-section" id="microsoft-section">
@@ -144,7 +213,7 @@
 
     <!-- Section IMAP (Autre uniquement) -->
     <div class="imap-section" id="imap-section">
-      <div class="section-title">Connexion IMAP / SMTP</div>
+      <div class="section-divider">Connexion IMAP / SMTP</div>
 
       <div class="info-box">
         💡 Utilisez un <strong>mot de passe d'application</strong> (pas votre mot de passe habituel).
@@ -163,38 +232,46 @@
       </div>
 
       <div class="row">
-        <div>
+        <div class="field-group">
           <label>Serveur IMAP *</label>
           <input type="text" id="imap_server" placeholder="imap.exemple.fr" />
         </div>
-        <div>
+        <div class="field-group">
           <label>Port IMAP</label>
           <input type="number" id="imap_port" placeholder="993" value="993" />
         </div>
       </div>
       <div class="row">
-        <div>
+        <div class="field-group">
           <label>Serveur SMTP *</label>
           <input type="text" id="smtp_server" placeholder="smtp.exemple.fr" />
         </div>
-        <div>
+        <div class="field-group">
           <label>Port SMTP</label>
           <input type="number" id="smtp_port" placeholder="465" value="465" />
         </div>
       </div>
 
-      <label>Mot de passe d'application *</label>
-      <input type="password" id="imap_password" placeholder="Mot de passe d'application" />
+      <div class="field-group">
+        <label>Mot de passe d'application *</label>
+        <input type="password" id="imap_password" placeholder="Mot de passe d'application" />
+      </div>
     </div>
 
     <!-- Mot de passe compte MailPilot -->
-    <label>Mot de passe MailPilot * (6 caractères min)</label>
-    <input type="password" id="pwd" placeholder="Choisissez un mot de passe" />
+    <div class="section-divider">Sécurité</div>
 
-    <label>Confirmer le mot de passe *</label>
-    <input type="password" id="pwd2" placeholder="••••••••" onkeydown="if(event.key==='Enter')inscrire()" />
+    <div class="field-group">
+      <label>Mot de passe MailPilot * (6 caractères min)</label>
+      <input type="password" id="pwd" placeholder="Choisissez un mot de passe" />
+    </div>
 
-    <button class="btn-main" onclick="inscrire()">Créer mon compte</button>
+    <div class="field-group">
+      <label>Confirmer le mot de passe *</label>
+      <input type="password" id="pwd2" placeholder="••••••••" onkeydown="if(event.key==='Enter')inscrire()" />
+    </div>
+
+    <button class="btn-main" onclick="inscrire()">Créer mon compte →</button>
     <p id="erreur"></p>
 
     <div class="login-link">
