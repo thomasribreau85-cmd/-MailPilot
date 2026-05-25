@@ -534,29 +534,6 @@
     </div>
   </div>
 
-  <!-- Accès rapides -->
-  <div style="margin-top:28px;margin-bottom:8px">
-    <div class="section-label">⚡ Accès rapides</div>
-    <div class="quick-grid">
-      {% if compte.agenda_actif != false %}
-      <a href="/agenda/{{ compte.id }}" class="quick-card agenda">
-        <div class="quick-card-icon">🗓️</div>
-        <div>
-          <div class="quick-card-title">Agenda</div>
-          <div class="quick-card-sub">Gérer les rendez-vous</div>
-        </div>
-      </a>
-      {% endif %}
-      <div class="quick-card nettoyage" onclick="toggleNettoyagePanel();document.querySelector('#nettoyage-panel').closest('div').scrollIntoView({behavior:'smooth'})">
-        <div class="quick-card-icon">🗑️</div>
-        <div>
-          <div class="quick-card-title">Nettoyage</div>
-          <div class="quick-card-sub">Supprimer vieux emails</div>
-        </div>
-      </div>
-    </div>
-  </div>
-
   </div><!-- /page-wrap -->
 
   <!-- ── Wizard Onboarding ── -->
