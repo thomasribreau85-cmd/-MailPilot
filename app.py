@@ -211,6 +211,7 @@ def _lancer_agent(compte_id, boite_id, c, b, data):
         "BILAN_HEURE":         str(b.get("bilan_heure", "8")),
         "AGENT_INSTRUCTIONS":  b.get("instructions", ""),
         "AGENDA_ACTIF":        "1" if c.get("agenda_actif", True) else "0",
+        **_nettoyage_env(compte_id),
         "TRANSFERTS_RULES":    "|".join(
             f"{r['categorie']}:{r['to']}"
             for r in charger_transferts(compte_id, boite_id)
@@ -1042,6 +1043,48 @@ def charger_horaires(compte_id):
         except Exception:
             pass
     return HORAIRES_DEFAUT.copy()
+
+def _nettoyage_env(compte_id):
+    f = DATA_DIR / f"nettoyage_{compte_id}.json"
+    cfg = {"actif": False, "jours": 365, "categories": ["INUTILE"]}
+    if f.exists():
+        try:
+            cfg = json.loads(f.read_text())
+        except Exception:
+            pass
+    return {
+        "NETTOYAGE_ACTIF": "1" if cfg.get("actif") else "0",
+        "NETTOYAGE_JOURS": str(cfg.get("jours", 365)),
+        "NETTOYAGE_CATS":  ",".join(cfg.get("categories", ["INUTILE"])),
+    }
+
+@app.route("/api/nettoyage/<compte_id>", methods=["GET"])
+def get_nettoyage(compte_id):
+    if not check_access(compte_id):
+        return jsonify({"ok": False}), 403
+    f = DATA_DIR / f"nettoyage_{compte_id}.json"
+    cfg = {"actif": False, "jours": 365, "categories": ["INUTILE"]}
+    if f.exists():
+        try:
+            cfg = json.loads(f.read_text())
+        except Exception:
+            pass
+    return jsonify({"ok": True, "config": cfg})
+
+@app.route("/api/nettoyage/<compte_id>", methods=["POST"])
+def sauver_nettoyage(compte_id):
+    if not check_access(compte_id):
+        return jsonify({"ok": False}), 403
+    d = request.json or {}
+    cfg = {
+        "actif":      bool(d.get("actif", False)),
+        "jours":      int(d.get("jours", 365)),
+        "categories": d.get("categories", ["INUTILE"]),
+    }
+    (DATA_DIR / f"nettoyage_{compte_id}.json").write_text(
+        json.dumps(cfg, indent=2, ensure_ascii=False)
+    )
+    return jsonify({"ok": True})
 
 @app.route("/api/toggle_agenda/<compte_id>", methods=["POST"])
 def toggle_agenda(compte_id):

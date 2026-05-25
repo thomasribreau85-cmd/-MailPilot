@@ -343,6 +343,52 @@
     </div>
   </div>
 
+  <!-- Nettoyage automatique -->
+  <div style="max-width:620px;margin:10px auto 0;">
+    <div style="background:var(--card);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;">
+      <div style="padding:16px 20px;display:flex;align-items:center;justify-content:space-between;gap:16px;cursor:pointer" onclick="toggleNettoyagePanel()">
+        <div>
+          <div style="font-size:14px;font-weight:600;">🗑️ Nettoyage automatique</div>
+          <div style="font-size:12px;color:var(--muted);margin-top:3px;">Supprimer automatiquement les vieux emails selon leur âge</div>
+        </div>
+        <span id="nettoyage-chevron" style="color:var(--muted);font-size:18px;transition:.2s">›</span>
+      </div>
+      <div id="nettoyage-panel" style="display:none;border-top:1px solid var(--border);padding:16px 20px">
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
+          <div>
+            <label class="form-label">Supprimer les emails de plus de</label>
+            <select id="nettoyage-age" class="form-input" style="margin-bottom:0">
+              <option value="90">3 mois</option>
+              <option value="180">6 mois</option>
+              <option value="365" selected>1 an</option>
+              <option value="730">2 ans</option>
+            </select>
+          </div>
+          <div>
+            <label class="form-label">Catégories concernées</label>
+            <select id="nettoyage-cats" class="form-input" style="margin-bottom:0" multiple size="3">
+              <option value="INUTILE" selected>⚫ Inutile</option>
+              <option value="INFO">🟡 Info</option>
+              <option value="ADMIN">🟣 Admin</option>
+              <option value="PROSPECT">🔵 Prospect</option>
+            </select>
+          </div>
+        </div>
+
+        <div style="background:rgba(239,68,68,.06);border:1px solid rgba(239,68,68,.15);border-radius:10px;padding:10px 14px;font-size:12px;color:#fca5a5;margin-bottom:14px">
+          ⚠️ Les emails supprimés vont dans la corbeille Gmail (récupérables pendant 30 jours).
+        </div>
+
+        <div style="display:flex;gap:10px;align-items:center">
+          <button onclick="sauverNettoyage(true)" style="flex:1;padding:9px;background:linear-gradient(135deg,var(--blue),var(--blue2));border:none;border-radius:9px;color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">✅ Activer</button>
+          <button onclick="sauverNettoyage(false)" style="flex:1;padding:9px;background:transparent;border:1px solid var(--border);border-radius:9px;color:var(--muted);font-size:13px;font-weight:600;cursor:pointer;font-family:inherit">❌ Désactiver</button>
+        </div>
+        <div id="nettoyage-status" style="font-size:12px;color:var(--muted);text-align:center;margin-top:10px"></div>
+      </div>
+    </div>
+  </div>
+
   <!-- ── Wizard Onboarding ── -->
   <div class="wizard-overlay" id="wizard-overlay">
     <div class="wizard-box">
@@ -1051,6 +1097,62 @@
       } else {
         toast('⚠️ ' + (json.message || 'Erreur'));
       }
+    }
+
+    // ── Nettoyage automatique ─────────────────────────────────
+    function toggleNettoyagePanel() {
+      const panel   = document.getElementById('nettoyage-panel');
+      const chevron = document.getElementById('nettoyage-chevron');
+      const open = panel.style.display === 'none';
+      panel.style.display = open ? 'block' : 'none';
+      chevron.style.transform = open ? 'rotate(90deg)' : '';
+      if (open) chargerNettoyage();
+    }
+
+    async function chargerNettoyage() {
+      const r = await fetch(`/api/nettoyage/${COMPTE_ID}`);
+      const j = await r.json();
+      if (!j.ok) return;
+      const cfg = j.config;
+      if (cfg.jours) document.getElementById('nettoyage-age').value = cfg.jours;
+      if (cfg.categories?.length) {
+        const sel = document.getElementById('nettoyage-cats');
+        Array.from(sel.options).forEach(o => {
+          o.selected = cfg.categories.includes(o.value);
+        });
+      }
+      const st = document.getElementById('nettoyage-status');
+      if (cfg.actif) {
+        const age = document.getElementById('nettoyage-age');
+        st.textContent = `✅ Actif — emails de plus de ${age.options[age.selectedIndex].text} supprimés quotidiennement`;
+        st.style.color = 'var(--green)';
+      } else {
+        st.textContent = '❌ Désactivé';
+        st.style.color = 'var(--muted)';
+      }
+    }
+
+    async function sauverNettoyage(actif) {
+      const jours = document.getElementById('nettoyage-age').value;
+      const sel   = document.getElementById('nettoyage-cats');
+      const cats  = Array.from(sel.selectedOptions).map(o => o.value);
+      const res = await fetch(`/api/nettoyage/${COMPTE_ID}`, {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ actif, jours: parseInt(jours), categories: cats })
+      });
+      const j = await res.json();
+      if (j.ok) {
+        const st  = document.getElementById('nettoyage-status');
+        const age = document.getElementById('nettoyage-age');
+        if (actif) {
+          st.textContent = `✅ Actif — emails de plus de ${age.options[age.selectedIndex].text} supprimés quotidiennement`;
+          st.style.color = 'var(--green)';
+        } else {
+          st.textContent = '❌ Désactivé';
+          st.style.color = 'var(--muted)';
+        }
+      } else toast('⚠️ Erreur lors de la sauvegarde');
     }
 
     // ── Transferts automatiques ───────────────────────────────

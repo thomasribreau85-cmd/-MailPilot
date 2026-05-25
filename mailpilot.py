@@ -639,6 +639,94 @@ MailPilot — Assistant email IA
         logger.error(f"Erreur envoi bilan hebdo : {e}")
 
 
+def nettoyer_emails_anciens(service=None, imap_conn=None, mail_provider="gmail"):
+    """
+    Supprime (corbeille) les emails plus vieux que NETTOYAGE_JOURS
+    pour les catégories NETTOYAGE_CATS. Tourne une fois par jour.
+    """
+    if os.getenv("NETTOYAGE_ACTIF", "0") != "1":
+        return
+
+    # Vérifier si déjà exécuté aujourd'hui
+    stats_dir   = os.getenv("STATS_DIR", os.path.dirname(os.path.abspath(__file__)))
+    compte_id   = os.getenv("COMPTE_ID", "default")
+    flag_file   = os.path.join(stats_dir, f"nettoyage_last_{compte_id}.txt")
+    today       = datetime.now().strftime("%Y-%m-%d")
+    if os.path.exists(flag_file):
+        try:
+            if open(flag_file).read().strip() == today:
+                return  # Déjà fait aujourd'hui
+        except Exception:
+            pass
+
+    jours = int(os.getenv("NETTOYAGE_JOURS", "365"))
+    cats  = os.getenv("NETTOYAGE_CATS", "INUTILE").split(",")
+
+    logger.info(f"🗑️  Nettoyage auto : emails > {jours} jours, catégories : {cats}")
+    supprimés = 0
+
+    try:
+        if mail_provider == "gmail" and service:
+            for cat in cats:
+                info = TOUS_LES_LABELS.get(cat)
+                if not info:
+                    continue
+                nom_label = info["nom"]
+                query = f'label:"{nom_label}" older_than:{jours}d'
+                res = service.users().messages().list(
+                    userId="me", q=query, maxResults=500
+                ).execute()
+                messages = res.get("messages", [])
+                for m in messages:
+                    try:
+                        service.users().messages().trash(userId="me", id=m["id"]).execute()
+                        supprimés += 1
+                    except Exception as e:
+                        logger.error(f"  ✗ Erreur suppression {m['id']} : {e}")
+
+        elif mail_provider == "microsoft":
+            cutoff = (datetime.now() - __import__("datetime").timedelta(days=jours)).strftime("%Y-%m-%dT00:00:00Z")
+            for cat in cats:
+                url = f"{MS_GRAPH}/me/mailFolders/MailPilot/childFolders?$filter=displayName eq '{cat}'"
+                r = http_requests.get(url, headers=ms_headers())
+                folders = r.json().get("value", [])
+                for folder in folders:
+                    msgs_url = f"{MS_GRAPH}/me/mailFolders/{folder['id']}/messages?$filter=receivedDateTime lt {cutoff}&$select=id&$top=100"
+                    msgs = http_requests.get(msgs_url, headers=ms_headers()).json().get("value", [])
+                    for m in msgs:
+                        try:
+                            http_requests.delete(f"{MS_GRAPH}/me/messages/{m['id']}", headers=ms_headers())
+                            supprimés += 1
+                        except Exception as e:
+                            logger.error(f"  ✗ Erreur suppression Microsoft : {e}")
+
+        elif mail_provider == "imap" and imap_conn:
+            from datetime import timedelta
+            cutoff_date = (datetime.now() - timedelta(days=jours)).strftime("%d-%b-%Y")
+            for cat in cats:
+                try:
+                    imap_conn.select(f"MailPilot/{cat}")
+                    _, data = imap_conn.uid("search", None, f'BEFORE {cutoff_date}')
+                    uids = data[0].split()
+                    for uid in uids:
+                        try:
+                            imap_conn.uid("store", uid, "+FLAGS", "\\Deleted")
+                            supprimés += 1
+                        except Exception:
+                            pass
+                    imap_conn.expunge()
+                except Exception as e:
+                    logger.error(f"  ✗ Erreur nettoyage IMAP {cat} : {e}")
+
+        logger.info(f"  ✓ Nettoyage terminé : {supprimés} email(s) supprimé(s)")
+        # Marquer comme fait aujourd'hui
+        with open(flag_file, "w") as f:
+            f.write(today)
+
+    except Exception as e:
+        logger.error(f"  ✗ Erreur nettoyage : {e}")
+
+
 def transferer_email(email, categorie, service=None, imap_conn=None, mail_provider="gmail"):
     """
     Transfère l'email vers les adresses configurées pour cette catégorie.
@@ -1274,6 +1362,9 @@ def boucle_principale():
                             sauver_stats_semaine({"semaine": semaine, "annee": maintenant.year,
                                                   "traites": 0, "brouillons": 0, "categories": {}})
                     dernier_bilan_date = jour_actuel
+
+            # --- Nettoyage automatique (1x/jour) ---
+            nettoyer_emails_anciens(service=service, imap_conn=imap_conn, mail_provider=mail_provider)
 
             logger.info("🔍 Vérification des emails non lus...")
 
