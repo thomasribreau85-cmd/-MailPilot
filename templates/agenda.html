@@ -420,12 +420,14 @@
 
     // ── Détection automatique des conflits horaires ──────────
     function detecterConflits() {
-      const confirmes = rdvs.filter(r => r.statut === 'confirme');
+      const actifs = rdvs.filter(r => r.statut === 'confirme' || r.statut === 'attente');
       const ids = new Set();
-      for (let i = 0; i < confirmes.length; i++) {
-        for (let j = i + 1; j < confirmes.length; j++) {
-          const a = confirmes[i], b = confirmes[j];
+      for (let i = 0; i < actifs.length; i++) {
+        for (let j = i + 1; j < actifs.length; j++) {
+          const a = actifs[i], b = actifs[j];
           if (a.date !== b.date) continue;
+          // Au moins un des deux doit être confirmé pour déclencher un conflit
+          if (a.statut !== 'confirme' && b.statut !== 'confirme') continue;
           // Chevauchement si début A < fin B ET début B < fin A
           if (a.heure_debut < b.heure_fin && b.heure_debut < a.heure_fin) {
             ids.add(a.id); ids.add(b.id);
