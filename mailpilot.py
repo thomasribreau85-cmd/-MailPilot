@@ -30,6 +30,7 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from email.header import decode_header
 
+import uuid
 import anthropic
 from dotenv import load_dotenv
 from google.auth.transport.requests import Request
@@ -638,6 +639,97 @@ MailPilot — Assistant email IA
         logger.error(f"Erreur envoi bilan hebdo : {e}")
 
 
+def detecter_rdv(client_anthropic, email, categorie):
+    """
+    Si l'email contient une demande de RDV (VISITE, REUNION, etc.),
+    extrait les infos et les ajoute dans l'agenda en statut 'attente'.
+    """
+    CATEGORIES_RDV = {"VISITE", "REUNION", "DEVIS", "URGENT"}
+    if categorie not in CATEGORIES_RDV:
+        return
+
+    stats_dir  = os.getenv("STATS_DIR", os.path.dirname(os.path.abspath(__file__)))
+    compte_id  = os.getenv("COMPTE_ID", "default")
+    # COMPTE_ID est au format "compte_boite" — on prend juste la partie compte
+    compte_part = compte_id.split("_")[0] if "_" in compte_id else compte_id
+    agenda_file = os.path.join(stats_dir, f"agenda_{compte_part}.json")
+
+    prompt = f"""Analyse cet email et réponds UNIQUEMENT en JSON valide (sans markdown).
+Si l'email contient une demande de rendez-vous, extrais ces informations.
+Sinon, réponds : {{"rdv": false}}
+
+Format attendu si RDV détecté :
+{{
+  "rdv": true,
+  "titre": "Visite - Prénom Nom",
+  "client_nom": "Prénom Nom",
+  "client_email": "email@exemple.com ou vide",
+  "adresse": "adresse du bien ou lieu de RDV ou vide",
+  "date": "YYYY-MM-DD ou vide si non précisée",
+  "heure_debut": "HH:MM ou 09:00 par défaut",
+  "heure_fin": "HH:MM (heure_debut + 1h par défaut)",
+  "type": "visite ou reunion ou appel ou autre",
+  "notes": "infos supplémentaires utiles"
+}}
+
+Email à analyser :
+SUJET : {email['sujet']}
+EXPÉDITEUR : {email['expediteur']}
+CORPS : {email['corps'][:1000]}"""
+
+    try:
+        rep = client_anthropic.messages.create(
+            model="claude-haiku-4-5",
+            max_tokens=400,
+            messages=[{"role": "user", "content": prompt}]
+        )
+        raw = rep.content[0].text.strip()
+        # Nettoyer si markdown
+        if raw.startswith("```"):
+            raw = raw.split("```")[1]
+            if raw.startswith("json"):
+                raw = raw[4:]
+        data = json.loads(raw.strip())
+
+        if not data.get("rdv"):
+            return
+
+        # Charger l'agenda existant
+        rdvs = []
+        if os.path.exists(agenda_file):
+            try:
+                rdvs = json.loads(open(agenda_file, encoding="utf-8").read())
+            except Exception:
+                rdvs = []
+
+        # Créer le RDV
+        today = datetime.now().strftime("%Y-%m-%d")
+        rdv = {
+            "id":           str(uuid.uuid4())[:8],
+            "titre":        data.get("titre", f"RDV - {email['expediteur'][:30]}"),
+            "client_nom":   data.get("client_nom", ""),
+            "client_email": data.get("client_email", email.get("expediteur_email", "")),
+            "adresse":      data.get("adresse", ""),
+            "date":         data.get("date") or today,
+            "heure_debut":  data.get("heure_debut", "09:00"),
+            "heure_fin":    data.get("heure_fin", "10:00"),
+            "type":         data.get("type", "visite"),
+            "statut":       "attente",
+            "notes":        data.get("notes", f"Détecté automatiquement depuis email : {email['sujet']}"),
+            "boite_id":     "",
+            "created_at":   datetime.now().isoformat(),
+        }
+        rdvs.append(rdv)
+
+        with open(agenda_file, "w", encoding="utf-8") as f:
+            json.dump(rdvs, f, indent=2, ensure_ascii=False)
+
+        logger.info(f"  📅 RDV détecté et ajouté à l'agenda : {rdv['titre']} ({rdv['date']} {rdv['heure_debut']})")
+
+    except Exception as e:
+        logger.error(f"  ✗ Erreur détection RDV : {e}")
+
+
 def traiter_email(service, client_anthropic, email, label_ids):
     """
     Traite un email complet : classification, label, brouillon, marquage.
@@ -654,6 +746,12 @@ def traiter_email(service, client_anthropic, email, label_ids):
     except Exception as e:
         logger.error(f"  ✗ Erreur classification : {e}")
         categorie = "INFO"
+
+    # --- Étape 1b : Détection RDV ---
+    try:
+        detecter_rdv(client_anthropic, email, categorie)
+    except Exception as e:
+        logger.error(f"  ✗ Erreur détection RDV : {e}")
 
     # --- Étape 2 : Application du label Gmail ---
     try:
