@@ -366,31 +366,6 @@
     </div>
   </div>
 
-  <!-- Toggle Aperçu brouillons -->
-  <div style="max-width:620px;margin:10px auto 0;">
-    <div style="background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:16px 20px;display:flex;align-items:center;justify-content:space-between;gap:16px;">
-      <div>
-        <div style="font-size:14px;font-weight:600;">📝 Aperçu brouillons IA</div>
-        <div style="font-size:12px;color:var(--muted);margin-top:3px;">Relire et valider les réponses IA avant envoi (au lieu du brouillon Gmail direct)</div>
-      </div>
-      <label style="position:relative;width:44px;height:24px;cursor:pointer;flex-shrink:0;">
-        <input type="checkbox" id="toggle-brouillons" style="opacity:0;width:0;height:0;"
-          {% if compte.apercu_brouillons %}checked{% endif %}
-          onchange="toggleBrouillons(this.checked)" />
-        <span id="brouillons-slider" style="
-          position:absolute;inset:0;border-radius:24px;transition:.2s;
-          background:{% if compte.apercu_brouillons %}var(--blue){% else %}var(--border){% endif %};
-        ">
-          <span style="
-            position:absolute;width:16px;height:16px;border-radius:50%;top:4px;transition:.2s;
-            background:#fff;
-            left:{% if compte.apercu_brouillons %}24px{% else %}4px{% endif %};
-          " id="brouillons-knob"></span>
-        </span>
-      </label>
-    </div>
-  </div>
-
   <!-- Nettoyage automatique -->
   <div style="max-width:620px;margin:10px auto 0;">
     <div style="background:var(--card);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;">
@@ -447,26 +422,6 @@
     </div>
   </div>
 
-  <!-- Panel Brouillons IA -->
-  {% if compte.apercu_brouillons %}
-  <div style="max-width:620px;margin:10px auto 0;" id="brouillons-section">
-    <div style="background:var(--card);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;">
-      <div style="padding:16px 20px;display:flex;align-items:center;justify-content:space-between;gap:16px;cursor:pointer" onclick="toggleBrouillonsPanel()">
-        <div style="display:flex;align-items:center;gap:10px">
-          <div style="font-size:14px;font-weight:600;">📝 Brouillons IA à valider</div>
-          <span id="badge-brouillons" style="background:rgba(79,110,247,.15);color:var(--blue);font-size:11px;font-weight:700;padding:2px 8px;border-radius:20px;display:none">0</span>
-        </div>
-        <span id="brouillons-chevron" style="color:var(--muted);font-size:18px;transition:.2s">›</span>
-      </div>
-      <div id="brouillons-panel" style="display:none;border-top:1px solid var(--border)">
-        <div id="brouillons-list" style="padding:8px 0">
-          <div style="padding:16px 20px;font-size:13px;color:var(--muted);text-align:center">Chargement…</div>
-        </div>
-      </div>
-    </div>
-  </div>
-  {% endif %}
-
   <!-- Accès rapides -->
   <div style="max-width:620px;margin:20px auto 0;">
     <div style="font-size:13px;color:var(--muted);font-weight:600;margin-bottom:10px;text-transform:uppercase;letter-spacing:.05em;">⚡ Accès rapides</div>
@@ -487,16 +442,6 @@
           <div style="font-size:11px;color:var(--muted);margin-top:2px">Supprimer vieux emails</div>
         </div>
       </div>
-      {% if compte.apercu_brouillons %}
-      <div onclick="toggleBrouillonsPanel();document.getElementById('brouillons-section')?.scrollIntoView({behavior:'smooth'})" style="cursor:pointer;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px;display:flex;align-items:center;gap:12px;transition:all .15s;position:relative" onmouseover="this.style.borderColor='#4f6ef7'" onmouseout="this.style.borderColor='var(--border)'">
-        <span style="font-size:24px">📝</span>
-        <div style="flex:1">
-          <div style="font-size:13px;font-weight:700;color:var(--text)">Brouillons IA</div>
-          <div style="font-size:11px;color:var(--muted);margin-top:2px">Valider avant envoi</div>
-        </div>
-        <span id="badge-brouillons-rapide" style="display:none;background:var(--blue);color:#fff;font-size:10px;font-weight:800;padding:2px 7px;border-radius:20px;position:absolute;top:10px;right:10px">0</span>
-      </div>
-      {% endif %}
     </div>
   </div>
 
@@ -791,134 +736,10 @@
       if (j.ok) {
         slider.style.background = j.agenda_actif ? 'var(--blue)' : 'var(--border)';
         knob.style.left = j.agenda_actif ? '24px' : '4px';
+        // Afficher/masquer le lien Agenda dans le header
         const lienAgenda = document.getElementById('lien-agenda');
         if (lienAgenda) lienAgenda.style.display = j.agenda_actif ? '' : 'none';
       }
-    }
-
-    async function toggleBrouillons(actif) {
-      const slider = document.getElementById('brouillons-slider');
-      const knob   = document.getElementById('brouillons-knob');
-      const res = await fetch(`/api/toggle_brouillons/${COMPTE_ID}`, { method: 'POST' });
-      const j   = await res.json();
-      if (j.ok) {
-        if (slider) { slider.style.background = j.apercu_brouillons ? 'var(--blue)' : 'var(--border)'; }
-        if (knob)   { knob.style.left = j.apercu_brouillons ? '24px' : '4px'; }
-        // Recharger la page pour afficher/masquer le panel
-        location.reload();
-      }
-    }
-
-    // ── Brouillons IA ─────────────────────────────────────────
-    function toggleBrouillonsPanel() {
-      const panel   = document.getElementById('brouillons-panel');
-      const chevron = document.getElementById('brouillons-chevron');
-      if (!panel) return;
-      const open = panel.style.display === 'none';
-      panel.style.display   = open ? 'block' : 'none';
-      if (chevron) chevron.style.transform = open ? 'rotate(90deg)' : '';
-      if (open) chargerBrouillons();
-    }
-
-    async function chargerBrouillons() {
-      const container = document.getElementById('brouillons-list');
-      if (!container) return;
-      const res = await fetch(`/api/brouillons/${COMPTE_ID}`);
-      const j   = await res.json();
-      const liste = j.brouillons || [];
-
-      // Mettre à jour les badges
-      const badge  = document.getElementById('badge-brouillons');
-      const badge2 = document.getElementById('badge-brouillons-rapide');
-      if (badge)  { badge.textContent  = liste.length; badge.style.display  = liste.length ? 'inline' : 'none'; }
-      if (badge2) { badge2.textContent = liste.length; badge2.style.display = liste.length ? 'inline' : 'none'; }
-
-      if (!liste.length) {
-        container.innerHTML = `<div style="padding:24px 20px;text-align:center;color:var(--muted);font-size:13px">
-          ✅ Aucun brouillon en attente — tout est à jour !
-        </div>`;
-        return;
-      }
-
-      const CATS = { URGENT:'🔴 Urgent', VISITE:'🔵 Visite', OFFRE:'🟢 Offre', DEVIS:'🟠 Devis',
-                     INFO:'🟡 Info', ADMIN:'🟣 Admin', INUTILE:'⚫ Inutile', PROSPECT:'🔵 Prospect',
-                     RENDEZ_VOUS:'📅 Rendez-vous' };
-
-      container.innerHTML = liste.map(b => `
-        <div id="brou-${b.id}" style="padding:16px 20px;border-bottom:1px solid var(--border);">
-          <!-- Header email -->
-          <div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:10px">
-            <div style="flex:1;min-width:0">
-              <div style="font-size:13px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(b.email_sujet)}</div>
-              <div style="font-size:11px;color:var(--muted);margin-top:2px">De : ${escHtml(b.email_expediteur)}</div>
-            </div>
-            <span style="background:rgba(79,110,247,.12);color:#93b4f0;font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;white-space:nowrap;flex-shrink:0">
-              ${CATS[b.categorie] || b.categorie}
-            </span>
-          </div>
-          <!-- Textarea réponse IA -->
-          <div style="font-size:11px;color:var(--muted);margin-bottom:6px;font-weight:600">✍️ Réponse IA (modifiable)</div>
-          <textarea id="texte-${b.id}" style="
-            width:100%;min-height:120px;background:#060d1c;border:1px solid var(--border);
-            border-radius:10px;color:var(--text);font-size:13px;padding:10px 12px;
-            outline:none;font-family:inherit;resize:vertical;line-height:1.5;
-            transition:border-color .15s;
-          " onfocus="this.style.borderColor='var(--blue)'" onblur="this.style.borderColor='var(--border)'"
-          >${escHtml(b.texte)}</textarea>
-          <!-- Actions -->
-          <div style="display:flex;gap:8px;margin-top:10px">
-            <button onclick="envoyerBrouillon('${b.id}')" style="
-              flex:2;padding:9px;background:linear-gradient(135deg,var(--blue),var(--blue2));
-              border:none;border-radius:9px;color:#fff;font-size:13px;font-weight:700;
-              cursor:pointer;font-family:inherit;transition:all .15s
-            ">📤 Envoyer</button>
-            <button onclick="supprimerBrouillon('${b.id}')" style="
-              flex:1;padding:9px;background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.2);
-              border-radius:9px;color:#fca5a5;font-size:13px;font-weight:600;
-              cursor:pointer;font-family:inherit;transition:all .15s
-            ">🗑 Refuser</button>
-          </div>
-          <div id="status-${b.id}" style="font-size:12px;color:var(--muted);text-align:center;margin-top:8px;min-height:16px"></div>
-        </div>
-      `).join('');
-    }
-
-    function escHtml(str) {
-      return (str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-    }
-
-    async function envoyerBrouillon(id) {
-      const texte   = document.getElementById(`texte-${id}`).value;
-      const status  = document.getElementById(`status-${id}`);
-      status.textContent = '⏳ Envoi en cours…';
-      // Sauvegarder les modifs d'abord
-      await fetch(`/api/brouillons/${COMPTE_ID}/${id}`, {
-        method: 'PUT', headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({ texte })
-      });
-      // Envoyer
-      const res = await fetch(`/api/brouillons/${COMPTE_ID}/${id}/envoyer`, { method: 'POST' });
-      const j   = await res.json();
-      if (j.ok) {
-        const card = document.getElementById(`brou-${id}`);
-        if (card) {
-          card.style.opacity = '.4';
-          card.style.pointerEvents = 'none';
-          card.style.transition = 'opacity .4s';
-        }
-        status.style.color = 'var(--green)';
-        status.textContent = '✅ ' + (j.message || 'Email envoyé !');
-        setTimeout(() => chargerBrouillons(), 1200);
-      } else {
-        status.style.color = 'var(--red)';
-        status.textContent = '⚠️ ' + (j.message || 'Erreur lors de l\'envoi');
-      }
-    }
-
-    async function supprimerBrouillon(id) {
-      if (!confirm('Refuser et supprimer ce brouillon ?')) return;
-      await fetch(`/api/brouillons/${COMPTE_ID}/${id}`, { method: 'DELETE' });
-      chargerBrouillons();
     }
 
     const PRESETS_IMAP = {
@@ -1353,17 +1174,6 @@
         document.getElementById('stat-rdvs').textContent = attente;
         {% else %}
         document.getElementById('stat-rdvs').textContent = '—';
-        {% endif %}
-
-        // Brouillons IA en attente
-        {% if compte.apercu_brouillons %}
-        const rb = await fetch(`/api/brouillons/${COMPTE_ID}`);
-        const jb = await rb.json();
-        const nbBrou = (jb.brouillons || []).length;
-        const badge  = document.getElementById('badge-brouillons');
-        const badge2 = document.getElementById('badge-brouillons-rapide');
-        if (badge)  { badge.textContent  = nbBrou; badge.style.display  = nbBrou ? 'inline' : 'none'; }
-        if (badge2) { badge2.textContent = nbBrou; badge2.style.display = nbBrou ? 'inline' : 'none'; }
         {% endif %}
       } catch(e) {}
     }
