@@ -334,6 +334,7 @@
     <button class="btn-icon" onclick="ouvrirHoraires()">⚙️ Horaires</button>
     <button class="btn-icon" onclick="document.getElementById('import-ics').click()">📥 Importer .ics</button>
     <input type="file" id="import-ics" accept=".ics" style="display:none" onchange="importerICS(this)" />
+    <button class="btn-icon" onclick="exporterICS()">📤 Exporter .ics</button>
     <button class="btn-primary" onclick="ouvrirModal()">+ Nouveau RDV</button>
   </div>
 
@@ -985,6 +986,54 @@
       const [h, m] = heure.split(':').map(Number);
       const total = h * 60 + m + minutes;
       return minEnHeure(total);
+    }
+
+    // ── Export .ics ──────────────────────────────────────────
+    function exporterICS() {
+      const confirmes = rdvs.filter(r => r.statut === 'confirme');
+      if (!confirmes.length) { toast('⚠️ Aucun RDV confirmé à exporter'); return; }
+
+      const esc = s => (s || '').replace(/\\/g,'\\\\').replace(/;/g,'\\;').replace(/,/g,'\\,').replace(/\n/g,'\\n');
+
+      const formatDT = (date, heure) => {
+        // date: "2026-05-26", heure: "09:00" → 20260526T090000
+        return date.replace(/-/g,'') + 'T' + heure.replace(':','') + '00';
+      };
+
+      const lignes = [
+        'BEGIN:VCALENDAR',
+        'VERSION:2.0',
+        'PRODID:-//MailPilot//FR',
+        'CALSCALE:GREGORIAN',
+        'METHOD:PUBLISH',
+        'X-WR-CALNAME:MailPilot Agenda',
+      ];
+
+      for (const r of confirmes) {
+        lignes.push(
+          'BEGIN:VEVENT',
+          `UID:${r.id}@mailpilot`,
+          `DTSTAMP:${formatDT(new Date().toISOString().slice(0,10), new Date().toTimeString().slice(0,5))}`,
+          `DTSTART:${formatDT(r.date, r.heure_debut)}`,
+          `DTEND:${formatDT(r.date, r.heure_fin)}`,
+          `SUMMARY:${esc(r.titre)}`,
+          r.adresse      ? `LOCATION:${esc(r.adresse)}`            : '',
+          r.client_email ? `ATTENDEE:mailto:${r.client_email}`     : '',
+          r.notes        ? `DESCRIPTION:${esc(r.notes)}`           : '',
+          'END:VEVENT',
+        ).filter(Boolean);
+      }
+
+      lignes.push('END:VCALENDAR');
+
+      const blob = new Blob([lignes.join('\r\n')], { type: 'text/calendar;charset=utf-8' });
+      const url  = URL.createObjectURL(blob);
+      const a    = document.createElement('a');
+      a.href     = url;
+      a.download = `mailpilot-agenda.ics`;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast(`✅ ${confirmes.length} RDV exporté(s)`);
     }
 
     // ── Init ─────────────────────────────────────────────────
