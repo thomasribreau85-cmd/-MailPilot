@@ -639,6 +639,83 @@ MailPilot — Assistant email IA
         logger.error(f"Erreur envoi bilan hebdo : {e}")
 
 
+def transferer_email(email, categorie, service=None, imap_conn=None, mail_provider="gmail"):
+    """
+    Transfère l'email vers les adresses configurées pour cette catégorie.
+    Les règles sont encodées dans TRANSFERTS_RULES sous la forme CAT:email|CAT2:email2
+    """
+    regles_raw = os.getenv("TRANSFERTS_RULES", "").strip()
+    if not regles_raw:
+        return
+
+    # Parser les règles
+    regles = []
+    for r in regles_raw.split("|"):
+        if ":" in r:
+            cat, dest = r.split(":", 1)
+            regles.append({"categorie": cat.strip(), "to": dest.strip()})
+
+    destinataires = [r["to"] for r in regles if r["categorie"] == categorie and r["to"]]
+    if not destinataires:
+        return
+
+    sujet_fwd = f"Fwd: {email.get('sujet', '')}"
+    corps_fwd = f"""---------- Message transféré ----------
+De : {email.get('expediteur', '')}
+Sujet : {email.get('sujet', '')}
+
+{email.get('corps', '')[:3000]}
+
+---------- Transféré par MailPilot ----------"""
+
+    expediteur_agent = os.getenv("AGENT_EMAIL", "")
+
+    for dest in destinataires:
+        try:
+            if mail_provider == "gmail" and service:
+                msg = MIMEMultipart()
+                msg["To"]      = dest
+                msg["From"]    = expediteur_agent
+                msg["Subject"] = sujet_fwd
+                msg.attach(MIMEText(corps_fwd, "plain", "utf-8"))
+                raw = base64.urlsafe_b64encode(msg.as_bytes()).decode("utf-8")
+                service.users().messages().send(userId="me", body={"raw": raw}).execute()
+                logger.info(f"  📤 Transféré ({categorie}) → {dest}")
+
+            elif mail_provider == "microsoft":
+                body = {
+                    "message": {
+                        "subject": sujet_fwd,
+                        "body": {"contentType": "Text", "content": corps_fwd},
+                        "toRecipients": [{"emailAddress": {"address": dest}}],
+                    }
+                }
+                http_requests.post(f"{MS_GRAPH}/me/sendMail", headers=ms_headers(), json=body)
+                logger.info(f"  📤 Transféré ({categorie}) → {dest}")
+
+            elif mail_provider == "imap":
+                smtp_server = os.getenv("SMTP_SERVER")
+                smtp_port   = int(os.getenv("SMTP_PORT", "465"))
+                password    = os.getenv("IMAP_PASSWORD")
+                msg = MIMEMultipart()
+                msg["To"]      = dest
+                msg["From"]    = expediteur_agent
+                msg["Subject"] = sujet_fwd
+                msg.attach(MIMEText(corps_fwd, "plain", "utf-8"))
+                if smtp_port == 587:
+                    with smtplib.SMTP(smtp_server, smtp_port) as s:
+                        s.starttls(); s.login(expediteur_agent, password)
+                        s.sendmail(expediteur_agent, dest, msg.as_bytes())
+                else:
+                    with smtplib.SMTP_SSL(smtp_server, smtp_port) as s:
+                        s.login(expediteur_agent, password)
+                        s.sendmail(expediteur_agent, dest, msg.as_bytes())
+                logger.info(f"  📤 Transféré ({categorie}) → {dest}")
+
+        except Exception as e:
+            logger.error(f"  ✗ Erreur transfert vers {dest} : {e}")
+
+
 def detecter_rdv(client_anthropic, email, categorie):
     """
     Si l'email contient une demande de RDV (VISITE, REUNION, etc.),
@@ -779,6 +856,12 @@ def traiter_email(service, client_anthropic, email, label_ids):
             detecter_rdv(client_anthropic, email, categorie)
         except Exception as e:
             logger.error(f"  ✗ Erreur détection RDV : {e}")
+
+    # --- Étape 1c : Transfert automatique ---
+    try:
+        transferer_email(email, categorie, service=service, mail_provider="gmail")
+    except Exception as e:
+        logger.error(f"  ✗ Erreur transfert : {e}")
 
     # --- Étape 2 : Application du label Gmail ---
     try:
@@ -1213,6 +1296,10 @@ def boucle_principale():
                                     detecter_rdv(client_anthropic, em, categorie)
                                 except Exception as e:
                                     logger.error(f"  ✗ Erreur détection RDV : {e}")
+                            try:
+                                transferer_email(em, categorie, mail_provider="microsoft")
+                            except Exception as e:
+                                logger.error(f"  ✗ Erreur transfert : {e}")
                             appliquer_label_microsoft(em["id"], categorie)
                             marquer_comme_lu_microsoft(em["id"])
                             brouillon_cree = False
@@ -1230,6 +1317,10 @@ def boucle_principale():
                                     detecter_rdv(client_anthropic, em, categorie)
                                 except Exception as e:
                                     logger.error(f"  ✗ Erreur détection RDV : {e}")
+                            try:
+                                transferer_email(em, categorie, imap_conn=imap_conn, mail_provider="imap")
+                            except Exception as e:
+                                logger.error(f"  ✗ Erreur transfert : {e}")
                             appliquer_label_imap(imap_conn, em["uid_imap"], categorie)
                             marquer_comme_lu_imap(imap_conn, em["uid_imap"])
                             brouillon_cree = False

@@ -211,6 +211,10 @@ def _lancer_agent(compte_id, boite_id, c, b, data):
         "BILAN_HEURE":         str(b.get("bilan_heure", "8")),
         "AGENT_INSTRUCTIONS":  b.get("instructions", ""),
         "AGENDA_ACTIF":        "1" if c.get("agenda_actif", True) else "0",
+        "TRANSFERTS_RULES":    "|".join(
+            f"{r['categorie']}:{r['to']}"
+            for r in charger_transferts(compte_id, boite_id)
+        ),
     })
     if provider == "microsoft":
         env.update({
@@ -967,6 +971,47 @@ def statut_global():
                 "oauth":          oauth_statut.get(pk, ""),
             }
     return jsonify(result)
+
+
+# ── Règles de transfert ───────────────────────────────────────
+
+def transferts_file(compte_id, boite_id):
+    return DATA_DIR / f"transferts_{pkey(compte_id, boite_id)}.json"
+
+def charger_transferts(compte_id, boite_id):
+    f = transferts_file(compte_id, boite_id)
+    if f.exists():
+        try:
+            return json.loads(f.read_text())
+        except Exception:
+            pass
+    return []
+
+@app.route("/api/transferts/<compte_id>/<boite_id>", methods=["GET"])
+def get_transferts(compte_id, boite_id):
+    if not check_access(compte_id):
+        return jsonify({"ok": False}), 403
+    return jsonify({"ok": True, "transferts": charger_transferts(compte_id, boite_id)})
+
+@app.route("/api/transferts/<compte_id>/<boite_id>", methods=["POST"])
+def sauver_transferts(compte_id, boite_id):
+    if not check_access(compte_id):
+        return jsonify({"ok": False}), 403
+    d = request.json or {}
+    regles = d.get("transferts", [])
+    # Validation basique
+    regles_valides = [
+        {"categorie": r["categorie"], "to": r["to"].strip()}
+        for r in regles
+        if r.get("categorie") and r.get("to", "").strip()
+    ]
+    transferts_file(compte_id, boite_id).write_text(
+        json.dumps(regles_valides, indent=2, ensure_ascii=False)
+    )
+    # Encoder pour l'env var de l'agent
+    encoded = "|".join(f"{r['categorie']}:{r['to']}" for r in regles_valides)
+    # Mettre à jour le processus actif si en cours
+    return jsonify({"ok": True, "transferts": regles_valides})
 
 
 # ── Horaires d'ouverture ──────────────────────────────────────
