@@ -267,6 +267,56 @@
       background: rgba(245,158,11,.1); box-shadow: 0 0 0 1px rgba(245,158,11,.15);
     }
 
+    /* Éditeur message commun */
+    .msg-editor { margin-top: 18px; border-top: 1px solid var(--border); padding-top: 18px; }
+    .msg-editor-label {
+      font-size: 11px; font-weight: 700; color: var(--muted); text-transform: uppercase;
+      letter-spacing: .05em; margin-bottom: 10px; display: flex; align-items: center; gap: 8px;
+    }
+    .msg-editor-label a {
+      margin-left: auto; font-size: 10px; color: var(--muted); cursor: pointer;
+      text-decoration: none; transition: color .15s; font-weight: 600;
+    }
+    .msg-editor-label a:hover { color: var(--blue); }
+    .msg-sujet-input {
+      width: 100%; background: rgba(5,9,26,.8); border: 1px solid var(--border);
+      border-radius: 9px; color: var(--text); font-size: 13px; font-weight: 600;
+      padding: 9px 12px; outline: none; font-family: inherit; margin-bottom: 10px;
+      transition: border-color .15s, box-shadow .15s;
+    }
+    .msg-sujet-input:focus { border-color: var(--blue); box-shadow: 0 0 0 3px rgba(79,110,247,.1); }
+    .msg-corps-textarea {
+      width: 100%; background: rgba(5,9,26,.8); border: 1px solid var(--border);
+      border-radius: 9px; color: var(--text); font-size: 12px; font-family: "SF Mono","Fira Code",monospace;
+      padding: 10px 12px; outline: none; resize: vertical; min-height: 140px; line-height: 1.55;
+      transition: border-color .15s, box-shadow .15s;
+    }
+    .msg-corps-textarea:focus { border-color: var(--blue); box-shadow: 0 0 0 3px rgba(79,110,247,.1); }
+    .msg-vars { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0 14px; }
+    .msg-var-chip {
+      padding: 4px 10px; border-radius: 20px; border: 1px solid rgba(79,110,247,.3);
+      background: rgba(79,110,247,.08); color: #93b4f0; font-size: 11px; font-weight: 600;
+      cursor: pointer; transition: all .15s; font-family: "SF Mono","Fira Code",monospace;
+      user-select: none;
+    }
+    .msg-var-chip:hover { background: rgba(79,110,247,.2); border-color: var(--blue); color: #fff; }
+    .msg-preview-toggle {
+      font-size: 11px; color: var(--muted); cursor: pointer; padding: 6px 0;
+      display: flex; align-items: center; gap: 6px; margin-bottom: 6px;
+      background: none; border: none; font-family: inherit; transition: color .15s;
+    }
+    .msg-preview-toggle:hover { color: var(--text); }
+    .msg-preview {
+      display: none; background: rgba(5,9,26,.6); border: 1px solid var(--border);
+      border-radius: 9px; padding: 14px; margin-bottom: 14px;
+    }
+    .msg-preview.open { display: block; }
+    .msg-preview-sujet { font-size: 12px; font-weight: 700; color: var(--text); margin-bottom: 8px; }
+    .msg-preview-corps {
+      font-size: 11px; color: #94a3b8; white-space: pre-wrap; line-height: 1.6;
+      font-family: -apple-system,BlinkMacSystemFont,sans-serif;
+    }
+
     /* Rappel RDV boutons avance */
     .rappel-avance-btn {
       padding: 9px 4px; border: 1px solid var(--border); border-radius: 9px;
@@ -637,6 +687,33 @@
         <!-- Statut dernière exec -->
         <div id="relance-last-exec" style="font-size:11px;color:var(--muted);text-align:center;margin-bottom:14px"></div>
 
+        <!-- Éditeur message relance -->
+        <div class="msg-editor">
+          <div class="msg-editor-label">
+            ✉️ Message de relance
+            <a onclick="resetRelanceMsg()" title="Remettre le message par défaut">↺ Défaut</a>
+          </div>
+          <input class="msg-sujet-input" id="relance-sujet" placeholder="Objet de l'email…" />
+          <div class="msg-vars">
+            <span class="msg-var-chip" onclick="insertVar('relance-corps','{client_nom}')">{client_nom}</span>
+            <span class="msg-var-chip" onclick="insertVar('relance-corps','{date}')">{date}</span>
+            <span class="msg-var-chip" onclick="insertVar('relance-corps','{heure_debut}')">{heure_debut}</span>
+            <span class="msg-var-chip" onclick="insertVar('relance-corps','{heure_fin}')">{heure_fin}</span>
+            <span class="msg-var-chip" onclick="insertVar('relance-corps','{titre}')">{titre}</span>
+            <span class="msg-var-chip" onclick="insertVar('relance-corps','{adresse}')">{adresse}</span>
+            <span class="msg-var-chip" onclick="insertVar('relance-corps','{notes}')">{notes}</span>
+            <span class="msg-var-chip" onclick="insertVar('relance-corps','{agent_nom}')">{agent_nom}</span>
+          </div>
+          <textarea class="msg-corps-textarea" id="relance-corps" oninput="updateRelancePreview()" placeholder="Corps de l'email…"></textarea>
+          <button class="msg-preview-toggle" onclick="toggleMsgPreview('relance-preview',this)">
+            👁 Aperçu <span style="font-size:14px;line-height:1">›</span>
+          </button>
+          <div class="msg-preview" id="relance-preview">
+            <div class="msg-preview-sujet" id="relance-preview-sujet"></div>
+            <div class="msg-preview-corps" id="relance-preview-corps"></div>
+          </div>
+        </div>
+
         <!-- Bouton sauvegarder -->
         <button onclick="sauverRelance()" style="width:100%;padding:10px;background:linear-gradient(135deg,var(--blue),var(--blue2));border:none;border-radius:9px;color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;box-shadow:0 4px 14px rgba(79,110,247,.3)">
           Sauvegarder
@@ -689,6 +766,33 @@
         </div>
 
         <div id="rappel-last-exec" style="font-size:11px;color:var(--muted);text-align:center;margin-bottom:14px"></div>
+
+        <!-- Éditeur message rappel -->
+        <div class="msg-editor">
+          <div class="msg-editor-label">
+            ✉️ Message de rappel
+            <a onclick="resetRappelMsg()" title="Remettre le message par défaut">↺ Défaut</a>
+          </div>
+          <input class="msg-sujet-input" id="rappel-sujet" placeholder="Objet de l'email…" />
+          <div class="msg-vars">
+            <span class="msg-var-chip" onclick="insertVar('rappel-corps','{client_nom}')">{client_nom}</span>
+            <span class="msg-var-chip" onclick="insertVar('rappel-corps','{date}')">{date}</span>
+            <span class="msg-var-chip" onclick="insertVar('rappel-corps','{heure_debut}')">{heure_debut}</span>
+            <span class="msg-var-chip" onclick="insertVar('rappel-corps','{heure_fin}')">{heure_fin}</span>
+            <span class="msg-var-chip" onclick="insertVar('rappel-corps','{titre}')">{titre}</span>
+            <span class="msg-var-chip" onclick="insertVar('rappel-corps','{adresse}')">{adresse}</span>
+            <span class="msg-var-chip" onclick="insertVar('rappel-corps','{notes}')">{notes}</span>
+            <span class="msg-var-chip" onclick="insertVar('rappel-corps','{agent_nom}')">{agent_nom}</span>
+          </div>
+          <textarea class="msg-corps-textarea" id="rappel-corps" oninput="updateRappelPreview()" placeholder="Corps de l'email…"></textarea>
+          <button class="msg-preview-toggle" onclick="toggleMsgPreview('rappel-preview',this)">
+            👁 Aperçu <span style="font-size:14px;line-height:1">›</span>
+          </button>
+          <div class="msg-preview" id="rappel-preview">
+            <div class="msg-preview-sujet" id="rappel-preview-sujet"></div>
+            <div class="msg-preview-corps" id="rappel-preview-corps"></div>
+          </div>
+        </div>
 
         <button onclick="sauverRappel()" style="width:100%;padding:10px;background:linear-gradient(135deg,var(--green,#22c55e),#16a34a);border:none;border-radius:9px;color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;box-shadow:0 4px 14px rgba(34,197,94,.25)">
           Sauvegarder
@@ -1585,8 +1689,44 @@
       btn.disabled = false;
     }
 
+    // ── Éditeur message commun ────────────────────────────────
+    const PREVIEW_SAMPLE = {
+      client_nom:  "Jean Martin",
+      date:        "28/05/2026",
+      heure_debut: "10:00",
+      heure_fin:   "11:00",
+      titre:       "Visite appartement T3",
+      adresse:     "12 rue du Moulin",
+      adresse_line:"\nAdresse : 12 rue du Moulin",
+      notes:       "",
+      agent_nom:   "{{ compte.nom }}{{ ' — ' + compte.agence if compte.agence else '' }}",
+      agent_agence:"{{ compte.agence or '' }}",
+    };
+
+    function remplirTemplate(tpl) {
+      return tpl.replace(/\{(\w+)\}/g, (_, k) =>
+        k in PREVIEW_SAMPLE ? PREVIEW_SAMPLE[k] : '{' + k + '}');
+    }
+
+    function insertVar(textareaId, variable) {
+      const ta = document.getElementById(textareaId);
+      const start = ta.selectionStart, end = ta.selectionEnd;
+      ta.value = ta.value.slice(0, start) + variable + ta.value.slice(end);
+      ta.selectionStart = ta.selectionEnd = start + variable.length;
+      ta.focus();
+      ta.dispatchEvent(new Event('input'));
+    }
+
+    function toggleMsgPreview(previewId, btn) {
+      const el = document.getElementById(previewId);
+      const open = el.classList.toggle('open');
+      btn.querySelector('span').textContent = open ? '⌄' : '›';
+    }
+
     // ── Relance automatique ───────────────────────────────────
     let relanceDelaiActuel = 48;
+    let relanceSujetDefault = '';
+    let relanceCorpsDefault = '';
 
     function toggleRelancePanel() {
       const panel  = document.getElementById('relance-panel');
@@ -1613,20 +1753,40 @@
       });
     }
 
+    function updateRelancePreview() {
+      const s = document.getElementById('relance-sujet').value || relanceSujetDefault;
+      const c = document.getElementById('relance-corps').value || relanceCorpsDefault;
+      document.getElementById('relance-preview-sujet').textContent = remplirTemplate(s);
+      document.getElementById('relance-preview-corps').textContent = remplirTemplate(c);
+    }
+
+    function resetRelanceMsg() {
+      document.getElementById('relance-sujet').value = '';
+      document.getElementById('relance-corps').value = '';
+      updateRelancePreview();
+    }
+
     async function chargerRelance() {
       try {
         const r = await fetch(`/api/relance/${COMPTE_ID}`);
         const j = await r.json();
         if (!j.ok) return;
-        const toggle = document.getElementById('relance-toggle');
-        toggle.checked = !!j.actif;
+        relanceSujetDefault = j.sujet_default || '';
+        relanceCorpsDefault = j.corps_default || '';
+        document.getElementById('relance-toggle').checked = !!j.actif;
         onRelanceToggle(!!j.actif);
         setRelanceDelai(parseInt(j.delai_heures) || 48);
         relanceDelaiActuel = parseInt(j.delai_heures) || 48;
+        // Templates
+        document.getElementById('relance-sujet').value = j.sujet_template || '';
+        document.getElementById('relance-corps').value = j.corps_template || '';
+        document.getElementById('relance-sujet').placeholder = j.sujet_default || 'Objet de l\'email…';
+        document.getElementById('relance-corps').placeholder = j.corps_default || 'Corps de l\'email…';
+        updateRelancePreview();
         const last = document.getElementById('relance-last-exec');
         if (j.derniere_exec) {
           const d = new Date(j.derniere_exec);
-          last.textContent = `Dernière vérification : ${d.toLocaleDateString('fr-FR')} à ${d.toLocaleTimeString('fr-FR', {hour:'2-digit',minute:'2-digit'})} — ${j.nb_envoyees || 0} relance(s) envoyée(s) au total`;
+          last.textContent = `Dernière vérification : ${d.toLocaleDateString('fr-FR')} à ${d.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'})} — ${j.nb_envoyees||0} relance(s) envoyée(s)`;
         } else {
           last.textContent = 'Aucune relance envoyée pour le moment.';
         }
@@ -1635,17 +1795,18 @@
 
     async function sauverRelance() {
       const actif = document.getElementById('relance-toggle').checked;
+      const sujet = document.getElementById('relance-sujet').value.trim();
+      const corps = document.getElementById('relance-corps').value.trim();
       const r = await fetch(`/api/relance/${COMPTE_ID}`, {
         method: 'POST',
         headers: {'Content-Type':'application/json'},
-        body: JSON.stringify({ actif, delai_heures: relanceDelaiActuel })
+        body: JSON.stringify({ actif, delai_heures: relanceDelaiActuel, sujet_template: sujet, corps_template: corps })
       });
       const j = await r.json();
       if (j.ok) {
         const delaiLabel = relanceDelaiActuel >= 168 ? '7 jours' : relanceDelaiActuel + 'h';
         toast(`🔔 Relance auto ${actif ? 'activée — délai : ' + delaiLabel : 'désactivée'}`);
-        const desc = document.getElementById('relance-desc');
-        desc.textContent = actif
+        document.getElementById('relance-desc').textContent = actif
           ? `Actif · Relance après ${delaiLabel} sans réponse`
           : 'Envoie un email de relance aux clients dont le RDV est en attente depuis trop longtemps';
       }
@@ -1653,6 +1814,8 @@
 
     // ── Rappel RDV ────────────────────────────────────────────
     let rappelAvanceActuel = 24;
+    let rappelSujetDefault = '';
+    let rappelCorpsDefault = '';
 
     function toggleRappelPanel() {
       const panel = document.getElementById('rappel-panel');
@@ -1679,19 +1842,40 @@
       });
     }
 
+    function updateRappelPreview() {
+      const s = document.getElementById('rappel-sujet').value || rappelSujetDefault;
+      const c = document.getElementById('rappel-corps').value || rappelCorpsDefault;
+      document.getElementById('rappel-preview-sujet').textContent = remplirTemplate(s);
+      document.getElementById('rappel-preview-corps').textContent = remplirTemplate(c);
+    }
+
+    function resetRappelMsg() {
+      document.getElementById('rappel-sujet').value = '';
+      document.getElementById('rappel-corps').value = '';
+      updateRappelPreview();
+    }
+
     async function chargerRappel() {
       try {
         const r = await fetch(`/api/rappel/${COMPTE_ID}`);
         const j = await r.json();
         if (!j.ok) return;
+        rappelSujetDefault = j.sujet_default || '';
+        rappelCorpsDefault = j.corps_default || '';
         document.getElementById('rappel-toggle').checked = !!j.actif;
         onRappelToggle(!!j.actif);
         setRappelAvance(parseInt(j.avance_heures) || 24);
         rappelAvanceActuel = parseInt(j.avance_heures) || 24;
+        // Templates
+        document.getElementById('rappel-sujet').value = j.sujet_template || '';
+        document.getElementById('rappel-corps').value = j.corps_template || '';
+        document.getElementById('rappel-sujet').placeholder = j.sujet_default || 'Objet de l\'email…';
+        document.getElementById('rappel-corps').placeholder = j.corps_default || 'Corps de l\'email…';
+        updateRappelPreview();
         const last = document.getElementById('rappel-last-exec');
         if (j.derniere_exec) {
           const d = new Date(j.derniere_exec);
-          last.textContent = `Dernière vérification : ${d.toLocaleDateString('fr-FR')} à ${d.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'})} — ${j.nb_envoyes||0} rappel(s) envoyé(s) au total`;
+          last.textContent = `Dernière vérification : ${d.toLocaleDateString('fr-FR')} à ${d.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'})} — ${j.nb_envoyes||0} rappel(s) envoyé(s)`;
         } else {
           last.textContent = 'Aucun rappel envoyé pour le moment.';
         }
@@ -1700,10 +1884,12 @@
 
     async function sauverRappel() {
       const actif = document.getElementById('rappel-toggle').checked;
+      const sujet = document.getElementById('rappel-sujet').value.trim();
+      const corps = document.getElementById('rappel-corps').value.trim();
       const r = await fetch(`/api/rappel/${COMPTE_ID}`, {
         method: 'POST',
         headers: {'Content-Type':'application/json'},
-        body: JSON.stringify({ actif, avance_heures: rappelAvanceActuel })
+        body: JSON.stringify({ actif, avance_heures: rappelAvanceActuel, sujet_template: sujet, corps_template: corps })
       });
       const j = await r.json();
       if (j.ok) {

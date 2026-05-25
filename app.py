@@ -1281,6 +1281,21 @@ def supprimer_rdv(compte_id, rdv_id):
 def relance_file(compte_id):
     return DATA_DIR / f"relance_{compte_id}.json"
 
+RELANCE_SUJET_DEFAULT = "Rappel : votre rendez-vous du {date} — {titre}"
+RELANCE_CORPS_DEFAULT = """\
+Bonjour {client_nom},
+
+Je vous contacte au sujet de notre rendez-vous prévu le {date} de {heure_debut} à {heure_fin}.
+
+Rendez-vous : {titre}{adresse_line}
+
+Pourriez-vous confirmer votre disponibilité pour ce rendez-vous ?
+
+Dans l'attente de votre retour, je reste à votre disposition pour toute question.
+
+Cordialement,
+{agent_nom}"""
+
 def charger_relance_settings(compte_id):
     f = relance_file(compte_id)
     if f.exists():
@@ -1288,7 +1303,11 @@ def charger_relance_settings(compte_id):
             return json.loads(f.read_text())
         except Exception:
             pass
-    return {"actif": False, "delai_heures": 48, "derniere_exec": None, "nb_envoyees": 0}
+    return {
+        "actif": False, "delai_heures": 48,
+        "sujet_template": "", "corps_template": "",
+        "derniere_exec": None, "nb_envoyees": 0,
+    }
 
 def sauver_relance_settings(compte_id, settings):
     relance_file(compte_id).write_text(json.dumps(settings, indent=2, ensure_ascii=False))
@@ -1297,7 +1316,12 @@ def sauver_relance_settings(compte_id, settings):
 def get_relance(compte_id):
     if not check_access(compte_id):
         return jsonify({"ok": False}), 403
-    return jsonify({"ok": True, **charger_relance_settings(compte_id)})
+    return jsonify({
+        "ok": True,
+        "sujet_default": RELANCE_SUJET_DEFAULT,
+        "corps_default":  RELANCE_CORPS_DEFAULT,
+        **charger_relance_settings(compte_id),
+    })
 
 @app.route("/api/relance/<compte_id>", methods=["POST"])
 def sauver_relance(compte_id):
@@ -1309,6 +1333,10 @@ def sauver_relance(compte_id):
         s["actif"] = bool(d["actif"])
     if "delai_heures" in d:
         s["delai_heures"] = int(d["delai_heures"])
+    if "sujet_template" in d:
+        s["sujet_template"] = d["sujet_template"]
+    if "corps_template" in d:
+        s["corps_template"] = d["corps_template"]
     sauver_relance_settings(compte_id, s)
     return jsonify({"ok": True, **s})
 
@@ -1375,29 +1403,39 @@ def _envoyer_relance_smtp(smtp_server, smtp_port, imap_password, expediteur, des
             s.sendmail(expediteur, destinataire, msg.as_bytes())
 
 
-def _construire_email_relance(agent_nom, agent_agence, rdv):
-    """Génère le sujet et corps de la relance."""
+def _remplir_template(tpl, vars_map):
+    """Remplace les {variables} dans un template."""
+    for k, v in vars_map.items():
+        tpl = tpl.replace("{" + k + "}", str(v))
+    return tpl
+
+def _vars_rdv(agent_nom, agent_agence, rdv):
+    """Construit le dictionnaire de variables pour un RDV."""
     from datetime import datetime as _dt
     try:
         date_fr = _dt.strptime(rdv["date"], "%Y-%m-%d").strftime("%d/%m/%Y")
     except Exception:
         date_fr = rdv.get("date", "")
-    sujet = f"Rappel : votre rendez-vous du {date_fr} — {rdv.get('titre','')}"
-    corps = f"""Bonjour {rdv.get('client_nom', '')},
+    adr = rdv.get("adresse", "").strip()
+    return {
+        "client_nom":   rdv.get("client_nom", ""),
+        "date":         date_fr,
+        "heure_debut":  rdv.get("heure_debut", ""),
+        "heure_fin":    rdv.get("heure_fin", ""),
+        "titre":        rdv.get("titre", ""),
+        "adresse":      adr,
+        "adresse_line": ("\nAdresse : " + adr) if adr else "",
+        "notes":        rdv.get("notes", ""),
+        "agent_nom":    agent_nom + ((" — " + agent_agence) if agent_agence else ""),
+        "agent_agence": agent_agence,
+    }
 
-Je vous contacte au sujet de notre rendez-vous prévu le {date_fr} de {rdv.get('heure_debut','?')} à {rdv.get('heure_fin','?')}.
-
-Rendez-vous : {rdv.get('titre','')}
-{"Adresse : " + rdv.get("adresse","") if rdv.get("adresse") else ""}
-
-Pourriez-vous confirmer votre disponibilité pour ce rendez-vous ?
-
-Dans l'attente de votre retour, je reste à votre disposition pour toute question.
-
-Cordialement,
-{agent_nom}{(" — " + agent_agence) if agent_agence else ""}
-"""
-    return sujet, corps.strip()
+def _construire_email_relance(agent_nom, agent_agence, rdv, settings=None):
+    """Génère le sujet et corps de la relance (template personnalisé ou défaut)."""
+    vars_map = _vars_rdv(agent_nom, agent_agence, rdv)
+    sujet_tpl = (settings or {}).get("sujet_template") or RELANCE_SUJET_DEFAULT
+    corps_tpl = (settings or {}).get("corps_template") or RELANCE_CORPS_DEFAULT
+    return _remplir_template(sujet_tpl, vars_map), _remplir_template(corps_tpl, vars_map)
 
 
 def thread_relance_auto():
@@ -1457,7 +1495,7 @@ def thread_relance_auto():
                         continue
 
                     expediteur = boite.get("email", "")
-                    sujet, corps = _construire_email_relance(c.get("nom",""), c.get("agence",""), rdv)
+                    sujet, corps = _construire_email_relance(c.get("nom",""), c.get("agence",""), rdv, s)
                     provider = boite.get("provider", "gmail")
 
                     try:
@@ -1495,6 +1533,21 @@ def thread_relance_auto():
 def rappel_file(compte_id):
     return DATA_DIR / f"rappel_{compte_id}.json"
 
+RAPPEL_SUJET_DEFAULT = "Rappel de votre rendez-vous — {titre}"
+RAPPEL_CORPS_DEFAULT = """\
+Bonjour {client_nom},
+
+Nous vous rappelons votre rendez-vous confirmé :
+
+📅 Date : {date}
+🕐 Heure : {heure_debut} — {heure_fin}
+📌 {titre}{adresse_line}
+
+En cas d'empêchement, n'hésitez pas à nous contacter le plus tôt possible afin de reprogrammer.
+
+À très bientôt,
+{agent_nom}"""
+
 def charger_rappel_settings(compte_id):
     f = rappel_file(compte_id)
     if f.exists():
@@ -1502,7 +1555,11 @@ def charger_rappel_settings(compte_id):
             return json.loads(f.read_text())
         except Exception:
             pass
-    return {"actif": False, "avance_heures": 24, "derniere_exec": None, "nb_envoyes": 0}
+    return {
+        "actif": False, "avance_heures": 24,
+        "sujet_template": "", "corps_template": "",
+        "derniere_exec": None, "nb_envoyes": 0,
+    }
 
 def sauver_rappel_settings(compte_id, settings):
     rappel_file(compte_id).write_text(json.dumps(settings, indent=2, ensure_ascii=False))
@@ -1511,7 +1568,12 @@ def sauver_rappel_settings(compte_id, settings):
 def get_rappel(compte_id):
     if not check_access(compte_id):
         return jsonify({"ok": False}), 403
-    return jsonify({"ok": True, **charger_rappel_settings(compte_id)})
+    return jsonify({
+        "ok": True,
+        "sujet_default": RAPPEL_SUJET_DEFAULT,
+        "corps_default":  RAPPEL_CORPS_DEFAULT,
+        **charger_rappel_settings(compte_id),
+    })
 
 @app.route("/api/rappel/<compte_id>", methods=["POST"])
 def sauver_rappel(compte_id):
@@ -1523,34 +1585,20 @@ def sauver_rappel(compte_id):
         s["actif"] = bool(d["actif"])
     if "avance_heures" in d:
         s["avance_heures"] = int(d["avance_heures"])
+    if "sujet_template" in d:
+        s["sujet_template"] = d["sujet_template"]
+    if "corps_template" in d:
+        s["corps_template"] = d["corps_template"]
     sauver_rappel_settings(compte_id, s)
     return jsonify({"ok": True, **s})
 
 
-def _construire_email_rappel(agent_nom, agent_agence, rdv):
-    """Génère l'email de rappel de RDV confirmé."""
-    from datetime import datetime as _dt
-    try:
-        date_fr = _dt.strptime(rdv["date"], "%Y-%m-%d").strftime("%d/%m/%Y")
-    except Exception:
-        date_fr = rdv.get("date", "")
-    sujet = f"Rappel de votre rendez-vous demain — {rdv.get('titre','')}"
-    adr = f"\nAdresse : {rdv.get('adresse','')}" if rdv.get("adresse") else ""
-    notes = f"\n\nNote : {rdv.get('notes','')}" if rdv.get("notes") else ""
-    corps = f"""Bonjour {rdv.get('client_nom', '')},
-
-Nous vous rappelons votre rendez-vous confirmé :
-
-📅 Date : {date_fr}
-🕐 Heure : {rdv.get('heure_debut','?')} — {rdv.get('heure_fin','?')}
-📌 {rdv.get('titre','')}{adr}{notes}
-
-En cas d'empêchement, n'hésitez pas à nous contacter le plus tôt possible afin de reprogrammer.
-
-À très bientôt,
-{agent_nom}{(" — " + agent_agence) if agent_agence else ""}
-"""
-    return sujet, corps.strip()
+def _construire_email_rappel(agent_nom, agent_agence, rdv, settings=None):
+    """Génère l'email de rappel de RDV confirmé (template personnalisé ou défaut)."""
+    vars_map  = _vars_rdv(agent_nom, agent_agence, rdv)
+    sujet_tpl = (settings or {}).get("sujet_template") or RAPPEL_SUJET_DEFAULT
+    corps_tpl = (settings or {}).get("corps_template") or RAPPEL_CORPS_DEFAULT
+    return _remplir_template(sujet_tpl, vars_map), _remplir_template(corps_tpl, vars_map)
 
 
 def thread_rappel_rdv():
@@ -1608,7 +1656,7 @@ def thread_rappel_rdv():
                         continue
 
                     expediteur = boite.get("email", "")
-                    sujet, corps = _construire_email_rappel(c.get("nom",""), c.get("agence",""), rdv)
+                    sujet, corps = _construire_email_rappel(c.get("nom",""), c.get("agence",""), rdv, s)
                     provider = boite.get("provider", "gmail")
 
                     try:
