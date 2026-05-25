@@ -255,6 +255,18 @@
       content: ''; position: absolute; inset: 0; opacity: 0; transition: opacity .2s;
     }
     .quick-card.agenda::before  { background: linear-gradient(135deg, rgba(79,110,247,.08), transparent); }
+    /* Relance délai boutons */
+    .relance-delai-btn {
+      padding: 9px 6px; border: 1px solid var(--border); border-radius: 9px;
+      background: rgba(5,9,26,.8); color: var(--muted); font-size: 13px; font-weight: 700;
+      cursor: pointer; font-family: inherit; transition: all .15s; text-align: center;
+    }
+    .relance-delai-btn:hover { border-color: rgba(245,158,11,.4); color: #fcd34d; }
+    .relance-delai-btn.active {
+      border-color: rgba(245,158,11,.6); color: #fcd34d;
+      background: rgba(245,158,11,.1); box-shadow: 0 0 0 1px rgba(245,158,11,.15);
+    }
+
     .quick-card.nettoyage::before { background: linear-gradient(135deg, rgba(239,68,68,.06), transparent); }
     .quick-card:hover { transform: translateY(-2px); box-shadow: 0 8px 28px rgba(0,0,0,.35); }
     .quick-card.agenda:hover    { border-color: rgba(79,110,247,.4); }
@@ -564,6 +576,60 @@
           <span id="agenda-knob" style="position:absolute;width:16px;height:16px;border-radius:50%;top:4px;transition:.2s;background:#fff;left:{% if compte.agenda_actif != false %}24px{% else %}4px{% endif %};"></span>
         </span>
       </label>
+    </div>
+  </div>
+
+  <!-- Relance Auto -->
+  <div style="margin-bottom:8px">
+    <div style="background:var(--card);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;">
+      <div style="padding:16px 18px;display:flex;align-items:center;gap:16px;cursor:pointer" onclick="toggleRelancePanel()">
+        <div class="param-card-icon" style="background:rgba(245,158,11,.1);box-shadow:0 0 0 1px rgba(245,158,11,.25);">🔔</div>
+        <div class="param-card-body">
+          <div class="param-card-title">Relance automatique</div>
+          <div class="param-card-desc" id="relance-desc">Envoie un email de relance aux clients dont le RDV est en attente depuis trop longtemps</div>
+        </div>
+        <span id="relance-chevron" style="color:var(--muted);font-size:20px;transition:.2s;flex-shrink:0">›</span>
+      </div>
+      <div id="relance-panel" style="display:none;border-top:1px solid var(--border);padding:18px 20px">
+
+        <!-- Toggle + délai -->
+        <div style="display:flex;align-items:center;gap:14px;margin-bottom:18px">
+          <label style="position:relative;width:44px;height:24px;cursor:pointer;flex-shrink:0;">
+            <input type="checkbox" id="relance-toggle" style="opacity:0;width:0;height:0;" onchange="onRelanceToggle(this.checked)" />
+            <span id="relance-slider" style="position:absolute;inset:0;border-radius:24px;transition:.2s;background:var(--border);">
+              <span id="relance-knob" style="position:absolute;width:16px;height:16px;border-radius:50%;top:4px;transition:.2s;background:#fff;left:4px;"></span>
+            </span>
+          </label>
+          <div>
+            <div style="font-size:13px;font-weight:600" id="relance-toggle-label">Désactivé</div>
+            <div style="font-size:11px;color:var(--muted)">Active / désactive la relance automatique</div>
+          </div>
+        </div>
+
+        <!-- Délai -->
+        <div style="margin-bottom:16px">
+          <label class="form-label">Envoyer la relance après</label>
+          <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px" id="relance-delai-btns">
+            <button class="relance-delai-btn active" data-h="24" onclick="setRelanceDelai(24)">24h</button>
+            <button class="relance-delai-btn" data-h="48" onclick="setRelanceDelai(48)">48h</button>
+            <button class="relance-delai-btn" data-h="72" onclick="setRelanceDelai(72)">72h</button>
+            <button class="relance-delai-btn" data-h="168" onclick="setRelanceDelai(168)">7 jours</button>
+          </div>
+        </div>
+
+        <!-- Infos -->
+        <div style="background:rgba(245,158,11,.06);border:1px solid rgba(245,158,11,.18);border-radius:10px;padding:11px 14px;font-size:12px;color:#fcd34d;margin-bottom:16px;line-height:1.5">
+          🔔 MailPilot enverra automatiquement un email de relance pour chaque RDV resté en statut <strong>"En attente"</strong> depuis le délai configuré. L'email est envoyé depuis votre boîte connectée.
+        </div>
+
+        <!-- Statut dernière exec -->
+        <div id="relance-last-exec" style="font-size:11px;color:var(--muted);text-align:center;margin-bottom:14px"></div>
+
+        <!-- Bouton sauvegarder -->
+        <button onclick="sauverRelance()" style="width:100%;padding:10px;background:linear-gradient(135deg,var(--blue),var(--blue2));border:none;border-radius:9px;color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;box-shadow:0 4px 14px rgba(79,110,247,.3)">
+          Sauvegarder
+        </button>
+      </div>
     </div>
   </div>
 
@@ -1455,6 +1521,72 @@
       btn.disabled = false;
     }
 
+    // ── Relance automatique ───────────────────────────────────
+    let relanceDelaiActuel = 48;
+
+    function toggleRelancePanel() {
+      const panel  = document.getElementById('relance-panel');
+      const chev   = document.getElementById('relance-chevron');
+      const open   = panel.style.display === 'block';
+      panel.style.display = open ? 'none' : 'block';
+      chev.style.transform = open ? 'rotate(0deg)' : 'rotate(90deg)';
+      if (!open) chargerRelance();
+    }
+
+    function onRelanceToggle(actif) {
+      const slider = document.getElementById('relance-slider');
+      const knob   = document.getElementById('relance-knob');
+      const lbl    = document.getElementById('relance-toggle-label');
+      slider.style.background = actif ? 'var(--yellow,#f59e0b)' : 'var(--border)';
+      knob.style.left = actif ? '24px' : '4px';
+      lbl.textContent = actif ? 'Activé' : 'Désactivé';
+    }
+
+    function setRelanceDelai(h) {
+      relanceDelaiActuel = h;
+      document.querySelectorAll('.relance-delai-btn').forEach(b => {
+        b.classList.toggle('active', parseInt(b.dataset.h) === h);
+      });
+    }
+
+    async function chargerRelance() {
+      try {
+        const r = await fetch(`/api/relance/${COMPTE_ID}`);
+        const j = await r.json();
+        if (!j.ok) return;
+        const toggle = document.getElementById('relance-toggle');
+        toggle.checked = !!j.actif;
+        onRelanceToggle(!!j.actif);
+        setRelanceDelai(parseInt(j.delai_heures) || 48);
+        relanceDelaiActuel = parseInt(j.delai_heures) || 48;
+        const last = document.getElementById('relance-last-exec');
+        if (j.derniere_exec) {
+          const d = new Date(j.derniere_exec);
+          last.textContent = `Dernière vérification : ${d.toLocaleDateString('fr-FR')} à ${d.toLocaleTimeString('fr-FR', {hour:'2-digit',minute:'2-digit'})} — ${j.nb_envoyees || 0} relance(s) envoyée(s) au total`;
+        } else {
+          last.textContent = 'Aucune relance envoyée pour le moment.';
+        }
+      } catch(e) {}
+    }
+
+    async function sauverRelance() {
+      const actif = document.getElementById('relance-toggle').checked;
+      const r = await fetch(`/api/relance/${COMPTE_ID}`, {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ actif, delai_heures: relanceDelaiActuel })
+      });
+      const j = await r.json();
+      if (j.ok) {
+        const delaiLabel = relanceDelaiActuel >= 168 ? '7 jours' : relanceDelaiActuel + 'h';
+        toast(`🔔 Relance auto ${actif ? 'activée — délai : ' + delaiLabel : 'désactivée'}`);
+        const desc = document.getElementById('relance-desc');
+        desc.textContent = actif
+          ? `Actif · Relance après ${delaiLabel} sans réponse`
+          : 'Envoie un email de relance aux clients dont le RDV est en attente depuis trop longtemps';
+      }
+    }
+
     // ── Transferts automatiques ───────────────────────────────
     let currentTransfertsBoite = null;
     let transfertsRegles = [];
@@ -1606,6 +1738,7 @@
     // ── Init ──────────────────────────────────────────────────
     setInterval(rafraichir, 3000);
     setInterval(chargerStats, 10000);
+    chargerRelance();
     rafraichir().then(() => {
       chargerStats();
       // Afficher le wizard si aucune boite connectée et pas déjà fait

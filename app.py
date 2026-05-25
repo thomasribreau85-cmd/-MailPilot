@@ -1274,6 +1274,231 @@ def supprimer_rdv(compte_id, rdv_id):
     return jsonify({"ok": True})
 
 
+# ══════════════════════════════════════════════════════════════
+# RELANCE AUTO — Thread de relance des RDV en attente
+# ══════════════════════════════════════════════════════════════
+
+def relance_file(compte_id):
+    return DATA_DIR / f"relance_{compte_id}.json"
+
+def charger_relance_settings(compte_id):
+    f = relance_file(compte_id)
+    if f.exists():
+        try:
+            return json.loads(f.read_text())
+        except Exception:
+            pass
+    return {"actif": False, "delai_heures": 48, "derniere_exec": None, "nb_envoyees": 0}
+
+def sauver_relance_settings(compte_id, settings):
+    relance_file(compte_id).write_text(json.dumps(settings, indent=2, ensure_ascii=False))
+
+@app.route("/api/relance/<compte_id>", methods=["GET"])
+def get_relance(compte_id):
+    if not check_access(compte_id):
+        return jsonify({"ok": False}), 403
+    return jsonify({"ok": True, **charger_relance_settings(compte_id)})
+
+@app.route("/api/relance/<compte_id>", methods=["POST"])
+def sauver_relance(compte_id):
+    if not check_access(compte_id):
+        return jsonify({"ok": False}), 403
+    d = request.json or {}
+    s = charger_relance_settings(compte_id)
+    if "actif" in d:
+        s["actif"] = bool(d["actif"])
+    if "delai_heures" in d:
+        s["delai_heures"] = int(d["delai_heures"])
+    sauver_relance_settings(compte_id, s)
+    return jsonify({"ok": True, **s})
+
+
+def _envoyer_relance_gmail(token_path, expediteur, destinataire, sujet, corps):
+    """Envoie une relance via l'API Gmail."""
+    import base64 as _b64
+    from email.mime.text import MIMEText as _MIMEText
+    from google.oauth2.credentials import Credentials as _Creds
+    from googleapiclient.discovery import build as _build
+    GMAIL_SCOPES = ["https://www.googleapis.com/auth/gmail.modify"]
+    creds = _Creds.from_authorized_user_file(token_path, GMAIL_SCOPES)
+    if creds.expired and creds.refresh_token:
+        from google.auth.transport.requests import Request as _Req
+        creds.refresh(_Req())
+    service = _build("gmail", "v1", credentials=creds, cache_discovery=False)
+    msg = _MIMEText(corps, "plain", "utf-8")
+    msg["From"]    = expediteur
+    msg["To"]      = destinataire
+    msg["Subject"] = sujet
+    raw = _b64.urlsafe_b64encode(msg.as_bytes()).decode()
+    service.users().messages().send(userId="me", body={"raw": raw}).execute()
+
+
+def _envoyer_relance_microsoft(token_path, expediteur, destinataire, sujet, corps):
+    """Envoie une relance via Microsoft Graph."""
+    try:
+        token_data = json.loads(Path(token_path).read_text())
+    except Exception:
+        raise Exception("Token Microsoft introuvable")
+    access_token = token_data.get("access_token", "")
+    headers = {"Authorization": f"Bearer {access_token}", "Content-Type": "application/json"}
+    body = {
+        "message": {
+            "subject": sujet,
+            "body": {"contentType": "Text", "content": corps},
+            "toRecipients": [{"emailAddress": {"address": destinataire}}],
+        }
+    }
+    r = http_requests.post("https://graph.microsoft.com/v1.0/me/sendMail", headers=headers, json=body, timeout=15)
+    if r.status_code == 401:
+        raise Exception("Token Microsoft expiré")
+
+
+def _envoyer_relance_smtp(smtp_server, smtp_port, imap_password, expediteur, destinataire, sujet, corps):
+    """Envoie une relance via SMTP."""
+    import smtplib as _smtp
+    from email.mime.text import MIMEText as _MIMEText
+    msg = _MIMEText(corps, "plain", "utf-8")
+    msg["From"]    = expediteur
+    msg["To"]      = destinataire
+    msg["Subject"] = sujet
+    smtp_port = int(smtp_port)
+    if smtp_port == 587:
+        with _smtp.SMTP(smtp_server, smtp_port, timeout=15) as s:
+            s.starttls()
+            s.login(expediteur, imap_password)
+            s.sendmail(expediteur, destinataire, msg.as_bytes())
+    else:
+        import ssl as _ssl
+        ctx = _ssl.create_default_context()
+        with _smtp.SMTP_SSL(smtp_server, smtp_port, context=ctx, timeout=15) as s:
+            s.login(expediteur, imap_password)
+            s.sendmail(expediteur, destinataire, msg.as_bytes())
+
+
+def _construire_email_relance(agent_nom, agent_agence, rdv):
+    """Génère le sujet et corps de la relance."""
+    from datetime import datetime as _dt
+    try:
+        date_fr = _dt.strptime(rdv["date"], "%Y-%m-%d").strftime("%d/%m/%Y")
+    except Exception:
+        date_fr = rdv.get("date", "")
+    sujet = f"Rappel : votre rendez-vous du {date_fr} — {rdv.get('titre','')}"
+    corps = f"""Bonjour {rdv.get('client_nom', '')},
+
+Je vous contacte au sujet de notre rendez-vous prévu le {date_fr} de {rdv.get('heure_debut','?')} à {rdv.get('heure_fin','?')}.
+
+Rendez-vous : {rdv.get('titre','')}
+{"Adresse : " + rdv.get("adresse","") if rdv.get("adresse") else ""}
+
+Pourriez-vous confirmer votre disponibilité pour ce rendez-vous ?
+
+Dans l'attente de votre retour, je reste à votre disposition pour toute question.
+
+Cordialement,
+{agent_nom}{(" — " + agent_agence) if agent_agence else ""}
+"""
+    return sujet, corps.strip()
+
+
+def thread_relance_auto():
+    """Thread de fond : vérifie toutes les 30 min les RDV en attente et envoie des relances."""
+    import time as _time
+    from datetime import datetime as _dt, timedelta as _td
+    _time.sleep(15)  # attendre que tout soit initialisé
+    print("🔔 Thread relance auto démarré")
+    while True:
+        try:
+            data = charger_comptes()
+            for c in data.get("comptes", []):
+                compte_id = c.get("id")
+                if not compte_id:
+                    continue
+                s = charger_relance_settings(compte_id)
+                if not s.get("actif"):
+                    continue
+                delai_h = int(s.get("delai_heures", 48))
+                seuil   = _dt.now() - _td(hours=delai_h)
+                rdvs    = charger_agenda(compte_id)
+                modifie = False
+
+                # Trouver la première boite connectée du compte
+                boite = None
+                for b in c.get("boites", []):
+                    provider = b.get("provider", "gmail")
+                    if provider == "gmail" and b.get("connecte") and b.get("token"):
+                        boite = b; break
+                    if provider == "microsoft" and b.get("token"):
+                        boite = b; break
+                    if provider == "imap" and b.get("imap_server") and b.get("imap_password"):
+                        boite = b; break
+                if not boite:
+                    continue
+
+                for rdv in rdvs:
+                    # Seulement les RDV en attente sans relance déjà envoyée
+                    if rdv.get("statut") != "attente":
+                        continue
+                    if rdv.get("relance_envoyee_at"):
+                        continue
+                    # Vérifier si le délai est dépassé
+                    created_str = rdv.get("created_at", "")
+                    if not created_str:
+                        continue
+                    try:
+                        created = _dt.fromisoformat(created_str)
+                    except Exception:
+                        continue
+                    if created > seuil:
+                        continue  # pas encore assez vieux
+
+                    # Vérifier qu'il y a bien un email client
+                    dest = rdv.get("client_email", "").strip()
+                    if not dest:
+                        continue
+
+                    expediteur = boite.get("email", "")
+                    sujet, corps = _construire_email_relance(c.get("nom",""), c.get("agence",""), rdv)
+                    provider = boite.get("provider", "gmail")
+
+                    try:
+                        if provider == "gmail":
+                            _envoyer_relance_gmail(boite["token"], expediteur, dest, sujet, corps)
+                        elif provider == "microsoft":
+                            _envoyer_relance_microsoft(boite["token"], expediteur, dest, sujet, corps)
+                        elif provider == "imap":
+                            _envoyer_relance_smtp(
+                                boite.get("smtp_server",""), boite.get("smtp_port","465"),
+                                boite.get("imap_password",""), expediteur, dest, sujet, corps
+                            )
+                        rdv["relance_envoyee_at"] = _dt.now().isoformat()
+                        modifie = True
+                        s["nb_envoyees"] = s.get("nb_envoyees", 0) + 1
+                        print(f"✅ Relance envoyée → {dest} (RDV {rdv['id']} — {c['nom']})")
+                    except Exception as e:
+                        print(f"❌ Relance échouée → {dest}: {e}")
+
+                if modifie:
+                    sauver_agenda(compte_id, rdvs)
+                    s["derniere_exec"] = _dt.now().isoformat()
+                    sauver_relance_settings(compte_id, s)
+
+        except Exception as e:
+            print(f"❌ Erreur thread relance: {e}")
+
+        _time.sleep(1800)  # toutes les 30 minutes
+
+
+# Démarrage du thread relance même sous Gunicorn (production Railway)
+_relance_thread_started = False
+def _start_relance_thread():
+    global _relance_thread_started
+    if not _relance_thread_started:
+        _relance_thread_started = True
+        threading.Thread(target=thread_relance_auto, daemon=True).start()
+
+_start_relance_thread()
+
+
 # ── Lancement ─────────────────────────────────────────────────
 if __name__ == "__main__":
     port     = int(os.environ.get("PORT", 5001))
