@@ -393,6 +393,7 @@
           <button onclick="sauverNettoyage(true)" style="flex:1;padding:9px;background:linear-gradient(135deg,var(--blue),var(--blue2));border:none;border-radius:9px;color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">✅ Activer</button>
           <button onclick="sauverNettoyage(false)" style="flex:1;padding:9px;background:transparent;border:1px solid var(--border);border-radius:9px;color:var(--muted);font-size:13px;font-weight:600;cursor:pointer;font-family:inherit">❌ Désactiver</button>
         </div>
+        <button onclick="nettoyerMaintenant()" id="btn-nettoyer-now" style="width:100%;margin-top:10px;padding:9px;background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.25);border-radius:9px;color:#fca5a5;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;transition:all .15s" onmouseover="this.style.background='rgba(239,68,68,.2)'" onmouseout="this.style.background='rgba(239,68,68,.1)'">🗑️ Nettoyer maintenant</button>
         <div id="nettoyage-status" style="font-size:12px;color:var(--muted);text-align:center;margin-top:10px"></div>
       </div>
     </div>
@@ -1171,6 +1172,29 @@
           st.style.color = 'var(--muted)';
         }
       } else toast('⚠️ Erreur lors de la sauvegarde');
+    }
+
+    async function nettoyerMaintenant() {
+      const btn = document.getElementById('btn-nettoyer-now');
+      const st  = document.getElementById('nettoyage-status');
+      btn.textContent = '⏳ Nettoyage en cours...';
+      btn.disabled = true;
+      try {
+        const res = await fetch(`/api/nettoyage/${COMPTE_ID}/maintenant`, { method: 'POST' });
+        const j   = await res.json();
+        if (j.ok) {
+          st.textContent = `✅ ${j.message}`;
+          st.style.color = j.supprimes > 0 ? 'var(--green)' : 'var(--muted)';
+        } else {
+          st.textContent = '⚠️ ' + (j.message || 'Erreur');
+          st.style.color = 'var(--yellow)';
+        }
+      } catch(e) {
+        st.textContent = '⚠️ Erreur réseau';
+        st.style.color = 'var(--yellow)';
+      }
+      btn.textContent = '🗑️ Nettoyer maintenant';
+      btn.disabled = false;
     }
 
     // ── Transferts automatiques ───────────────────────────────

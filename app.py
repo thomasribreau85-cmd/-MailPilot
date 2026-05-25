@@ -1086,6 +1086,82 @@ def sauver_nettoyage(compte_id):
     )
     return jsonify({"ok": True})
 
+@app.route("/api/nettoyage/<compte_id>/maintenant", methods=["POST"])
+def nettoyage_maintenant(compte_id):
+    """Déclenche immédiatement le nettoyage des vieux emails via Gmail API."""
+    if not check_access(compte_id):
+        return jsonify({"ok": False}), 403
+
+    f = DATA_DIR / f"nettoyage_{compte_id}.json"
+    if not f.exists():
+        return jsonify({"ok": False, "message": "Nettoyage non configuré"}), 400
+    try:
+        cfg = json.loads(f.read_text())
+    except Exception:
+        return jsonify({"ok": False, "message": "Config invalide"}), 400
+
+    jours = cfg.get("jours", 365)
+    cats_cfg = cfg.get("categories", ["INUTILE"])
+
+    data = charger_comptes()
+    c = trouver_compte(data, compte_id)
+    if not c:
+        return jsonify({"ok": False, "message": "Compte introuvable"}), 404
+
+    supprimés = 0
+    erreurs = []
+
+    for b in c.get("boites", []):
+        provider = b.get("provider", "gmail")
+        if provider != "gmail":
+            continue
+        token_path = b.get("token", "")
+        if not token_path or not Path(token_path).exists():
+            continue
+        try:
+            from google.oauth2.credentials import Credentials
+            from google.auth.transport.requests import Request
+            from googleapiclient.discovery import build
+
+            creds = Credentials.from_authorized_user_file(token_path, GMAIL_SCOPES)
+            if creds.expired and creds.refresh_token:
+                creds.refresh(Request())
+                Path(token_path).write_text(creds.to_json())
+
+            service = build("gmail", "v1", credentials=creds)
+
+            # Déterminer les catégories
+            from prompts import TOUS_LES_LABELS
+            cats = list(TOUS_LES_LABELS.keys()) if cats_cfg == "ALL" else cats_cfg
+
+            for cat in cats:
+                info = TOUS_LES_LABELS.get(cat)
+                if not info:
+                    continue
+                nom_label = info["nom"]
+                query = f'label:"{nom_label}" older_than:{jours}d'
+                res = service.users().messages().list(
+                    userId="me", q=query, maxResults=500
+                ).execute()
+                messages = res.get("messages", [])
+                for m in messages:
+                    try:
+                        service.users().messages().trash(userId="me", id=m["id"]).execute()
+                        supprimés += 1
+                    except Exception as e:
+                        erreurs.append(str(e))
+
+        except Exception as e:
+            erreurs.append(f"Boite {b.get('email','?')}: {str(e)}")
+
+    return jsonify({
+        "ok": True,
+        "supprimes": supprimés,
+        "erreurs": erreurs[:5],
+        "message": f"{supprimés} email(s) déplacé(s) en corbeille"
+    })
+
+
 @app.route("/api/toggle_agenda/<compte_id>", methods=["POST"])
 def toggle_agenda(compte_id):
     if not check_access(compte_id):
