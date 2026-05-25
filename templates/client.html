@@ -616,6 +616,8 @@
 
   <script>
     const COMPTE_ID = "{{ compte.id }}";
+    const LABELS_DEFAUT = {{ labels_defaut | tojson }};
+    const LABELS_INFO   = {{ labels_info   | tojson }};
 
     async function toggleAgenda(actif) {
       const slider = document.getElementById('agenda-slider');

@@ -394,7 +394,12 @@ def dashboard():
                 modifie = True
     if modifie:
         sauver_comptes(data)
-    return render_template("client.html", compte=compte)
+    return render_template(
+        "client.html",
+        compte=compte,
+        labels_defaut=LABELS_DEFAUT,
+        labels_info={k: {"emoji": v["emoji"], "nom": v["nom"]} for k, v in TOUS_LES_LABELS.items()},
+    )
 
 
 @app.route("/logout")
