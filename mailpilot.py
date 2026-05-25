@@ -652,7 +652,32 @@ def detecter_rdv(client_anthropic, email, categorie):
     compte_id  = os.getenv("COMPTE_ID", "default")
     # COMPTE_ID est au format "compte_boite" — on prend juste la partie compte
     compte_part = compte_id.split("_")[0] if "_" in compte_id else compte_id
-    agenda_file = os.path.join(stats_dir, f"agenda_{compte_part}.json")
+    agenda_file   = os.path.join(stats_dir, f"agenda_{compte_part}.json")
+    horaires_file = os.path.join(stats_dir, f"horaires_{compte_part}.json")
+
+    # Charger les horaires d'ouverture
+    horaires_str = ""
+    try:
+        if os.path.exists(horaires_file):
+            horaires = json.loads(open(horaires_file, encoding="utf-8").read())
+            jours_map = {"lundi":"Lundi","mardi":"Mardi","mercredi":"Mercredi",
+                         "jeudi":"Jeudi","vendredi":"Vendredi","samedi":"Samedi","dimanche":"Dimanche"}
+            lignes = []
+            for jour, info in horaires.items():
+                if info.get("ouvert"):
+                    lignes.append(f"{jours_map.get(jour, jour)} : {info.get('debut','09:00')}–{info.get('fin','18:00')}")
+                else:
+                    lignes.append(f"{jours_map.get(jour, jour)} : fermé")
+            horaires_str = "\n".join(lignes)
+    except Exception:
+        pass
+
+    horaires_bloc = f"""
+HORAIRES D'OUVERTURE DE L'ENTREPRISE (à respecter impérativement) :
+{horaires_str if horaires_str else "Lundi–Vendredi : 09:00–18:00 / Samedi–Dimanche : fermé"}
+→ Si l'email ne précise pas d'heure, propose un créneau dans ces horaires.
+→ Ne jamais proposer d'heure en dehors de ces plages ou un jour fermé.
+""" if True else ""
 
     prompt = f"""Analyse cet email et réponds UNIQUEMENT en JSON valide (sans markdown).
 Si l'email contient une demande de rendez-vous, extrais ces informations.
@@ -675,7 +700,8 @@ Format attendu si RDV détecté :
 Email à analyser :
 SUJET : {email['sujet']}
 EXPÉDITEUR : {email['expediteur']}
-CORPS : {email['corps'][:1000]}"""
+CORPS : {email['corps'][:1000]}
+{horaires_bloc}"""
 
     try:
         rep = client_anthropic.messages.create(

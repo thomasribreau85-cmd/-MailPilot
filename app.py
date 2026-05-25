@@ -968,6 +968,46 @@ def statut_global():
     return jsonify(result)
 
 
+# ── Horaires d'ouverture ──────────────────────────────────────
+
+HORAIRES_DEFAUT = {
+    "lundi":    {"ouvert": True,  "debut": "09:00", "fin": "18:00"},
+    "mardi":    {"ouvert": True,  "debut": "09:00", "fin": "18:00"},
+    "mercredi": {"ouvert": True,  "debut": "09:00", "fin": "18:00"},
+    "jeudi":    {"ouvert": True,  "debut": "09:00", "fin": "18:00"},
+    "vendredi": {"ouvert": True,  "debut": "09:00", "fin": "18:00"},
+    "samedi":   {"ouvert": False, "debut": "09:00", "fin": "12:00"},
+    "dimanche": {"ouvert": False, "debut": "09:00", "fin": "12:00"},
+}
+
+def horaires_file(compte_id):
+    return DATA_DIR / f"horaires_{compte_id}.json"
+
+def charger_horaires(compte_id):
+    f = horaires_file(compte_id)
+    if f.exists():
+        try:
+            return json.loads(f.read_text())
+        except Exception:
+            pass
+    return HORAIRES_DEFAUT.copy()
+
+@app.route("/api/horaires/<compte_id>", methods=["GET"])
+def get_horaires(compte_id):
+    if not check_access(compte_id):
+        return jsonify({"ok": False}), 403
+    return jsonify({"ok": True, "horaires": charger_horaires(compte_id)})
+
+@app.route("/api/horaires/<compte_id>", methods=["POST"])
+def sauver_horaires(compte_id):
+    if not check_access(compte_id):
+        return jsonify({"ok": False}), 403
+    d = request.json or {}
+    horaires = d.get("horaires", {})
+    horaires_file(compte_id).write_text(json.dumps(horaires, indent=2, ensure_ascii=False))
+    return jsonify({"ok": True})
+
+
 # ── Agenda ────────────────────────────────────────────────────
 
 def agenda_file(compte_id):

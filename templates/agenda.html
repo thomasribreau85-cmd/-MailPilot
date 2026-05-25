@@ -275,6 +275,38 @@
     .empty-state { text-align: center; padding: 48px 20px; color: var(--muted); }
     .empty-state .big { font-size: 40px; margin-bottom: 12px; }
     .empty-state p { font-size: 14px; }
+
+    /* Horaires modal */
+    .horaires-grid { display: flex; flex-direction: column; gap: 10px; margin-bottom: 18px; }
+    .horaire-row {
+      display: grid; grid-template-columns: 100px 36px 1fr; align-items: center; gap: 12px;
+    }
+    .horaire-jour { font-size: 13px; font-weight: 600; text-transform: capitalize; }
+    .horaire-times { display: flex; align-items: center; gap: 8px; }
+    .horaire-times input[type="time"] {
+      background: #060d1c; border: 1px solid var(--border); border-radius: 8px;
+      color: var(--text); font-size: 13px; padding: 6px 10px; outline: none;
+      font-family: inherit; width: 90px; margin-bottom: 0;
+      transition: border-color .15s;
+    }
+    .horaire-times input[type="time"]:focus { border-color: var(--blue); }
+    .horaire-times span { color: var(--muted); font-size: 12px; }
+    .toggle-switch {
+      position: relative; width: 32px; height: 18px; cursor: pointer;
+    }
+    .toggle-switch input { opacity: 0; width: 0; height: 0; }
+    .toggle-slider {
+      position: absolute; inset: 0; border-radius: 18px;
+      background: var(--border); transition: .2s;
+    }
+    .toggle-slider:before {
+      content: ''; position: absolute; width: 12px; height: 12px;
+      left: 3px; top: 3px; border-radius: 50%;
+      background: var(--muted); transition: .2s;
+    }
+    .toggle-switch input:checked + .toggle-slider { background: var(--blue); }
+    .toggle-switch input:checked + .toggle-slider:before { transform: translateX(14px); background: #fff; }
+    .horaire-closed { opacity: .35; pointer-events: none; }
   </style>
 </head>
 <body>
@@ -299,6 +331,7 @@
       <button class="toggle-btn active" id="btn-liste" onclick="setVue('liste')">☰ Liste</button>
       <button class="toggle-btn" id="btn-semaine" onclick="setVue('semaine')">⊞ Semaine</button>
     </div>
+    <button class="btn-icon" onclick="ouvrirHoraires()">⚙️ Horaires</button>
     <button class="btn-icon" onclick="document.getElementById('import-ics').click()">📥 Importer .ics</button>
     <input type="file" id="import-ics" accept=".ics" style="display:none" onchange="importerICS(this)" />
     <button class="btn-primary" onclick="ouvrirModal()">+ Nouveau RDV</button>
@@ -405,6 +438,21 @@
       <div class="modal-btns">
         <button class="btn-cancel" onclick="fermerModal()">Annuler</button>
         <button class="btn-save" onclick="sauvegarderRdv()">Sauvegarder</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Horaires d'ouverture -->
+  <div class="overlay" id="overlay-horaires" onclick="if(event.target===this)fermerHoraires()">
+    <div class="modal" style="max-width:520px">
+      <h2>⚙️ Horaires d'ouverture</h2>
+      <p style="font-size:12px;color:var(--muted);margin-bottom:18px">
+        L'IA respectera ces horaires lors de la détection automatique de RDV depuis les emails.
+      </p>
+      <div class="horaires-grid" id="horaires-grid"></div>
+      <div class="modal-btns">
+        <button class="btn-cancel" onclick="fermerHoraires()">Annuler</button>
+        <button class="btn-save" onclick="sauvegarderHoraires()">Sauvegarder</button>
       </div>
     </div>
   </div>
@@ -764,6 +812,67 @@
       });
       toast(`✅ RDV déplacé à ${debut} – ${fin}`);
       charger();
+    }
+
+    // ── Horaires d'ouverture ─────────────────────────────────
+    const JOURS_SEMAINE = ['lundi','mardi','mercredi','jeudi','vendredi','samedi','dimanche'];
+    let horairesData = {};
+
+    async function ouvrirHoraires() {
+      const r = await fetch(`/api/horaires/${COMPTE_ID}`);
+      const j = await r.json();
+      horairesData = j.horaires || {};
+      rendreHorairesGrid();
+      document.getElementById('overlay-horaires').classList.add('open');
+    }
+
+    function fermerHoraires() {
+      document.getElementById('overlay-horaires').classList.remove('open');
+    }
+
+    function rendreHorairesGrid() {
+      const DEFAUT = { ouvert: true, debut: '09:00', fin: '18:00' };
+      document.getElementById('horaires-grid').innerHTML = JOURS_SEMAINE.map(jour => {
+        const h = horairesData[jour] || DEFAUT;
+        const ouvert = h.ouvert !== false;
+        return `
+          <div class="horaire-row" id="row-${jour}">
+            <div class="horaire-jour">${jour}</div>
+            <label class="toggle-switch">
+              <input type="checkbox" id="ouvert-${jour}" ${ouvert ? 'checked' : ''}
+                onchange="toggleJour('${jour}', this.checked)" />
+              <span class="toggle-slider"></span>
+            </label>
+            <div class="horaire-times ${ouvert ? '' : 'horaire-closed'}" id="times-${jour}">
+              <input type="time" id="debut-${jour}" value="${h.debut || '09:00'}" />
+              <span>→</span>
+              <input type="time" id="fin-${jour}" value="${h.fin || '18:00'}" />
+            </div>
+          </div>`;
+      }).join('');
+    }
+
+    function toggleJour(jour, ouvert) {
+      const times = document.getElementById('times-' + jour);
+      if (times) times.classList.toggle('horaire-closed', !ouvert);
+    }
+
+    async function sauvegarderHoraires() {
+      const horaires = {};
+      for (const jour of JOURS_SEMAINE) {
+        horaires[jour] = {
+          ouvert: document.getElementById('ouvert-' + jour)?.checked ?? true,
+          debut:  document.getElementById('debut-'  + jour)?.value  || '09:00',
+          fin:    document.getElementById('fin-'    + jour)?.value  || '18:00',
+        };
+      }
+      const res = await fetch(`/api/horaires/${COMPTE_ID}`, {
+        method: 'POST', headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ horaires })
+      });
+      const j = await res.json();
+      if (j.ok) { fermerHoraires(); toast('✅ Horaires sauvegardés — l\'IA les respectera dès maintenant'); }
+      else toast('⚠️ Erreur lors de la sauvegarde');
     }
 
     // ── Import .ics ──────────────────────────────────────────
