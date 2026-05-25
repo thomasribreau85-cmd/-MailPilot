@@ -23,7 +23,32 @@
       background: var(--bg); color: var(--text);
       font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Inter", sans-serif;
       min-height: 100vh; padding: 0 0 80px;
-      background-image: radial-gradient(ellipse 80% 40% at 50% -10%, rgba(79,110,247,.12) 0%, transparent 70%);
+      background-image:
+        radial-gradient(ellipse 60% 35% at 50% -5%, rgba(79,110,247,.18) 0%, transparent 65%),
+        radial-gradient(circle at 8% 20%, rgba(124,79,248,.1) 0%, transparent 35%),
+        radial-gradient(circle at 92% 15%, rgba(79,110,247,.08) 0%, transparent 30%),
+        radial-gradient(circle at 5% 75%, rgba(34,197,94,.05) 0%, transparent 28%),
+        radial-gradient(circle at 95% 80%, rgba(124,79,248,.07) 0%, transparent 30%),
+        /* Dot grid */
+        radial-gradient(circle, rgba(79,110,247,.18) 1px, transparent 1px);
+      background-size: 100% 100%, 100% 100%, 100% 100%, 100% 100%, 100% 100%, 28px 28px;
+    }
+
+    /* Décors latéraux fixes */
+    .deco-left, .deco-right {
+      position: fixed; top: 0; bottom: 0; width: calc((100vw - 680px) / 2);
+      pointer-events: none; z-index: 0; overflow: hidden;
+    }
+    .deco-left  { left: 0; }
+    .deco-right { right: 0; }
+    .deco-orb {
+      position: absolute; border-radius: 50%;
+      filter: blur(80px); opacity: .45;
+    }
+    .deco-line {
+      position: absolute; opacity: .06;
+      background: linear-gradient(to bottom, transparent, rgba(79,110,247,.6) 40%, transparent);
+      width: 1px;
     }
 
     /* ── Header ── */
@@ -406,6 +431,38 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 </head>
 <body>
+
+  <!-- Décors latéraux -->
+  <div class="deco-left">
+    <div class="deco-orb" style="width:220px;height:220px;background:radial-gradient(circle,#4f6ef7,transparent);top:12%;left:-60px"></div>
+    <div class="deco-orb" style="width:160px;height:160px;background:radial-gradient(circle,#7c4ff8,transparent);top:55%;left:20px;opacity:.3"></div>
+    <div class="deco-orb" style="width:120px;height:120px;background:radial-gradient(circle,#22c55e,transparent);bottom:12%;left:-20px;opacity:.2"></div>
+    <div class="deco-line" style="height:40%;top:20%;left:30%"></div>
+    <div class="deco-line" style="height:25%;top:55%;left:60%;opacity:.04"></div>
+    <!-- Mini grille de points -->
+    <svg width="100%" height="100%" style="position:absolute;inset:0;opacity:.07">
+      <defs>
+        <pattern id="dots-l" x="0" y="0" width="24" height="24" patternUnits="userSpaceOnUse">
+          <circle cx="1" cy="1" r="1" fill="#4f6ef7"/>
+        </pattern>
+      </defs>
+      <rect width="100%" height="100%" fill="url(#dots-l)"/>
+    </svg>
+  </div>
+  <div class="deco-right">
+    <div class="deco-orb" style="width:200px;height:200px;background:radial-gradient(circle,#7c4ff8,transparent);top:8%;right:-50px"></div>
+    <div class="deco-orb" style="width:150px;height:150px;background:radial-gradient(circle,#4f6ef7,transparent);top:48%;right:10px;opacity:.3"></div>
+    <div class="deco-orb" style="width:130px;height:130px;background:radial-gradient(circle,#f59e0b,transparent);bottom:18%;right:-30px;opacity:.15"></div>
+    <div class="deco-line" style="height:35%;top:25%;right:35%"></div>
+    <svg width="100%" height="100%" style="position:absolute;inset:0;opacity:.07">
+      <defs>
+        <pattern id="dots-r" x="0" y="0" width="24" height="24" patternUnits="userSpaceOnUse">
+          <circle cx="1" cy="1" r="1" fill="#4f6ef7"/>
+        </pattern>
+      </defs>
+      <rect width="100%" height="100%" fill="url(#dots-r)"/>
+    </svg>
+  </div>
 
   <header>
     <div class="logo-icon">✉️</div>
