@@ -14,131 +14,236 @@
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     :root {
-      --bg: #0a0f1e; --card: #0f172a; --border: #1e2d4a;
-      --text: #f1f5f9; --muted: #64748b; --green: #22c55e;
-      --red: #ef4444; --blue: #4f6ef7; --blue2: #7c4ff8;
-      --yellow: #f59e0b; --radius: 14px;
+      --bg: #060b18; --card: #0d1526; --card2: #111d35; --border: #1a2c47;
+      --text: #f0f4ff; --muted: #5a7090; --green: #22c55e; --green2: #16a34a;
+      --red: #ef4444; --blue: #4f6ef7; --blue2: #7c4ff8; --indigo: #3b5bdb;
+      --yellow: #f59e0b; --radius: 16px;
     }
     body {
       background: var(--bg); color: var(--text);
       font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Inter", sans-serif;
-      min-height: 100vh; padding: 32px 20px 80px;
+      min-height: 100vh; padding: 0 0 80px;
+      background-image: radial-gradient(ellipse 80% 40% at 50% -10%, rgba(79,110,247,.12) 0%, transparent 70%);
     }
+
+    /* ── Header ── */
     header {
-      max-width: 620px; margin: 0 auto 32px;
+      max-width: 680px; margin: 0 auto;
       display: flex; align-items: center; gap: 14px;
+      padding: 20px 24px 20px;
+      border-bottom: 1px solid rgba(255,255,255,.05);
+      margin-bottom: 32px;
     }
     .logo-icon {
-      width: 38px; height: 38px; background: linear-gradient(135deg, var(--blue), var(--blue2));
-      border-radius: 10px; display: flex; align-items: center; justify-content: center;
-      font-size: 18px; flex-shrink: 0; box-shadow: 0 0 16px rgba(79,110,247,.35);
+      width: 40px; height: 40px;
+      background: linear-gradient(135deg, var(--blue), var(--blue2));
+      border-radius: 12px; display: flex; align-items: center; justify-content: center;
+      font-size: 20px; flex-shrink: 0;
+      box-shadow: 0 0 24px rgba(79,110,247,.4), 0 2px 8px rgba(0,0,0,.4);
     }
     .logo-text { flex: 1; }
     .logo-text h1 {
-      font-size: 20px; font-weight: 800; letter-spacing: -.3px;
-      background: linear-gradient(90deg, #fff 40%, var(--blue));
+      font-size: 19px; font-weight: 800; letter-spacing: -.4px;
+      background: linear-gradient(90deg, #fff 50%, rgba(147,180,240,.7));
       -webkit-background-clip: text; -webkit-text-fill-color: transparent;
     }
-    .logo-text p  { font-size: 11px; color: var(--muted); margin-top: 1px; }
-
-    /* Section titre */
-    .section-header {
-      max-width: 620px; margin: 0 auto 16px;
-      display: flex; align-items: center; justify-content: space-between;
+    .logo-text p { font-size: 11px; color: var(--muted); margin-top: 1px; }
+    .nav-btns { display: flex; gap: 8px; align-items: center; }
+    .nav-btn {
+      color: var(--muted); font-size: 12px; font-weight: 600; text-decoration: none;
+      padding: 7px 14px; border: 1px solid var(--border); border-radius: 10px;
+      transition: all .15s; white-space: nowrap; background: transparent;
+      font-family: inherit; cursor: pointer;
     }
-    .section-header h2 { font-size: 14px; color: var(--muted); font-weight: 500; }
+    .nav-btn:hover { color: var(--text); border-color: rgba(79,110,247,.5); background: rgba(79,110,247,.08); }
+    .nav-btn.primary {
+      background: rgba(79,110,247,.12); border-color: rgba(79,110,247,.3); color: #93b4f0;
+    }
+    .nav-btn.primary:hover { background: rgba(79,110,247,.22); color: #fff; }
 
-    /* Carte boîte mail */
+    /* ── Wrapper centré ── */
+    .page-wrap { max-width: 680px; margin: 0 auto; padding: 0 24px; }
+
+    /* ── Section label ── */
+    .section-label {
+      display: flex; align-items: center; gap: 10px;
+      font-size: 11px; font-weight: 700; color: var(--muted);
+      text-transform: uppercase; letter-spacing: .08em;
+      margin-bottom: 14px;
+    }
+    .section-label::after {
+      content: ''; flex: 1; height: 1px; background: var(--border);
+    }
+
+    /* ── Stats bar ── */
+    .stats-bar {
+      display: grid; grid-template-columns: repeat(3,1fr); gap: 12px;
+      margin-bottom: 32px;
+    }
+    .stat-card {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 18px 16px;
+      display: flex; align-items: center; gap: 14px;
+      transition: border-color .2s;
+    }
+    .stat-card:hover { border-color: #2a3d6a; }
+    .stat-icon {
+      width: 42px; height: 42px; border-radius: 12px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 18px; flex-shrink: 0;
+    }
+    .stat-icon.blue   { background: rgba(79,110,247,.15); box-shadow: 0 0 0 1px rgba(79,110,247,.2); }
+    .stat-icon.green  { background: rgba(34,197,94,.12);  box-shadow: 0 0 0 1px rgba(34,197,94,.2); }
+    .stat-icon.yellow { background: rgba(245,158,11,.12); box-shadow: 0 0 0 1px rgba(245,158,11,.2); }
+    .stat-num   { font-size: 24px; font-weight: 800; line-height: 1; display: block; }
+    .stat-num.blue   { color: var(--blue); }
+    .stat-num.green  { color: var(--green); }
+    .stat-num.yellow { color: var(--yellow); }
+    .stat-lbl { font-size: 11px; color: var(--muted); margin-top: 3px; }
+
+    /* ── Carte boîte mail ── */
     .boite-card {
-      max-width: 620px; margin: 0 auto 14px;
       background: var(--card); border: 1px solid var(--border);
       border-radius: var(--radius); overflow: hidden;
       transition: border-color .25s, box-shadow .25s;
-      box-shadow: 0 2px 12px rgba(0,0,0,.3);
+      box-shadow: 0 4px 20px rgba(0,0,0,.3);
+      margin-bottom: 12px;
     }
-    .boite-card:hover { border-color: #2a3d6a; }
+    .boite-card:hover { border-color: #253959; }
     .boite-card.actif {
-      border-color: rgba(79,110,247,.4);
-      box-shadow: 0 0 0 1px rgba(79,110,247,.15), 0 4px 20px rgba(79,110,247,.1);
+      border-color: rgba(79,110,247,.35);
+      box-shadow: 0 0 0 1px rgba(79,110,247,.12), 0 8px 32px rgba(79,110,247,.08);
     }
-
-    .boite-header {
-      display: flex; align-items: center; gap: 14px; padding: 18px 20px 14px;
+    .boite-header { display: flex; align-items: center; gap: 14px; padding: 18px 20px 12px; }
+    .provider-avatar {
+      width: 42px; height: 42px; border-radius: 12px; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center; font-size: 20px;
     }
+    .provider-avatar.gmail     { background: rgba(234,67,53,.12); box-shadow: 0 0 0 1px rgba(234,67,53,.2); }
+    .provider-avatar.microsoft { background: rgba(0,120,212,.12);  box-shadow: 0 0 0 1px rgba(0,120,212,.2); }
+    .provider-avatar.imap      { background: rgba(79,110,247,.12); box-shadow: 0 0 0 1px rgba(79,110,247,.2); }
     .status-dot {
-      width: 10px; height: 10px; border-radius: 50%;
-      background: var(--muted); flex-shrink: 0;
+      width: 8px; height: 8px; border-radius: 50%;
+      background: var(--muted); flex-shrink: 0; margin-left: -4px; margin-top: -18px;
     }
-    .status-dot.actif { background: var(--green); animation: pulse 2s infinite; }
+    .status-dot.actif { background: var(--green); box-shadow: 0 0 0 3px rgba(34,197,94,.2); animation: pulse 2s infinite; }
     .status-dot.connexion { background: var(--yellow); animation: pulse 1s infinite; }
     @keyframes pulse {
-      0%   { box-shadow: 0 0 0 0 rgba(34,197,94,.5); }
-      70%  { box-shadow: 0 0 0 7px rgba(34,197,94,0); }
-      100% { box-shadow: 0 0 0 0 rgba(34,197,94,0); }
+      0%  { box-shadow: 0 0 0 0   rgba(34,197,94,.5); }
+      70% { box-shadow: 0 0 0 6px rgba(34,197,94,0); }
+      100%{ box-shadow: 0 0 0 0   rgba(34,197,94,0); }
     }
     .boite-info { flex: 1; min-width: 0; }
-    .boite-email { font-size: 14px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .boite-meta  { font-size: 11px; color: var(--muted); margin-top: 3px; }
+    .boite-email { font-size: 14px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .boite-meta  { font-size: 11px; color: var(--muted); margin-top: 3px; display: flex; align-items: center; gap: 6px; }
     .boite-counter { text-align: right; white-space: nowrap; }
-    .boite-counter .num   { font-size: 22px; font-weight: 800; display: block; line-height: 1; color: var(--blue); }
-    .boite-counter .label { font-size: 10px; color: var(--muted); }
+    .boite-counter .num   { font-size: 26px; font-weight: 800; display: block; line-height: 1; color: var(--blue); }
+    .boite-counter .label { font-size: 10px; color: var(--muted); letter-spacing: .02em; }
 
     .boite-btns { padding: 0 16px 14px; display: flex; gap: 8px; }
     .btn {
-      flex: 1; padding: 10px 14px; border-radius: 10px; border: none;
+      flex: 1; padding: 11px 14px; border-radius: 11px; border: none;
       font-size: 13px; font-weight: 700; font-family: inherit;
       cursor: pointer; transition: all .15s; white-space: nowrap;
     }
     .btn:disabled { opacity: .35; cursor: not-allowed; }
-    .btn:hover:not(:disabled) { transform: translateY(-1px); opacity: .9; }
-    .btn-connect { background: linear-gradient(135deg, var(--blue), var(--blue2)); color: #fff; box-shadow: 0 4px 14px rgba(79,110,247,.35); }
-    .btn-start   { background: linear-gradient(135deg, #16a34a, #15803d); color: #fff; box-shadow: 0 4px 14px rgba(22,163,74,.3); }
-    .btn-stop    { background: #1e293b; border: 1px solid #374151; color: var(--red); }
-    .btn-danger  { background: #0f172a; border: 1px solid #1e2d4a; color: var(--muted); flex: 0; padding: 10px 14px; border-radius: 10px; }
-    .btn-danger:hover { color: var(--red); border-color: var(--red); }
+    .btn:hover:not(:disabled) { transform: translateY(-1px); filter: brightness(1.08); }
+    .btn-connect { background: linear-gradient(135deg, var(--blue), var(--blue2)); color: #fff; box-shadow: 0 4px 16px rgba(79,110,247,.35); }
+    .btn-start   { background: linear-gradient(135deg, #16a34a, var(--green)); color: #fff; box-shadow: 0 4px 16px rgba(22,163,74,.3); }
+    .btn-stop    { background: rgba(239,68,68,.08); border: 1px solid rgba(239,68,68,.2); color: #fca5a5; }
+    .btn-danger  { background: transparent; border: 1px solid var(--border); color: var(--muted); flex: 0; padding: 11px 14px; border-radius: 11px; }
+    .btn-danger:hover { color: var(--red); border-color: rgba(239,68,68,.4); background: rgba(239,68,68,.06); }
 
     .status-bar {
       margin: 0 16px 14px; padding: 9px 14px;
-      background: #060d1c; border: 1px solid var(--border); border-radius: 10px;
-      font-size: 12px; color: var(--muted);
+      background: rgba(0,0,0,.2); border: 1px solid var(--border); border-radius: 10px;
+      font-size: 12px; color: var(--muted); display: flex; align-items: center; gap: 8px;
     }
-    .status-bar.ok   { color: var(--green); border-color: rgba(34,197,94,.2); background: rgba(34,197,94,.05); }
+    .status-bar.ok   { color: var(--green);  border-color: rgba(34,197,94,.2);  background: rgba(34,197,94,.05); }
     .status-bar.warn { color: var(--yellow); border-color: rgba(245,158,11,.2); background: rgba(245,158,11,.05); }
 
     .boite-actions {
       display: flex; flex-wrap: wrap; border-top: 1px solid var(--border);
+      background: rgba(0,0,0,.15);
     }
     .action-btn {
       flex: 1 1 auto; background: transparent; border: none;
-      border-right: 1px solid var(--border); border-bottom: 1px solid var(--border);
-      color: var(--muted); font-size: 11px; font-family: inherit;
+      border-right: 1px solid var(--border);
+      color: var(--muted); font-size: 11px; font-family: inherit; font-weight: 500;
       padding: 10px 6px; cursor: pointer; text-align: center; white-space: nowrap;
       transition: all .15s;
     }
     .boite-actions .action-btn:last-child { border-right: none; }
-    .action-btn:hover { color: var(--blue); background: rgba(79,110,247,.07); }
+    .action-btn:hover { color: #93b4f0; background: rgba(79,110,247,.08); }
 
     .log-feed {
-      display: none; background: #060d1c; border-top: 1px solid var(--border);
+      display: none; background: #040a14; border-top: 1px solid var(--border);
       padding: 12px 16px; height: 200px; overflow-y: auto;
       font-family: "SF Mono", "Menlo", monospace; font-size: 11px;
-      line-height: 1.7; color: #475569;
+      line-height: 1.7; color: #334155;
     }
     .log-feed.open { display: block; }
-    .log-line.ok   { color: var(--green); }
-    .log-line.err  { color: var(--red); }
-    .log-line.warn { color: var(--yellow); }
+    .log-line.ok   { color: #4ade80; }
+    .log-line.err  { color: #f87171; }
+    .log-line.warn { color: #fbbf24; }
     .log-line.info { color: #7dd3fc; }
 
-    /* Bouton ajouter */
+    /* ── Bouton ajouter ── */
     .add-boite-btn {
-      max-width: 620px; margin: 8px auto 0; display: block; width: 100%;
-      background: transparent; border: 1px dashed #1e2d4a;
+      width: 100%; display: block; margin-top: 6px;
+      background: transparent; border: 1px dashed var(--border);
       border-radius: var(--radius); padding: 14px;
-      color: var(--muted); font-size: 14px; font-family: inherit;
-      cursor: pointer; text-align: center; transition: all .2s;
+      color: var(--muted); font-size: 13px; font-family: inherit;
+      cursor: pointer; text-align: center; transition: all .2s; font-weight: 500;
     }
-    .add-boite-btn:hover { border-color: var(--blue); color: var(--blue); background: rgba(79,110,247,.06); }
+    .add-boite-btn:hover { border-color: rgba(79,110,247,.5); color: #93b4f0; background: rgba(79,110,247,.05); }
+
+    /* ── Paramètres cards ── */
+    .param-card {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 16px 18px;
+      display: flex; align-items: center; gap: 16px;
+      transition: border-color .15s; margin-bottom: 8px;
+    }
+    .param-card:hover { border-color: #253959; }
+    .param-card-icon {
+      width: 40px; height: 40px; border-radius: 11px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 18px; flex-shrink: 0;
+    }
+    .param-card-icon.calendar { background: rgba(79,110,247,.14); box-shadow: 0 0 0 1px rgba(79,110,247,.2); }
+    .param-card-icon.trash    { background: rgba(239,68,68,.1);   box-shadow: 0 0 0 1px rgba(239,68,68,.2); }
+    .param-card-body { flex: 1; min-width: 0; }
+    .param-card-title { font-size: 14px; font-weight: 600; margin-bottom: 2px; }
+    .param-card-desc  { font-size: 11px; color: var(--muted); line-height: 1.4; }
+
+    /* ── Quick access cards ── */
+    .quick-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .quick-card {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 18px 16px;
+      display: flex; flex-direction: column; gap: 10px;
+      cursor: pointer; text-decoration: none; transition: all .2s;
+      position: relative; overflow: hidden;
+    }
+    .quick-card::before {
+      content: ''; position: absolute; inset: 0; opacity: 0; transition: opacity .2s;
+    }
+    .quick-card.agenda::before  { background: linear-gradient(135deg, rgba(79,110,247,.08), transparent); }
+    .quick-card.nettoyage::before { background: linear-gradient(135deg, rgba(239,68,68,.06), transparent); }
+    .quick-card:hover { transform: translateY(-2px); box-shadow: 0 8px 28px rgba(0,0,0,.35); }
+    .quick-card.agenda:hover    { border-color: rgba(79,110,247,.4); }
+    .quick-card.agenda:hover::before { opacity: 1; }
+    .quick-card.nettoyage:hover { border-color: rgba(239,68,68,.35); }
+    .quick-card.nettoyage:hover::before { opacity: 1; }
+    .quick-card-icon {
+      width: 40px; height: 40px; border-radius: 11px;
+      display: flex; align-items: center; justify-content: center; font-size: 18px;
+    }
+    .quick-card.agenda .quick-card-icon    { background: rgba(79,110,247,.14); box-shadow: 0 0 0 1px rgba(79,110,247,.25); }
+    .quick-card.nettoyage .quick-card-icon { background: rgba(239,68,68,.1);   box-shadow: 0 0 0 1px rgba(239,68,68,.25); }
+    .quick-card-title { font-size: 14px; font-weight: 700; color: var(--text); }
+    .quick-card-sub   { font-size: 11px; color: var(--muted); }
 
     /* Modals */
     .overlay {
@@ -308,73 +413,80 @@
       <h1>MailPilot</h1>
       <p>{{ compte.nom }}{% if compte.agence %} — {{ compte.agence }}{% endif %}</p>
     </div>
-    <a id="lien-agenda" href="/agenda/{{ compte.id }}" style="color:var(--muted);font-size:13px;text-decoration:none;padding:7px 14px;border:1px solid #1e2d4a;border-radius:8px;transition:all .15s;font-weight:600;{% if compte.agenda_actif == false %}display:none{% endif %}" onmouseover="this.style.borderColor='#4f6ef7';this.style.color='#4f6ef7'" onmouseout="this.style.borderColor='#1e2d4a';this.style.color='var(--muted)'">🗓️ Agenda</a>
-    <a href="/logout" style="color:var(--muted);font-size:12px;text-decoration:none;padding:7px 14px;border:1px solid #1e2d4a;border-radius:8px;transition:all .15s;" onmouseover="this.style.borderColor='#2a3d6a'" onmouseout="this.style.borderColor='#1e2d4a'">Déconnexion</a>
+    <div class="nav-btns">
+      <a id="lien-agenda" href="/agenda/{{ compte.id }}" class="nav-btn primary"
+        {% if compte.agenda_actif == false %}style="display:none"{% endif %}>🗓️ Agenda</a>
+      <a href="/logout" class="nav-btn">Déconnexion</a>
+    </div>
   </header>
 
+  <div class="page-wrap">
+
   <!-- Barre de stats -->
-  <div style="max-width:620px;margin:0 auto 24px;display:grid;grid-template-columns:repeat(3,1fr);gap:10px" id="stats-bar">
-    <div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px 16px;text-align:center">
-      <div style="font-size:22px;font-weight:800;color:var(--blue)" id="stat-emails">—</div>
-      <div style="font-size:11px;color:var(--muted);margin-top:2px">Emails traités</div>
+  <div class="stats-bar" id="stats-bar">
+    <div class="stat-card">
+      <div class="stat-icon blue">📧</div>
+      <div>
+        <span class="stat-num blue" id="stat-emails">—</span>
+        <div class="stat-lbl">Emails traités</div>
+      </div>
     </div>
-    <div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px 16px;text-align:center">
-      <div style="font-size:22px;font-weight:800;color:var(--green)" id="stat-actifs">—</div>
-      <div style="font-size:11px;color:var(--muted);margin-top:2px">Agents actifs</div>
+    <div class="stat-card">
+      <div class="stat-icon green">🤖</div>
+      <div>
+        <span class="stat-num green" id="stat-actifs">—</span>
+        <div class="stat-lbl">Agents actifs</div>
+      </div>
     </div>
-    <div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px 16px;text-align:center">
-      <div style="font-size:22px;font-weight:800;color:var(--yellow)" id="stat-rdvs">—</div>
-      <div style="font-size:11px;color:var(--muted);margin-top:2px">RDVs en attente</div>
+    <div class="stat-card">
+      <div class="stat-icon yellow">🗓️</div>
+      <div>
+        <span class="stat-num yellow" id="stat-rdvs">—</span>
+        <div class="stat-lbl">RDVs en attente</div>
+      </div>
     </div>
   </div>
 
-  <div class="section-header">
-    <h2>📬 Mes boîtes mail</h2>
-  </div>
+  <!-- Mes boîtes mail -->
+  <div class="section-label">📬 Mes boîtes mail</div>
 
   <!-- Cartes boîtes mail (générées par JS) -->
   <div id="boites-container"></div>
 
   <!-- Bouton ajouter une boîte -->
-  <button class="add-boite-btn" onclick="ouvrirAjoutBoite()">
-    + Ajouter une boîte mail
-  </button>
+  <button class="add-boite-btn" onclick="ouvrirAjoutBoite()">+ Ajouter une boîte mail</button>
 
   <!-- Paramètres du compte -->
-  <div style="max-width:620px;margin:28px auto 0;">
-    <div style="font-size:13px;color:var(--muted);font-weight:600;margin-bottom:10px;text-transform:uppercase;letter-spacing:.05em;">⚙️ Paramètres</div>
-    <div style="background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:16px 20px;display:flex;align-items:center;justify-content:space-between;gap:16px;">
-      <div>
-        <div style="font-size:14px;font-weight:600;">🗓️ Module Agenda</div>
-        <div style="font-size:12px;color:var(--muted);margin-top:3px;">Détection automatique de RDV depuis les emails et gestion du calendrier</div>
+  <div style="margin-top:36px">
+    <div class="section-label">⚙️ Paramètres</div>
+
+    <div class="param-card">
+      <div class="param-card-icon calendar">🗓️</div>
+      <div class="param-card-body">
+        <div class="param-card-title">Module Agenda</div>
+        <div class="param-card-desc">Détection automatique de RDV depuis les emails et gestion du calendrier</div>
       </div>
       <label style="position:relative;width:44px;height:24px;cursor:pointer;flex-shrink:0;">
         <input type="checkbox" id="toggle-agenda" style="opacity:0;width:0;height:0;"
           {% if compte.agenda_actif != false %}checked{% endif %}
           onchange="toggleAgenda(this.checked)" />
-        <span id="agenda-slider" style="
-          position:absolute;inset:0;border-radius:24px;transition:.2s;
-          background:{% if compte.agenda_actif != false %}var(--blue){% else %}var(--border){% endif %};
-        ">
-          <span style="
-            position:absolute;width:16px;height:16px;border-radius:50%;top:4px;transition:.2s;
-            background:#fff;
-            left:{% if compte.agenda_actif != false %}24px{% else %}4px{% endif %};
-          " id="agenda-knob"></span>
+        <span id="agenda-slider" style="position:absolute;inset:0;border-radius:24px;transition:.2s;background:{% if compte.agenda_actif != false %}var(--blue){% else %}var(--border){% endif %};">
+          <span id="agenda-knob" style="position:absolute;width:16px;height:16px;border-radius:50%;top:4px;transition:.2s;background:#fff;left:{% if compte.agenda_actif != false %}24px{% else %}4px{% endif %};"></span>
         </span>
       </label>
     </div>
   </div>
 
   <!-- Nettoyage automatique -->
-  <div style="max-width:620px;margin:10px auto 0;">
+  <div style="margin-bottom:8px">
     <div style="background:var(--card);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;">
-      <div style="padding:16px 20px;display:flex;align-items:center;justify-content:space-between;gap:16px;cursor:pointer" onclick="toggleNettoyagePanel()">
-        <div>
-          <div style="font-size:14px;font-weight:600;">🗑️ Nettoyage automatique</div>
-          <div style="font-size:12px;color:var(--muted);margin-top:3px;">Supprimer automatiquement les vieux emails selon leur âge</div>
+      <div style="padding:16px 18px;display:flex;align-items:center;gap:16px;cursor:pointer" onclick="toggleNettoyagePanel()">
+        <div class="param-card-icon trash">🗑️</div>
+        <div class="param-card-body">
+          <div class="param-card-title">Nettoyage automatique</div>
+          <div class="param-card-desc">Supprimer automatiquement les vieux emails selon leur âge</div>
         </div>
-        <span id="nettoyage-chevron" style="color:var(--muted);font-size:18px;transition:.2s">›</span>
+        <span id="nettoyage-chevron" style="color:var(--muted);font-size:20px;transition:.2s;flex-shrink:0">›</span>
       </div>
       <div id="nettoyage-panel" style="display:none;border-top:1px solid var(--border);padding:16px 20px">
 
@@ -423,27 +535,29 @@
   </div>
 
   <!-- Accès rapides -->
-  <div style="max-width:620px;margin:20px auto 0;">
-    <div style="font-size:13px;color:var(--muted);font-weight:600;margin-bottom:10px;text-transform:uppercase;letter-spacing:.05em;">⚡ Accès rapides</div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+  <div style="margin-top:28px;margin-bottom:8px">
+    <div class="section-label">⚡ Accès rapides</div>
+    <div class="quick-grid">
       {% if compte.agenda_actif != false %}
-      <a href="/agenda/{{ compte.id }}" style="text-decoration:none;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px;display:flex;align-items:center;gap:12px;transition:all .15s" onmouseover="this.style.borderColor='#4f6ef7'" onmouseout="this.style.borderColor='var(--border)'">
-        <span style="font-size:24px">🗓️</span>
+      <a href="/agenda/{{ compte.id }}" class="quick-card agenda">
+        <div class="quick-card-icon">🗓️</div>
         <div>
-          <div style="font-size:13px;font-weight:700;color:var(--text)">Agenda</div>
-          <div style="font-size:11px;color:var(--muted);margin-top:2px">Gérer les RDVs</div>
+          <div class="quick-card-title">Agenda</div>
+          <div class="quick-card-sub">Gérer les rendez-vous</div>
         </div>
       </a>
       {% endif %}
-      <div onclick="toggleNettoyagePanel();document.getElementById('nettoyage-panel').parentElement.scrollIntoView({behavior:'smooth'})" style="cursor:pointer;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px;display:flex;align-items:center;gap:12px;transition:all .15s" onmouseover="this.style.borderColor='#ef4444'" onmouseout="this.style.borderColor='var(--border)'">
-        <span style="font-size:24px">🗑️</span>
+      <div class="quick-card nettoyage" onclick="toggleNettoyagePanel();document.querySelector('#nettoyage-panel').closest('div').scrollIntoView({behavior:'smooth'})">
+        <div class="quick-card-icon">🗑️</div>
         <div>
-          <div style="font-size:13px;font-weight:700;color:var(--text)">Nettoyage</div>
-          <div style="font-size:11px;color:var(--muted);margin-top:2px">Supprimer vieux emails</div>
+          <div class="quick-card-title">Nettoyage</div>
+          <div class="quick-card-sub">Supprimer vieux emails</div>
         </div>
       </div>
     </div>
   </div>
+
+  </div><!-- /page-wrap -->
 
   <!-- ── Wizard Onboarding ── -->
   <div class="wizard-overlay" id="wizard-overlay">
@@ -814,13 +928,21 @@
 
       const logsHtml = logsOpen[id] ? 'open' : '';
 
+      const provIcons = { gmail:'📧', microsoft:'💼', imap:'🌐' };
+      const provAvatar = provIcons[provider] || '📬';
+
       return `
         <div class="boite-card ${cardCls}" id="card-${id}">
           <div class="boite-header">
-            <div class="status-dot ${dotCls}" id="dot-${id}"></div>
+            <div style="position:relative;flex-shrink:0">
+              <div class="provider-avatar ${provider}">${provAvatar}</div>
+              <div class="status-dot ${dotCls}" id="dot-${id}"></div>
+            </div>
             <div class="boite-info">
-              <div class="boite-email">${icon} ${email}</div>
-              <div class="boite-meta">${provLbl}</div>
+              <div class="boite-email">${email}</div>
+              <div class="boite-meta">
+                <span style="background:rgba(255,255,255,.06);padding:2px 8px;border-radius:6px;font-size:10px;font-weight:600;letter-spacing:.03em">${provLbl}</span>
+              </div>
             </div>
             <div class="boite-counter">
               <span class="num" id="count-${id}">${emails_traites || 0}</span>
@@ -831,7 +953,7 @@
             <div id="btn-zone-${id}" style="flex:1;display:flex;gap:8px;">
               ${mainBtn}
             </div>
-            <button class="btn btn-danger" onclick="supprimerBoite('${id}', '${email}')" title="Supprimer cette boîte">🗑</button>
+            <button class="btn btn-danger" onclick="supprimerBoite('${id}', '${email}')" title="Supprimer">🗑</button>
           </div>
           <div class="status-bar ${statusCls}" id="status-${id}">${statusTxt}</div>
           <div class="boite-actions">
