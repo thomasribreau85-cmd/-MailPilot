@@ -367,12 +367,25 @@
           </div>
           <div>
             <label class="form-label">Catégories concernées</label>
-            <select id="nettoyage-cats" class="form-input" style="margin-bottom:0" multiple size="3">
+            <div style="margin-bottom:8px">
+              <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;font-weight:600;color:var(--text)">
+                <input type="checkbox" id="nettoyage-tout" onchange="toggleToutesCategories(this.checked)"
+                  style="width:15px;height:15px;cursor:pointer;accent-color:var(--blue)" />
+                Toutes les catégories
+              </label>
+            </div>
+            <select id="nettoyage-cats" class="form-input" style="margin-bottom:0" multiple size="5">
               <option value="INUTILE" selected>⚫ Inutile</option>
               <option value="INFO">🟡 Info</option>
               <option value="ADMIN">🟣 Admin</option>
               <option value="PROSPECT">🔵 Prospect</option>
+              <option value="URGENT">🔴 Urgent</option>
+              <option value="DEVIS">🟠 Devis</option>
+              <option value="VISITE">🔵 Visite</option>
+              <option value="OFFRE">🟢 Offre</option>
+              <option value="RENDEZ_VOUS">🔵 Rendez-vous</option>
             </select>
+            <div style="font-size:11px;color:var(--muted);margin-top:4px">Ctrl+clic pour sélectionner plusieurs</div>
           </div>
         </div>
 
@@ -1109,14 +1122,23 @@
       if (open) chargerNettoyage();
     }
 
+    function toggleToutesCategories(checked) {
+      const sel = document.getElementById('nettoyage-cats');
+      Array.from(sel.options).forEach(o => o.selected = checked);
+      sel.disabled = checked;
+    }
+
     async function chargerNettoyage() {
       const r = await fetch(`/api/nettoyage/${COMPTE_ID}`);
       const j = await r.json();
       if (!j.ok) return;
       const cfg = j.config;
       if (cfg.jours) document.getElementById('nettoyage-age').value = cfg.jours;
-      if (cfg.categories?.length) {
-        const sel = document.getElementById('nettoyage-cats');
+      const sel = document.getElementById('nettoyage-cats');
+      if (cfg.categories === 'ALL') {
+        document.getElementById('nettoyage-tout').checked = true;
+        toggleToutesCategories(true);
+      } else if (cfg.categories?.length) {
         Array.from(sel.options).forEach(o => {
           o.selected = cfg.categories.includes(o.value);
         });
@@ -1134,8 +1156,9 @@
 
     async function sauverNettoyage(actif) {
       const jours = document.getElementById('nettoyage-age').value;
+      const tout  = document.getElementById('nettoyage-tout').checked;
       const sel   = document.getElementById('nettoyage-cats');
-      const cats  = Array.from(sel.selectedOptions).map(o => o.value);
+      const cats  = tout ? 'ALL' : Array.from(sel.selectedOptions).map(o => o.value);
       const res = await fetch(`/api/nettoyage/${COMPTE_ID}`, {
         method: 'POST',
         headers: {'Content-Type':'application/json'},

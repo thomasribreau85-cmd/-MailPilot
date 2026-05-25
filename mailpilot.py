@@ -659,8 +659,9 @@ def nettoyer_emails_anciens(service=None, imap_conn=None, mail_provider="gmail")
         except Exception:
             pass
 
-    jours = int(os.getenv("NETTOYAGE_JOURS", "365"))
-    cats  = os.getenv("NETTOYAGE_CATS", "INUTILE").split(",")
+    jours     = int(os.getenv("NETTOYAGE_JOURS", "365"))
+    cats_env  = os.getenv("NETTOYAGE_CATS", "INUTILE")
+    cats      = list(TOUS_LES_LABELS.keys()) if cats_env == "ALL" else cats_env.split(",")
 
     logger.info(f"🗑️  Nettoyage auto : emails > {jours} jours, catégories : {cats}")
     supprimés = 0
