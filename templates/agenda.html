@@ -111,8 +111,26 @@
     }
     .mini-btn.ok  { background: rgba(34,197,94,.15); color: var(--green); }
     .mini-btn.ko  { background: rgba(239,68,68,.1);  color: var(--red); }
-    .mini-btn.ok:hover { background: rgba(34,197,94,.3); }
-    .mini-btn.ko:hover { background: rgba(239,68,68,.25); }
+    .mini-btn.alt { background: rgba(79,110,247,.12); color: #93b4f0; }
+    .mini-btn.ok:hover  { background: rgba(34,197,94,.3); }
+    .mini-btn.ko:hover  { background: rgba(239,68,68,.25); }
+    .mini-btn.alt:hover { background: rgba(79,110,247,.25); }
+
+    .creneaux-box {
+      margin-top: 8px; padding: 10px 12px;
+      background: rgba(79,110,247,.06); border: 1px solid rgba(79,110,247,.18);
+      border-radius: 10px;
+    }
+    .creneaux-titre { font-size: 11px; color: var(--muted); margin-bottom: 8px; font-weight: 600; }
+    .creneau-btn {
+      display: inline-block; margin: 3px 4px 3px 0;
+      padding: 5px 12px; border-radius: 8px; border: 1px solid rgba(79,110,247,.3);
+      background: rgba(79,110,247,.1); color: #93b4f0;
+      font-size: 12px; font-weight: 600; cursor: pointer; font-family: inherit;
+      transition: all .15s;
+    }
+    .creneau-btn:hover { background: rgba(79,110,247,.25); border-color: var(--blue); color: #fff; }
+    .creneau-vide { font-size: 12px; color: var(--muted); }
 
     /* Vue liste */
     #vue-liste { max-width: 1000px; margin: 0 auto; }
@@ -464,9 +482,11 @@
         </div>
         <div class="mini-rdv-actions" onclick="event.stopPropagation()">
           ${type === 'attente' ? `<button class="mini-btn ok" onclick="confirmer('${r.id}')">✓ Confirmer</button>` : ''}
+          ${type === 'conflit' ? `<button class="mini-btn alt" onclick="afficherAlternatives('${r.id}', event)">🔄</button>` : ''}
           <button class="mini-btn ko" onclick="refuser('${r.id}')">✕</button>
         </div>
-      </div>`;
+      </div>
+      ${type === 'conflit' ? `<div class="creneaux-box" id="alt-${r.id}" style="display:none"></div>` : ''}`;
     }
 
     // ── Vue liste ────────────────────────────────────────────
@@ -677,6 +697,66 @@
       if (!str) return '';
       const d = new Date(str + 'T12:00:00');
       return d.toLocaleDateString('fr-FR', {weekday:'short', day:'numeric', month:'short'});
+    }
+
+    // ── Créneaux alternatifs ─────────────────────────────────
+    function heureEnMin(h) { const [hh,mm] = h.split(':').map(Number); return hh*60+mm; }
+    function minEnHeure(m) { return String(Math.floor(m/60)).padStart(2,'0')+':'+String(m%60).padStart(2,'0'); }
+
+    function trouverCreneauxLibres(rdv) {
+      const duree = heureEnMin(rdv.heure_fin) - heureEnMin(rdv.heure_debut);
+      const DEBUT = 8 * 60, FIN = 19 * 60;
+
+      // Tous les RDVs confirmés ce jour-là sauf le RDV en conflit
+      const occupes = rdvs
+        .filter(r => r.date === rdv.date && r.id !== rdv.id && r.statut === 'confirme')
+        .map(r => ({ debut: heureEnMin(r.heure_debut), fin: heureEnMin(r.heure_fin) }))
+        .sort((a,b) => a.debut - b.debut);
+
+      const libres = [];
+      let cursor = DEBUT;
+
+      for (const occ of occupes) {
+        if (cursor + duree <= occ.debut) {
+          libres.push({ debut: cursor, fin: cursor + duree });
+          if (libres.length >= 3) break;
+        }
+        cursor = Math.max(cursor, occ.fin);
+      }
+      if (libres.length < 3 && cursor + duree <= FIN) {
+        libres.push({ debut: cursor, fin: cursor + duree });
+      }
+      return libres.slice(0, 3);
+    }
+
+    function afficherAlternatives(id, event) {
+      event.stopPropagation();
+      const box = document.getElementById('alt-' + id);
+      if (!box) return;
+      if (box.style.display !== 'none') { box.style.display = 'none'; return; }
+
+      const rdv = rdvs.find(r => r.id === id);
+      if (!rdv) return;
+      const slots = trouverCreneauxLibres(rdv);
+
+      if (!slots.length) {
+        box.innerHTML = `<div class="creneaux-titre">🔄 Créneaux alternatifs</div><div class="creneau-vide">Aucun créneau libre ce jour-là (8h–19h)</div>`;
+      } else {
+        const btns = slots.map(s =>
+          `<button class="creneau-btn" onclick="appliquerCreneau('${id}','${minEnHeure(s.debut)}','${minEnHeure(s.fin)}')">${minEnHeure(s.debut)} – ${minEnHeure(s.fin)}</button>`
+        ).join('');
+        box.innerHTML = `<div class="creneaux-titre">🔄 Créneaux libres ce jour-là :</div>${btns}`;
+      }
+      box.style.display = 'block';
+    }
+
+    async function appliquerCreneau(id, debut, fin) {
+      await fetch(`/api/rdv/${COMPTE_ID}/${id}`, {
+        method: 'PUT', headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ heure_debut: debut, heure_fin: fin })
+      });
+      toast(`✅ RDV déplacé à ${debut} – ${fin}`);
+      charger();
     }
 
     // ── Init ─────────────────────────────────────────────────
