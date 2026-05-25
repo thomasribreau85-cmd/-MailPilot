@@ -968,6 +968,90 @@ def statut_global():
     return jsonify(result)
 
 
+# ── Agenda ────────────────────────────────────────────────────
+
+def agenda_file(compte_id):
+    return DATA_DIR / f"agenda_{compte_id}.json"
+
+def charger_agenda(compte_id):
+    f = agenda_file(compte_id)
+    if f.exists():
+        try:
+            return json.loads(f.read_text())
+        except Exception:
+            return []
+    return []
+
+def sauver_agenda(compte_id, rdvs):
+    agenda_file(compte_id).write_text(json.dumps(rdvs, indent=2, ensure_ascii=False))
+
+@app.route("/agenda/<compte_id>")
+def agenda(compte_id):
+    if not check_access(compte_id):
+        return redirect("/login")
+    data = charger_comptes()
+    c    = trouver_compte(data, compte_id)
+    if not c:
+        return redirect("/login")
+    return render_template("agenda.html", compte=c)
+
+@app.route("/api/rdv/<compte_id>", methods=["GET"])
+def get_rdvs(compte_id):
+    if not check_access(compte_id):
+        return jsonify({"ok": False}), 403
+    return jsonify({"ok": True, "rdvs": charger_agenda(compte_id)})
+
+@app.route("/api/rdv/<compte_id>", methods=["POST"])
+def creer_rdv(compte_id):
+    if not check_access(compte_id):
+        return jsonify({"ok": False}), 403
+    d    = request.json or {}
+    rdvs = charger_agenda(compte_id)
+    rdv  = {
+        "id":          str(uuid.uuid4())[:8],
+        "titre":       d.get("titre", "Rendez-vous").strip(),
+        "client_nom":  d.get("client_nom", "").strip(),
+        "client_email":d.get("client_email", "").strip(),
+        "adresse":     d.get("adresse", "").strip(),
+        "date":        d.get("date", ""),
+        "heure_debut": d.get("heure_debut", "09:00"),
+        "heure_fin":   d.get("heure_fin",   "10:00"),
+        "type":        d.get("type", "autre"),
+        "statut":      d.get("statut", "confirme"),
+        "notes":       d.get("notes", "").strip(),
+        "boite_id":    d.get("boite_id", ""),
+        "created_at":  __import__("datetime").datetime.now().isoformat(),
+    }
+    rdvs.append(rdv)
+    sauver_agenda(compte_id, rdvs)
+    return jsonify({"ok": True, "rdv": rdv})
+
+@app.route("/api/rdv/<compte_id>/<rdv_id>", methods=["PUT"])
+def modifier_rdv(compte_id, rdv_id):
+    if not check_access(compte_id):
+        return jsonify({"ok": False}), 403
+    d    = request.json or {}
+    rdvs = charger_agenda(compte_id)
+    for rdv in rdvs:
+        if rdv["id"] == rdv_id:
+            for k in ["titre","client_nom","client_email","adresse","date",
+                      "heure_debut","heure_fin","type","statut","notes"]:
+                if k in d:
+                    rdv[k] = d[k]
+            sauver_agenda(compte_id, rdvs)
+            return jsonify({"ok": True, "rdv": rdv})
+    return jsonify({"ok": False, "message": "RDV introuvable"}), 404
+
+@app.route("/api/rdv/<compte_id>/<rdv_id>", methods=["DELETE"])
+def supprimer_rdv(compte_id, rdv_id):
+    if not check_access(compte_id):
+        return jsonify({"ok": False}), 403
+    rdvs = charger_agenda(compte_id)
+    rdvs = [r for r in rdvs if r["id"] != rdv_id]
+    sauver_agenda(compte_id, rdvs)
+    return jsonify({"ok": True})
+
+
 # ── Lancement ─────────────────────────────────────────────────
 if __name__ == "__main__":
     port     = int(os.environ.get("PORT", 5001))

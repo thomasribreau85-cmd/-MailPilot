@@ -301,6 +301,7 @@
       <h1>MailPilot</h1>
       <p>{{ compte.nom }}{% if compte.agence %} — {{ compte.agence }}{% endif %}</p>
     </div>
+    <a href="/agenda/{{ compte.id }}" style="color:var(--muted);font-size:13px;text-decoration:none;padding:7px 14px;border:1px solid #1e2d4a;border-radius:8px;transition:all .15s;font-weight:600;" onmouseover="this.style.borderColor='#4f6ef7';this.style.color='#4f6ef7'" onmouseout="this.style.borderColor='#1e2d4a';this.style.color='var(--muted)'">🗓️ Agenda</a>
     <a href="/logout" style="color:var(--muted);font-size:12px;text-decoration:none;padding:7px 14px;border:1px solid #1e2d4a;border-radius:8px;transition:all .15s;" onmouseover="this.style.borderColor='#2a3d6a'" onmouseout="this.style.borderColor='#1e2d4a'">Déconnexion</a>
   </header>
 
