@@ -641,6 +641,74 @@
     </div>
   </div>
 
+  <!-- Confirmation RDV -->
+  <div style="margin-bottom:8px">
+    <div style="background:var(--card);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;">
+      <div style="padding:16px 18px;display:flex;align-items:center;gap:16px;cursor:pointer" onclick="toggleConfirmationPanel()">
+        <div class="param-card-icon" style="background:rgba(79,110,247,.12);box-shadow:0 0 0 1px rgba(79,110,247,.25);">✅</div>
+        <div class="param-card-body">
+          <div class="param-card-title">Confirmation de RDV</div>
+          <div class="param-card-desc" id="confirmation-desc">Envoie automatiquement un email de confirmation au client dès qu'un RDV est créé ou confirmé</div>
+        </div>
+        <span id="confirmation-chevron" style="color:var(--muted);font-size:20px;transition:.2s;flex-shrink:0">›</span>
+      </div>
+      <div id="confirmation-panel" style="display:none;border-top:1px solid var(--border);padding:18px 20px">
+
+        <!-- Toggle -->
+        <div style="display:flex;align-items:center;gap:14px;margin-bottom:18px">
+          <label style="position:relative;width:44px;height:24px;cursor:pointer;flex-shrink:0;">
+            <input type="checkbox" id="confirmation-toggle" style="opacity:0;width:0;height:0;" onchange="onConfirmationToggle(this.checked)" />
+            <span id="confirmation-slider" style="position:absolute;inset:0;border-radius:24px;transition:.2s;background:var(--border);">
+              <span id="confirmation-knob" style="position:absolute;width:16px;height:16px;border-radius:50%;top:4px;transition:.2s;background:#fff;left:4px;"></span>
+            </span>
+          </label>
+          <div>
+            <div style="font-size:13px;font-weight:600" id="confirmation-toggle-label">Désactivé</div>
+            <div style="font-size:11px;color:var(--muted)">Active / désactive les confirmations automatiques</div>
+          </div>
+        </div>
+
+        <!-- Info -->
+        <div style="background:rgba(79,110,247,.07);border:1px solid rgba(79,110,247,.2);border-radius:10px;padding:11px 14px;font-size:12px;color:#93b4f0;margin-bottom:16px;line-height:1.5">
+          ✅ L'email est envoyé immédiatement quand un RDV est créé en statut <strong>"Confirmé"</strong>, ou quand un RDV en attente passe à <strong>"Confirmé"</strong>. Un seul envoi par RDV.
+        </div>
+
+        <div id="confirmation-stats" style="font-size:11px;color:var(--muted);text-align:center;margin-bottom:14px"></div>
+
+        <!-- Éditeur message -->
+        <div class="msg-editor">
+          <div class="msg-editor-label">
+            ✉️ Message de confirmation
+            <a onclick="resetConfirmationMsg()">↺ Défaut</a>
+          </div>
+          <input class="msg-sujet-input" id="confirmation-sujet" placeholder="Objet de l'email…" />
+          <div class="msg-vars">
+            <span class="msg-var-chip" onclick="insertVar('confirmation-corps','{client_nom}')">{client_nom}</span>
+            <span class="msg-var-chip" onclick="insertVar('confirmation-corps','{date}')">{date}</span>
+            <span class="msg-var-chip" onclick="insertVar('confirmation-corps','{heure_debut}')">{heure_debut}</span>
+            <span class="msg-var-chip" onclick="insertVar('confirmation-corps','{heure_fin}')">{heure_fin}</span>
+            <span class="msg-var-chip" onclick="insertVar('confirmation-corps','{titre}')">{titre}</span>
+            <span class="msg-var-chip" onclick="insertVar('confirmation-corps','{adresse}')">{adresse}</span>
+            <span class="msg-var-chip" onclick="insertVar('confirmation-corps','{notes}')">{notes}</span>
+            <span class="msg-var-chip" onclick="insertVar('confirmation-corps','{agent_nom}')">{agent_nom}</span>
+          </div>
+          <textarea class="msg-corps-textarea" id="confirmation-corps" oninput="updateConfirmationPreview()" placeholder="Corps de l'email…"></textarea>
+          <button class="msg-preview-toggle" onclick="toggleMsgPreview('confirmation-preview',this)">
+            👁 Aperçu <span style="font-size:14px;line-height:1">›</span>
+          </button>
+          <div class="msg-preview" id="confirmation-preview">
+            <div class="msg-preview-sujet" id="confirmation-preview-sujet"></div>
+            <div class="msg-preview-corps" id="confirmation-preview-corps"></div>
+          </div>
+        </div>
+
+        <button onclick="sauverConfirmation()" style="width:100%;padding:10px;background:linear-gradient(135deg,var(--blue),var(--blue2));border:none;border-radius:9px;color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;box-shadow:0 4px 14px rgba(79,110,247,.3)">
+          Sauvegarder
+        </button>
+      </div>
+    </div>
+  </div>
+
   <!-- Relance Auto -->
   <div style="margin-bottom:8px">
     <div style="background:var(--card);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;">
@@ -1723,6 +1791,80 @@
       btn.querySelector('span').textContent = open ? '⌄' : '›';
     }
 
+    // ── Confirmation RDV ──────────────────────────────────────
+    let confirmationSujetDefault = '';
+    let confirmationCorpsDefault = '';
+
+    function toggleConfirmationPanel() {
+      const panel = document.getElementById('confirmation-panel');
+      const chev  = document.getElementById('confirmation-chevron');
+      const open  = panel.style.display === 'block';
+      panel.style.display = open ? 'none' : 'block';
+      chev.style.transform = open ? 'rotate(0deg)' : 'rotate(90deg)';
+      if (!open) chargerConfirmation();
+    }
+
+    function onConfirmationToggle(actif) {
+      const slider = document.getElementById('confirmation-slider');
+      const knob   = document.getElementById('confirmation-knob');
+      const lbl    = document.getElementById('confirmation-toggle-label');
+      slider.style.background = actif ? 'var(--blue)' : 'var(--border)';
+      knob.style.left = actif ? '24px' : '4px';
+      lbl.textContent = actif ? 'Activé' : 'Désactivé';
+    }
+
+    function updateConfirmationPreview() {
+      const s = document.getElementById('confirmation-sujet').value || confirmationSujetDefault;
+      const c = document.getElementById('confirmation-corps').value || confirmationCorpsDefault;
+      document.getElementById('confirmation-preview-sujet').textContent = remplirTemplate(s);
+      document.getElementById('confirmation-preview-corps').textContent = remplirTemplate(c);
+    }
+
+    function resetConfirmationMsg() {
+      document.getElementById('confirmation-sujet').value = '';
+      document.getElementById('confirmation-corps').value = '';
+      updateConfirmationPreview();
+    }
+
+    async function chargerConfirmation() {
+      try {
+        const r = await fetch(`/api/confirmation/${COMPTE_ID}`);
+        const j = await r.json();
+        if (!j.ok) return;
+        confirmationSujetDefault = j.sujet_default || '';
+        confirmationCorpsDefault = j.corps_default || '';
+        document.getElementById('confirmation-toggle').checked = !!j.actif;
+        onConfirmationToggle(!!j.actif);
+        document.getElementById('confirmation-sujet').value = j.sujet_template || '';
+        document.getElementById('confirmation-corps').value = j.corps_template || '';
+        document.getElementById('confirmation-sujet').placeholder = j.sujet_default || 'Objet de l\'email…';
+        document.getElementById('confirmation-corps').placeholder = j.corps_default || 'Corps de l\'email…';
+        updateConfirmationPreview();
+        const stats = document.getElementById('confirmation-stats');
+        stats.textContent = j.nb_envoyes
+          ? `${j.nb_envoyes} confirmation(s) envoyée(s) au total`
+          : 'Aucune confirmation envoyée pour le moment.';
+      } catch(e) {}
+    }
+
+    async function sauverConfirmation() {
+      const actif = document.getElementById('confirmation-toggle').checked;
+      const sujet = document.getElementById('confirmation-sujet').value.trim();
+      const corps = document.getElementById('confirmation-corps').value.trim();
+      const r = await fetch(`/api/confirmation/${COMPTE_ID}`, {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ actif, sujet_template: sujet, corps_template: corps })
+      });
+      const j = await r.json();
+      if (j.ok) {
+        toast(`✅ Confirmation RDV ${actif ? 'activée' : 'désactivée'}`);
+        document.getElementById('confirmation-desc').textContent = actif
+          ? 'Actif · Email envoyé au client à chaque RDV confirmé'
+          : 'Envoie automatiquement un email de confirmation au client dès qu\'un RDV est créé ou confirmé';
+      }
+    }
+
     // ── Relance automatique ───────────────────────────────────
     let relanceDelaiActuel = 48;
     let relanceSujetDefault = '';
@@ -2052,6 +2194,7 @@
     // ── Init ──────────────────────────────────────────────────
     setInterval(rafraichir, 3000);
     setInterval(chargerStats, 10000);
+    chargerConfirmation();
     chargerRelance();
     chargerRappel();
     rafraichir().then(() => {

@@ -1246,6 +1246,9 @@ def creer_rdv(compte_id):
     }
     rdvs.append(rdv)
     sauver_agenda(compte_id, rdvs)
+    # Envoi de confirmation si RDV confirmé d'emblée
+    if rdv["statut"] == "confirme" and rdv.get("client_email"):
+        threading.Thread(target=_tenter_confirmation, args=(compte_id, rdv), daemon=True).start()
     return jsonify({"ok": True, "rdv": rdv})
 
 @app.route("/api/rdv/<compte_id>/<rdv_id>", methods=["PUT"])
@@ -1256,11 +1259,16 @@ def modifier_rdv(compte_id, rdv_id):
     rdvs = charger_agenda(compte_id)
     for rdv in rdvs:
         if rdv["id"] == rdv_id:
+            statut_avant = rdv.get("statut")
             for k in ["titre","client_nom","client_email","adresse","date",
                       "heure_debut","heure_fin","type","statut","notes"]:
                 if k in d:
                     rdv[k] = d[k]
             sauver_agenda(compte_id, rdvs)
+            # Si le RDV vient d'être confirmé et pas encore de confirmation envoyée
+            if (statut_avant != "confirme" and rdv.get("statut") == "confirme"
+                    and rdv.get("client_email") and not rdv.get("confirmation_envoyee_at")):
+                threading.Thread(target=_tenter_confirmation, args=(compte_id, rdv), daemon=True).start()
             return jsonify({"ok": True, "rdv": rdv})
     return jsonify({"ok": False, "message": "RDV introuvable"}), 404
 
@@ -1272,6 +1280,128 @@ def supprimer_rdv(compte_id, rdv_id):
     rdvs = [r for r in rdvs if r["id"] != rdv_id]
     sauver_agenda(compte_id, rdvs)
     return jsonify({"ok": True})
+
+
+# ══════════════════════════════════════════════════════════════
+# CONFIRMATION RDV — Envoi automatique à la création / confirmation
+# ══════════════════════════════════════════════════════════════
+
+CONFIRMATION_SUJET_DEFAULT = "Confirmation de votre rendez-vous — {titre}"
+CONFIRMATION_CORPS_DEFAULT = """\
+Bonjour {client_nom},
+
+Votre rendez-vous est confirmé ! Voici le récapitulatif :
+
+📅 Date : {date}
+🕐 Heure : {heure_debut} — {heure_fin}
+📌 {titre}{adresse_line}
+
+Nous vous attendons avec plaisir. En cas d'empêchement, merci de nous prévenir au plus tôt.
+
+À très bientôt,
+{agent_nom}"""
+
+def confirmation_file(compte_id):
+    return DATA_DIR / f"confirmation_{compte_id}.json"
+
+def charger_confirmation_settings(compte_id):
+    f = confirmation_file(compte_id)
+    if f.exists():
+        try:
+            return json.loads(f.read_text())
+        except Exception:
+            pass
+    return {
+        "actif": False,
+        "sujet_template": "", "corps_template": "",
+        "nb_envoyes": 0,
+    }
+
+def sauver_confirmation_settings_file(compte_id, settings):
+    confirmation_file(compte_id).write_text(json.dumps(settings, indent=2, ensure_ascii=False))
+
+@app.route("/api/confirmation/<compte_id>", methods=["GET"])
+def get_confirmation(compte_id):
+    if not check_access(compte_id):
+        return jsonify({"ok": False}), 403
+    return jsonify({
+        "ok": True,
+        "sujet_default": CONFIRMATION_SUJET_DEFAULT,
+        "corps_default":  CONFIRMATION_CORPS_DEFAULT,
+        **charger_confirmation_settings(compte_id),
+    })
+
+@app.route("/api/confirmation/<compte_id>", methods=["POST"])
+def sauver_confirmation(compte_id):
+    if not check_access(compte_id):
+        return jsonify({"ok": False}), 403
+    d = request.json or {}
+    s = charger_confirmation_settings(compte_id)
+    if "actif" in d:
+        s["actif"] = bool(d["actif"])
+    if "sujet_template" in d:
+        s["sujet_template"] = d["sujet_template"]
+    if "corps_template" in d:
+        s["corps_template"] = d["corps_template"]
+    sauver_confirmation_settings_file(compte_id, s)
+    return jsonify({"ok": True, **s})
+
+def _construire_email_confirmation(agent_nom, agent_agence, rdv, settings=None):
+    vars_map  = _vars_rdv(agent_nom, agent_agence, rdv)
+    sujet_tpl = (settings or {}).get("sujet_template") or CONFIRMATION_SUJET_DEFAULT
+    corps_tpl = (settings or {}).get("corps_template") or CONFIRMATION_CORPS_DEFAULT
+    return _remplir_template(sujet_tpl, vars_map), _remplir_template(corps_tpl, vars_map)
+
+def _tenter_confirmation(compte_id, rdv):
+    """Envoie l'email de confirmation d'un RDV si le feature est activé."""
+    from datetime import datetime as _dt
+    try:
+        s = charger_confirmation_settings(compte_id)
+        if not s.get("actif"):
+            return
+        dest = rdv.get("client_email", "").strip()
+        if not dest:
+            return
+        data = charger_comptes()
+        c    = trouver_compte(data, compte_id)
+        if not c:
+            return
+        # Première boite connectée
+        boite = None
+        for b in c.get("boites", []):
+            provider = b.get("provider", "gmail")
+            if provider == "gmail" and b.get("connecte") and b.get("token"):
+                boite = b; break
+            if provider == "microsoft" and b.get("token"):
+                boite = b; break
+            if provider == "imap" and b.get("imap_server") and b.get("imap_password"):
+                boite = b; break
+        if not boite:
+            return
+        sujet, corps = _construire_email_confirmation(c.get("nom",""), c.get("agence",""), rdv, s)
+        expediteur   = boite.get("email", "")
+        provider     = boite.get("provider", "gmail")
+        if provider == "gmail":
+            _envoyer_relance_gmail(boite["token"], expediteur, dest, sujet, corps)
+        elif provider == "microsoft":
+            _envoyer_relance_microsoft(boite["token"], expediteur, dest, sujet, corps)
+        elif provider == "imap":
+            _envoyer_relance_smtp(
+                boite.get("smtp_server",""), boite.get("smtp_port","465"),
+                boite.get("imap_password",""), expediteur, dest, sujet, corps
+            )
+        # Marquer confirmation envoyée sur le RDV
+        rdvs = charger_agenda(compte_id)
+        for r in rdvs:
+            if r["id"] == rdv["id"]:
+                r["confirmation_envoyee_at"] = _dt.now().isoformat()
+                break
+        sauver_agenda(compte_id, rdvs)
+        s["nb_envoyes"] = s.get("nb_envoyes", 0) + 1
+        sauver_confirmation_settings_file(compte_id, s)
+        print(f"✅ Confirmation RDV envoyée → {dest} ({rdv.get('titre','')} — {c.get('nom','')})")
+    except Exception as e:
+        print(f"❌ Confirmation RDV échouée → {rdv.get('client_email','?')}: {e}")
 
 
 # ══════════════════════════════════════════════════════════════
