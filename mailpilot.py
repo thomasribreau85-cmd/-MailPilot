@@ -666,7 +666,7 @@ def transferer_email(email, categorie, service=None, imap_conn=None, mail_provid
             continue
         filtre = r.get("filtre", "").strip().lower()
         if filtre:
-            if filtre not in expediteur and filtre not in sujet and filtre not in corps:
+            if filtre not in expediteur:
                 continue  # filtre ne correspond pas → on skip
         destinataires.append(r["to"])
 
