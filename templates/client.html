@@ -267,6 +267,18 @@
       background: rgba(245,158,11,.1); box-shadow: 0 0 0 1px rgba(245,158,11,.15);
     }
 
+    /* Rappel RDV boutons avance */
+    .rappel-avance-btn {
+      padding: 9px 4px; border: 1px solid var(--border); border-radius: 9px;
+      background: rgba(5,9,26,.8); color: var(--muted); font-size: 12px; font-weight: 700;
+      cursor: pointer; font-family: inherit; transition: all .15s; text-align: center;
+    }
+    .rappel-avance-btn:hover { border-color: rgba(34,197,94,.4); color: #86efac; }
+    .rappel-avance-btn.active {
+      border-color: rgba(34,197,94,.6); color: #86efac;
+      background: rgba(34,197,94,.08); box-shadow: 0 0 0 1px rgba(34,197,94,.15);
+    }
+
     .quick-card.nettoyage::before { background: linear-gradient(135deg, rgba(239,68,68,.06), transparent); }
     .quick-card:hover { transform: translateY(-2px); box-shadow: 0 8px 28px rgba(0,0,0,.35); }
     .quick-card.agenda:hover    { border-color: rgba(79,110,247,.4); }
@@ -627,6 +639,58 @@
 
         <!-- Bouton sauvegarder -->
         <button onclick="sauverRelance()" style="width:100%;padding:10px;background:linear-gradient(135deg,var(--blue),var(--blue2));border:none;border-radius:9px;color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;box-shadow:0 4px 14px rgba(79,110,247,.3)">
+          Sauvegarder
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Rappel RDV -->
+  <div style="margin-bottom:8px">
+    <div style="background:var(--card);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;">
+      <div style="padding:16px 18px;display:flex;align-items:center;gap:16px;cursor:pointer" onclick="toggleRappelPanel()">
+        <div class="param-card-icon" style="background:rgba(34,197,94,.1);box-shadow:0 0 0 1px rgba(34,197,94,.25);">📅</div>
+        <div class="param-card-body">
+          <div class="param-card-title">Rappel de RDV</div>
+          <div class="param-card-desc" id="rappel-desc">Envoie automatiquement un rappel au client avant chaque rendez-vous confirmé</div>
+        </div>
+        <span id="rappel-chevron" style="color:var(--muted);font-size:20px;transition:.2s;flex-shrink:0">›</span>
+      </div>
+      <div id="rappel-panel" style="display:none;border-top:1px solid var(--border);padding:18px 20px">
+
+        <!-- Toggle -->
+        <div style="display:flex;align-items:center;gap:14px;margin-bottom:18px">
+          <label style="position:relative;width:44px;height:24px;cursor:pointer;flex-shrink:0;">
+            <input type="checkbox" id="rappel-toggle" style="opacity:0;width:0;height:0;" onchange="onRappelToggle(this.checked)" />
+            <span id="rappel-slider" style="position:absolute;inset:0;border-radius:24px;transition:.2s;background:var(--border);">
+              <span id="rappel-knob" style="position:absolute;width:16px;height:16px;border-radius:50%;top:4px;transition:.2s;background:#fff;left:4px;"></span>
+            </span>
+          </label>
+          <div>
+            <div style="font-size:13px;font-weight:600" id="rappel-toggle-label">Désactivé</div>
+            <div style="font-size:11px;color:var(--muted)">Active / désactive les rappels automatiques</div>
+          </div>
+        </div>
+
+        <!-- Avance -->
+        <div style="margin-bottom:16px">
+          <label class="form-label">Envoyer le rappel</label>
+          <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px" id="rappel-avance-btns">
+            <button class="rappel-avance-btn" data-h="2"  onclick="setRappelAvance(2)">2h avant</button>
+            <button class="rappel-avance-btn" data-h="6"  onclick="setRappelAvance(6)">6h avant</button>
+            <button class="rappel-avance-btn active" data-h="24" onclick="setRappelAvance(24)">24h avant</button>
+            <button class="rappel-avance-btn" data-h="48" onclick="setRappelAvance(48)">48h avant</button>
+          </div>
+        </div>
+
+        <!-- Info -->
+        <div style="background:rgba(34,197,94,.06);border:1px solid rgba(34,197,94,.18);border-radius:10px;padding:11px 14px;font-size:12px;color:#86efac;margin-bottom:16px;line-height:1.5">
+          📅 Un email de rappel est envoyé au client depuis votre boîte connectée avant chaque RDV en statut <strong>"Confirmé"</strong>. Un seul rappel par RDV, jamais deux.
+        </div>
+
+        <div id="rappel-last-exec" style="font-size:11px;color:var(--muted);text-align:center;margin-bottom:14px"></div>
+
+        <button onclick="sauverRappel()" style="width:100%;padding:10px;background:linear-gradient(135deg,var(--green,#22c55e),#16a34a);border:none;border-radius:9px;color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;box-shadow:0 4px 14px rgba(34,197,94,.25)">
           Sauvegarder
         </button>
       </div>
@@ -1587,6 +1651,70 @@
       }
     }
 
+    // ── Rappel RDV ────────────────────────────────────────────
+    let rappelAvanceActuel = 24;
+
+    function toggleRappelPanel() {
+      const panel = document.getElementById('rappel-panel');
+      const chev  = document.getElementById('rappel-chevron');
+      const open  = panel.style.display === 'block';
+      panel.style.display = open ? 'none' : 'block';
+      chev.style.transform = open ? 'rotate(0deg)' : 'rotate(90deg)';
+      if (!open) chargerRappel();
+    }
+
+    function onRappelToggle(actif) {
+      const slider = document.getElementById('rappel-slider');
+      const knob   = document.getElementById('rappel-knob');
+      const lbl    = document.getElementById('rappel-toggle-label');
+      slider.style.background = actif ? '#22c55e' : 'var(--border)';
+      knob.style.left = actif ? '24px' : '4px';
+      lbl.textContent = actif ? 'Activé' : 'Désactivé';
+    }
+
+    function setRappelAvance(h) {
+      rappelAvanceActuel = h;
+      document.querySelectorAll('.rappel-avance-btn').forEach(b => {
+        b.classList.toggle('active', parseInt(b.dataset.h) === h);
+      });
+    }
+
+    async function chargerRappel() {
+      try {
+        const r = await fetch(`/api/rappel/${COMPTE_ID}`);
+        const j = await r.json();
+        if (!j.ok) return;
+        document.getElementById('rappel-toggle').checked = !!j.actif;
+        onRappelToggle(!!j.actif);
+        setRappelAvance(parseInt(j.avance_heures) || 24);
+        rappelAvanceActuel = parseInt(j.avance_heures) || 24;
+        const last = document.getElementById('rappel-last-exec');
+        if (j.derniere_exec) {
+          const d = new Date(j.derniere_exec);
+          last.textContent = `Dernière vérification : ${d.toLocaleDateString('fr-FR')} à ${d.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'})} — ${j.nb_envoyes||0} rappel(s) envoyé(s) au total`;
+        } else {
+          last.textContent = 'Aucun rappel envoyé pour le moment.';
+        }
+      } catch(e) {}
+    }
+
+    async function sauverRappel() {
+      const actif = document.getElementById('rappel-toggle').checked;
+      const r = await fetch(`/api/rappel/${COMPTE_ID}`, {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ actif, avance_heures: rappelAvanceActuel })
+      });
+      const j = await r.json();
+      if (j.ok) {
+        const avLabel = rappelAvanceActuel >= 48 ? '48h avant' : rappelAvanceActuel === 24 ? '24h avant' : rappelAvanceActuel + 'h avant';
+        toast(`📅 Rappels RDV ${actif ? 'activés — ' + avLabel : 'désactivés'}`);
+        document.getElementById('rappel-desc').textContent = actif
+          ? `Actif · Rappel ${avLabel} chaque RDV confirmé`
+          : 'Envoie automatiquement un rappel au client avant chaque rendez-vous confirmé';
+      }
+    }
+
     // ── Transferts automatiques ───────────────────────────────
     let currentTransfertsBoite = null;
     let transfertsRegles = [];
@@ -1739,6 +1867,7 @@
     setInterval(rafraichir, 3000);
     setInterval(chargerStats, 10000);
     chargerRelance();
+    chargerRappel();
     rafraichir().then(() => {
       chargerStats();
       // Afficher le wizard si aucune boite connectée et pas déjà fait

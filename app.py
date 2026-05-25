@@ -1488,13 +1488,165 @@ def thread_relance_auto():
         _time.sleep(1800)  # toutes les 30 minutes
 
 
-# Démarrage du thread relance même sous Gunicorn (production Railway)
+# ══════════════════════════════════════════════════════════════
+# RAPPEL RDV — Thread de rappel J-1 / H-X avant les RDV confirmés
+# ══════════════════════════════════════════════════════════════
+
+def rappel_file(compte_id):
+    return DATA_DIR / f"rappel_{compte_id}.json"
+
+def charger_rappel_settings(compte_id):
+    f = rappel_file(compte_id)
+    if f.exists():
+        try:
+            return json.loads(f.read_text())
+        except Exception:
+            pass
+    return {"actif": False, "avance_heures": 24, "derniere_exec": None, "nb_envoyes": 0}
+
+def sauver_rappel_settings(compte_id, settings):
+    rappel_file(compte_id).write_text(json.dumps(settings, indent=2, ensure_ascii=False))
+
+@app.route("/api/rappel/<compte_id>", methods=["GET"])
+def get_rappel(compte_id):
+    if not check_access(compte_id):
+        return jsonify({"ok": False}), 403
+    return jsonify({"ok": True, **charger_rappel_settings(compte_id)})
+
+@app.route("/api/rappel/<compte_id>", methods=["POST"])
+def sauver_rappel(compte_id):
+    if not check_access(compte_id):
+        return jsonify({"ok": False}), 403
+    d = request.json or {}
+    s = charger_rappel_settings(compte_id)
+    if "actif" in d:
+        s["actif"] = bool(d["actif"])
+    if "avance_heures" in d:
+        s["avance_heures"] = int(d["avance_heures"])
+    sauver_rappel_settings(compte_id, s)
+    return jsonify({"ok": True, **s})
+
+
+def _construire_email_rappel(agent_nom, agent_agence, rdv):
+    """Génère l'email de rappel de RDV confirmé."""
+    from datetime import datetime as _dt
+    try:
+        date_fr = _dt.strptime(rdv["date"], "%Y-%m-%d").strftime("%d/%m/%Y")
+    except Exception:
+        date_fr = rdv.get("date", "")
+    sujet = f"Rappel de votre rendez-vous demain — {rdv.get('titre','')}"
+    adr = f"\nAdresse : {rdv.get('adresse','')}" if rdv.get("adresse") else ""
+    notes = f"\n\nNote : {rdv.get('notes','')}" if rdv.get("notes") else ""
+    corps = f"""Bonjour {rdv.get('client_nom', '')},
+
+Nous vous rappelons votre rendez-vous confirmé :
+
+📅 Date : {date_fr}
+🕐 Heure : {rdv.get('heure_debut','?')} — {rdv.get('heure_fin','?')}
+📌 {rdv.get('titre','')}{adr}{notes}
+
+En cas d'empêchement, n'hésitez pas à nous contacter le plus tôt possible afin de reprogrammer.
+
+À très bientôt,
+{agent_nom}{(" — " + agent_agence) if agent_agence else ""}
+"""
+    return sujet, corps.strip()
+
+
+def thread_rappel_rdv():
+    """Thread de fond : envoie des rappels avant les RDV confirmés."""
+    import time as _time
+    from datetime import datetime as _dt, timedelta as _td
+    _time.sleep(20)
+    print("📅 Thread rappel RDV démarré")
+    while True:
+        try:
+            data = charger_comptes()
+            now  = _dt.now()
+            for c in data.get("comptes", []):
+                compte_id = c.get("id")
+                if not compte_id:
+                    continue
+                s = charger_rappel_settings(compte_id)
+                if not s.get("actif"):
+                    continue
+                avance_h = int(s.get("avance_heures", 24))
+                rdvs     = charger_agenda(compte_id)
+                modifie  = False
+
+                # Première boite connectée
+                boite = None
+                for b in c.get("boites", []):
+                    provider = b.get("provider", "gmail")
+                    if provider == "gmail" and b.get("connecte") and b.get("token"):
+                        boite = b; break
+                    if provider == "microsoft" and b.get("token"):
+                        boite = b; break
+                    if provider == "imap" and b.get("imap_server") and b.get("imap_password"):
+                        boite = b; break
+                if not boite:
+                    continue
+
+                for rdv in rdvs:
+                    if rdv.get("statut") != "confirme":
+                        continue
+                    if rdv.get("rappel_envoye_at"):
+                        continue
+                    dest = rdv.get("client_email", "").strip()
+                    if not dest:
+                        continue
+
+                    # Calculer le datetime du RDV
+                    try:
+                        rdv_dt = _dt.strptime(f"{rdv['date']} {rdv['heure_debut']}", "%Y-%m-%d %H:%M")
+                    except Exception:
+                        continue
+
+                    # Fenêtre : dans moins de avance_h heures mais pas déjà passé
+                    delta = rdv_dt - now
+                    if not (0 <= delta.total_seconds() <= avance_h * 3600):
+                        continue
+
+                    expediteur = boite.get("email", "")
+                    sujet, corps = _construire_email_rappel(c.get("nom",""), c.get("agence",""), rdv)
+                    provider = boite.get("provider", "gmail")
+
+                    try:
+                        if provider == "gmail":
+                            _envoyer_relance_gmail(boite["token"], expediteur, dest, sujet, corps)
+                        elif provider == "microsoft":
+                            _envoyer_relance_microsoft(boite["token"], expediteur, dest, sujet, corps)
+                        elif provider == "imap":
+                            _envoyer_relance_smtp(
+                                boite.get("smtp_server",""), boite.get("smtp_port","465"),
+                                boite.get("imap_password",""), expediteur, dest, sujet, corps
+                            )
+                        rdv["rappel_envoye_at"] = now.isoformat()
+                        modifie = True
+                        s["nb_envoyes"] = s.get("nb_envoyes", 0) + 1
+                        print(f"📅 Rappel RDV envoyé → {dest} ({rdv['titre']} — {c['nom']})")
+                    except Exception as e:
+                        print(f"❌ Rappel RDV échoué → {dest}: {e}")
+
+                if modifie:
+                    sauver_agenda(compte_id, rdvs)
+                    s["derniere_exec"] = now.isoformat()
+                    sauver_rappel_settings(compte_id, s)
+
+        except Exception as e:
+            print(f"❌ Erreur thread rappel: {e}")
+
+        _time.sleep(1800)
+
+
+# Démarrage des threads relance + rappel sous Gunicorn (production Railway)
 _relance_thread_started = False
 def _start_relance_thread():
     global _relance_thread_started
     if not _relance_thread_started:
         _relance_thread_started = True
         threading.Thread(target=thread_relance_auto, daemon=True).start()
+        threading.Thread(target=thread_rappel_rdv,  daemon=True).start()
 
 _start_relance_thread()
 
