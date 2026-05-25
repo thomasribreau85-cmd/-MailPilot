@@ -773,11 +773,12 @@ def traiter_email(service, client_anthropic, email, label_ids):
         logger.error(f"  ✗ Erreur classification : {e}")
         categorie = "INFO"
 
-    # --- Étape 1b : Détection RDV ---
-    try:
-        detecter_rdv(client_anthropic, email, categorie)
-    except Exception as e:
-        logger.error(f"  ✗ Erreur détection RDV : {e}")
+    # --- Étape 1b : Détection RDV (si agenda activé) ---
+    if os.getenv("AGENDA_ACTIF", "1") == "1":
+        try:
+            detecter_rdv(client_anthropic, email, categorie)
+        except Exception as e:
+            logger.error(f"  ✗ Erreur détection RDV : {e}")
 
     # --- Étape 2 : Application du label Gmail ---
     try:
@@ -1207,10 +1208,11 @@ def boucle_principale():
                             # --- Pipeline Microsoft Graph ---
                             categorie = classifier_email(client_anthropic, em)
                             logger.info(f"  → Catégorie : {categorie}")
-                            try:
-                                detecter_rdv(client_anthropic, em, categorie)
-                            except Exception as e:
-                                logger.error(f"  ✗ Erreur détection RDV : {e}")
+                            if os.getenv("AGENDA_ACTIF", "1") == "1":
+                                try:
+                                    detecter_rdv(client_anthropic, em, categorie)
+                                except Exception as e:
+                                    logger.error(f"  ✗ Erreur détection RDV : {e}")
                             appliquer_label_microsoft(em["id"], categorie)
                             marquer_comme_lu_microsoft(em["id"])
                             brouillon_cree = False
@@ -1223,10 +1225,11 @@ def boucle_principale():
                             # --- Pipeline IMAP ---
                             categorie = classifier_email(client_anthropic, em)
                             logger.info(f"  → Catégorie : {categorie}")
-                            try:
-                                detecter_rdv(client_anthropic, em, categorie)
-                            except Exception as e:
-                                logger.error(f"  ✗ Erreur détection RDV : {e}")
+                            if os.getenv("AGENDA_ACTIF", "1") == "1":
+                                try:
+                                    detecter_rdv(client_anthropic, em, categorie)
+                                except Exception as e:
+                                    logger.error(f"  ✗ Erreur détection RDV : {e}")
                             appliquer_label_imap(imap_conn, em["uid_imap"], categorie)
                             marquer_comme_lu_imap(imap_conn, em["uid_imap"])
                             brouillon_cree = False

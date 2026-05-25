@@ -210,6 +210,7 @@ def _lancer_agent(compte_id, boite_id, c, b, data):
         "BILAN_JOUR":          str(b.get("bilan_jour",  "0")),
         "BILAN_HEURE":         str(b.get("bilan_heure", "8")),
         "AGENT_INSTRUCTIONS":  b.get("instructions", ""),
+        "AGENDA_ACTIF":        "1" if c.get("agenda_actif", True) else "0",
     })
     if provider == "microsoft":
         env.update({
@@ -991,6 +992,18 @@ def charger_horaires(compte_id):
         except Exception:
             pass
     return HORAIRES_DEFAUT.copy()
+
+@app.route("/api/toggle_agenda/<compte_id>", methods=["POST"])
+def toggle_agenda(compte_id):
+    if not check_access(compte_id):
+        return jsonify({"ok": False}), 403
+    data = charger_comptes()
+    c = trouver_compte(data, compte_id)
+    if not c:
+        return jsonify({"ok": False, "message": "Compte introuvable"}), 404
+    c["agenda_actif"] = not c.get("agenda_actif", True)
+    sauver_comptes(data)
+    return jsonify({"ok": True, "agenda_actif": c["agenda_actif"]})
 
 @app.route("/api/horaires/<compte_id>", methods=["GET"])
 def get_horaires(compte_id):

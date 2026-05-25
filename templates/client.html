@@ -301,7 +301,7 @@
       <h1>MailPilot</h1>
       <p>{{ compte.nom }}{% if compte.agence %} — {{ compte.agence }}{% endif %}</p>
     </div>
-    <a href="/agenda/{{ compte.id }}" style="color:var(--muted);font-size:13px;text-decoration:none;padding:7px 14px;border:1px solid #1e2d4a;border-radius:8px;transition:all .15s;font-weight:600;" onmouseover="this.style.borderColor='#4f6ef7';this.style.color='#4f6ef7'" onmouseout="this.style.borderColor='#1e2d4a';this.style.color='var(--muted)'">🗓️ Agenda</a>
+    <a id="lien-agenda" href="/agenda/{{ compte.id }}" style="color:var(--muted);font-size:13px;text-decoration:none;padding:7px 14px;border:1px solid #1e2d4a;border-radius:8px;transition:all .15s;font-weight:600;{% if compte.agenda_actif == false %}display:none{% endif %}" onmouseover="this.style.borderColor='#4f6ef7';this.style.color='#4f6ef7'" onmouseout="this.style.borderColor='#1e2d4a';this.style.color='var(--muted)'">🗓️ Agenda</a>
     <a href="/logout" style="color:var(--muted);font-size:12px;text-decoration:none;padding:7px 14px;border:1px solid #1e2d4a;border-radius:8px;transition:all .15s;" onmouseover="this.style.borderColor='#2a3d6a'" onmouseout="this.style.borderColor='#1e2d4a'">Déconnexion</a>
   </header>
 
@@ -316,6 +316,32 @@
   <button class="add-boite-btn" onclick="ouvrirAjoutBoite()">
     + Ajouter une boîte mail
   </button>
+
+  <!-- Paramètres du compte -->
+  <div style="max-width:620px;margin:28px auto 0;">
+    <div style="font-size:13px;color:var(--muted);font-weight:600;margin-bottom:10px;text-transform:uppercase;letter-spacing:.05em;">⚙️ Paramètres</div>
+    <div style="background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:16px 20px;display:flex;align-items:center;justify-content:space-between;gap:16px;">
+      <div>
+        <div style="font-size:14px;font-weight:600;">🗓️ Module Agenda</div>
+        <div style="font-size:12px;color:var(--muted);margin-top:3px;">Détection automatique de RDV depuis les emails et gestion du calendrier</div>
+      </div>
+      <label style="position:relative;width:44px;height:24px;cursor:pointer;flex-shrink:0;">
+        <input type="checkbox" id="toggle-agenda" style="opacity:0;width:0;height:0;"
+          {% if compte.agenda_actif != false %}checked{% endif %}
+          onchange="toggleAgenda(this.checked)" />
+        <span id="agenda-slider" style="
+          position:absolute;inset:0;border-radius:24px;transition:.2s;
+          background:{% if compte.agenda_actif != false %}var(--blue){% else %}var(--border){% endif %};
+        ">
+          <span style="
+            position:absolute;width:16px;height:16px;border-radius:50%;top:4px;transition:.2s;
+            background:#fff;
+            left:{% if compte.agenda_actif != false %}24px{% else %}4px{% endif %};
+          " id="agenda-knob"></span>
+        </span>
+      </label>
+    </div>
+  </div>
 
   <!-- ── Wizard Onboarding ── -->
   <div class="wizard-overlay" id="wizard-overlay">
@@ -560,6 +586,21 @@
 
   <script>
     const COMPTE_ID = "{{ compte.id }}";
+
+    async function toggleAgenda(actif) {
+      const slider = document.getElementById('agenda-slider');
+      const knob   = document.getElementById('agenda-knob');
+      const res = await fetch(`/api/toggle_agenda/${COMPTE_ID}`, { method: 'POST' });
+      const j   = await res.json();
+      if (j.ok) {
+        slider.style.background = j.agenda_actif ? 'var(--blue)' : 'var(--border)';
+        knob.style.left = j.agenda_actif ? '24px' : '4px';
+        // Afficher/masquer le lien Agenda dans le header
+        const lienAgenda = document.getElementById('lien-agenda');
+        if (lienAgenda) lienAgenda.style.display = j.agenda_actif ? '' : 'none';
+      }
+    }
+
     const PRESETS_IMAP = {
       ovh:    { imap_server:'imap.mail.ovh.com',   imap_port:993, smtp_server:'ssl0.ovh.net',         smtp_port:465 },
       orange: { imap_server:'imap.orange.fr',       imap_port:993, smtp_server:'smtp.orange.fr',       smtp_port:465 },
