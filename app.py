@@ -267,6 +267,14 @@ def _get_categories_custom(compte_id):
     cats = get_setting(compte_id, "categories_custom", [])
     return cats if isinstance(cats, list) else []
 
+BLACKLIST_MAX      = 100  # max entrées blacklist
+BLACKLIST_ITEM_MAX = 120  # max longueur d'une entrée
+
+def _get_blacklist(compte_id):
+    """Retourne la liste des domaines/adresses en blacklist ([] si aucune)."""
+    bl = get_setting(compte_id, "blacklist_expediteurs", [])
+    return bl if isinstance(bl, list) else []
+
 def _get_instructions_globales(compte_id):
     """Retourne les instructions personnalisées globales (chaîne vide si aucune)."""
     return get_setting(compte_id, "instructions_globales", "") or ""
@@ -315,6 +323,7 @@ def _lancer_agent(compte_id, boite_id, c, b, data):
         "AGENT_TON":                   _get_ton(compte_id),
         "AGENT_INSTRUCTIONS_GLOBALES": _get_instructions_globales(compte_id),
         "AGENT_CUSTOM_CATEGORIES":     json.dumps(_get_categories_custom(compte_id), ensure_ascii=False),
+        "AGENT_BLACKLIST":             "|".join(_get_blacklist(compte_id)),
         **_nettoyage_env(compte_id),
         "TRANSFERTS_RULES":    "|".join(
             f"{r['categorie']}:{r['to']}"
@@ -1283,6 +1292,36 @@ def sauver_categories_custom(compte_id):
         })
     set_setting(compte_id, "categories_custom", validated)
     return jsonify({"ok": True, "categories": validated})
+
+# ── Blacklist expéditeurs ─────────────────────────────────────
+
+@app.route("/api/blacklist/<compte_id>", methods=["GET"])
+def get_blacklist(compte_id):
+    if not check_access(compte_id):
+        return jsonify({"ok": False}), 403
+    return jsonify({"ok": True, "blacklist": _get_blacklist(compte_id)})
+
+@app.route("/api/blacklist/<compte_id>", methods=["POST"])
+def sauver_blacklist(compte_id):
+    if not check_access(compte_id):
+        return jsonify({"ok": False}), 403
+    d  = request.json or {}
+    bl = d.get("blacklist", [])
+    if not isinstance(bl, list):
+        return jsonify({"ok": False, "message": "Format invalide"}), 400
+    validated = []
+    seen = set()
+    for item in bl[:BLACKLIST_MAX]:
+        entry = str(item).strip().lower()[:BLACKLIST_ITEM_MAX]
+        if not entry or entry in seen:
+            continue
+        # Accepter adresses email ou domaines (optionnel @)
+        if not re.match(r'^[@a-z0-9._\-\+]+$', entry):
+            continue
+        seen.add(entry)
+        validated.append(entry)
+    set_setting(compte_id, "blacklist_expediteurs", validated)
+    return jsonify({"ok": True, "blacklist": validated})
 
 # ── Labels ────────────────────────────────────────────────────
 

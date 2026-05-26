@@ -104,6 +104,35 @@ if _custom_cats_raw:
     except Exception as _e:
         logger.warning(f"AGENT_CUSTOM_CATEGORIES invalide : {_e}")
 
+# ── Blacklist expéditeurs ─────────────────────────────────────
+_blacklist_raw = os.getenv("AGENT_BLACKLIST", "").strip()
+BLACKLIST = [e.strip().lower() for e in _blacklist_raw.split("|") if e.strip()] if _blacklist_raw else []
+
+
+def est_blackliste(expediteur: str) -> bool:
+    """
+    Retourne True si l'expéditeur correspond à une entrée blacklist.
+    Règles (par ordre de priorité) :
+      - Adresse exacte  : entry = 'user@domain.com'   → match exact
+      - Domaine         : entry = 'domain.com'         → match tout @domain.com ou @sub.domain.com
+      - Partie locale   : entry = 'noreply'            → match noreply@<n'importe quoi>
+    """
+    if not BLACKLIST or not expediteur:
+        return False
+    import re as _re
+    exp = expediteur.lower()
+    m   = _re.search(r'<([^>]+)>', exp)
+    addr   = m.group(1).strip() if m else exp.strip()
+    local  = addr.split("@")[0]  if "@" in addr else addr
+    domain = addr.split("@")[-1] if "@" in addr else ""
+    for entry in BLACKLIST:
+        entry = entry.lstrip("@")
+        if addr == entry:                             return True  # adresse exacte
+        if domain and domain == entry:                return True  # domaine exact
+        if domain and domain.endswith("." + entry):   return True  # sous-domaine
+        if "." not in entry and local == entry:       return True  # partie locale (noreply, mailer-daemon…)
+    return False
+
 # --- Modèles Claude à utiliser ---
 MODEL_CLASSIFICATION = "claude-haiku-4-5-20251001"  # Rapide et économique pour classer
 MODEL_REDACTION      = "claude-sonnet-4-6"           # Plus puissant pour rédiger
@@ -1030,6 +1059,18 @@ def traiter_email(service, client_anthropic, email, label_ids):
     logger.info(f"\n📧 Traitement : {email_resume}")
     brouillon_cree = False
 
+    # --- Étape 0 : Vérification blacklist (avant tout appel API) ---
+    if est_blackliste(email.get("expediteur", "")):
+        logger.info(f"  🚫 Blacklisté — classé INUTILE sans appel API")
+        try:
+            label_id = label_ids.get("INUTILE")
+            if label_id:
+                appliquer_label(service, email["id"], label_id)
+            marquer_comme_lu(service, email["id"])
+        except Exception as e:
+            logger.error(f"  ✗ Erreur blacklist label/lu : {e}")
+        return {"categorie": "INUTILE", "brouillon_cree": False, "brouillon_texte": ""}
+
     # --- Étape 1 : Classification ---
     try:
         categorie = classifier_email(client_anthropic, email)
@@ -1610,6 +1651,15 @@ def boucle_principale():
                             resultat = traiter_email(service, client_anthropic, em, label_ids)
                         elif mail_provider == "microsoft":
                             # --- Pipeline Microsoft Graph ---
+                            if est_blackliste(em.get("expediteur", "")):
+                                logger.info(f"  🚫 Blacklisté — classé INUTILE sans appel API")
+                                appliquer_label_microsoft(em["id"], "INUTILE")
+                                marquer_comme_lu_microsoft(em["id"])
+                                resultat = {"categorie": "INUTILE", "brouillon_cree": False, "brouillon_texte": ""}
+                                if resultat:
+                                    stats["traites"] += 1
+                                    stats["categories"]["INUTILE"] = stats["categories"].get("INUTILE", 0) + 1
+                                continue
                             categorie = classifier_email(client_anthropic, em)
                             logger.info(f"  → Catégorie : {categorie}")
                             if os.getenv("AGENDA_ACTIF", "1") == "1":
@@ -1632,6 +1682,13 @@ def boucle_principale():
                             resultat = {"categorie": categorie, "brouillon_cree": brouillon_cree, "brouillon_texte": texte_ms}
                         else:
                             # --- Pipeline IMAP ---
+                            if est_blackliste(em.get("expediteur", "")):
+                                logger.info(f"  🚫 Blacklisté — classé INUTILE sans appel API")
+                                appliquer_label_imap(imap_conn, em["uid_imap"], "INUTILE")
+                                marquer_comme_lu_imap(imap_conn, em["uid_imap"])
+                                stats["traites"] += 1
+                                stats["categories"]["INUTILE"] = stats["categories"].get("INUTILE", 0) + 1
+                                continue
                             categorie = classifier_email(client_anthropic, em)
                             logger.info(f"  → Catégorie : {categorie}")
                             if os.getenv("AGENDA_ACTIF", "1") == "1":
