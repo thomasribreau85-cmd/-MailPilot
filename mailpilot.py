@@ -356,6 +356,11 @@ def rediger_reponse(client_anthropic, email, categorie):
     ton_instr = _TON_INSTRUCTIONS.get(ton, _TON_INSTRUCTIONS["neutre"])
     prompt += f"\n\n--- TON ---\n{ton_instr}\n---"
 
+    # Instructions personnalisées globales
+    instructions_globales = os.getenv("AGENT_INSTRUCTIONS_GLOBALES", "").strip()
+    if instructions_globales:
+        prompt += f"\n\n--- CONSIGNES SPÉCIFIQUES ---\nApplique impérativement ces consignes à chaque réponse :\n{instructions_globales}\n---"
+
     # Instruction de langue
     _LANGUE_INSTRUCTIONS = {
         "auto": "Détecte la langue de l'email reçu et réponds dans cette même langue.",

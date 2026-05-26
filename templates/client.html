@@ -876,6 +876,15 @@
     }
     .drawer-logout:hover { color: var(--red); border-color: rgba(239,68,68,.3); background: rgba(239,68,68,.05); }
 
+    /* ── Instructions chips ── */
+    .instr-chip {
+      padding: 5px 11px; border-radius: 20px;
+      border: 1px solid rgba(168,85,247,.3); background: rgba(168,85,247,.06);
+      color: #c4b5fd; font-size: 11px; font-weight: 500; cursor: pointer;
+      font-family: inherit; transition: all .15s; white-space: nowrap;
+    }
+    .instr-chip:hover { background: rgba(168,85,247,.15); border-color: rgba(168,85,247,.5); color: #e9d5ff; }
+
     /* Toast */
     #toast {
       position: fixed; bottom: 28px; left: 50%;
@@ -1365,6 +1374,52 @@
       </div>
     </div>
 
+    <!-- Instructions personnalisées -->
+    <div class="param-card full-width" id="card-instructions" style="border-color:rgba(168,85,247,.2)">
+      <div style="padding:16px 18px;display:flex;align-items:center;gap:16px;cursor:pointer" onclick="toggleInstructionsPanel()">
+        <div style="width:38px;height:38px;border-radius:10px;background:rgba(168,85,247,.1);display:flex;align-items:center;justify-content:center;font-size:18px;box-shadow:0 0 0 1px rgba(168,85,247,.2);flex-shrink:0">✏️</div>
+        <div style="flex:1">
+          <div class="param-card-title">Instructions personnalisées</div>
+          <div class="param-card-sub" id="instr-desc-sub">Consignes globales appliquées à tous les brouillons IA</div>
+        </div>
+        <div id="instr-badge" style="display:none;font-size:10px;font-weight:700;padding:3px 8px;border-radius:6px;background:rgba(168,85,247,.12);color:#c4b5fd;border:1px solid rgba(168,85,247,.25)">ACTIF</div>
+        <span id="instr-chevron" style="color:var(--muted);font-size:20px;transition:.2s;flex-shrink:0">›</span>
+      </div>
+      <div id="instr-panel" style="display:none;border-top:1px solid var(--border);padding:18px 20px">
+
+        <p style="font-size:12px;color:var(--muted);margin-bottom:6px;line-height:1.5">
+          Donne des consignes permanentes à l'IA. Elles s'appliquent à <strong style="color:var(--text)">chaque email généré</strong>, peu importe la catégorie.
+        </p>
+
+        <!-- Suggestions rapides -->
+        <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px">
+          <button class="instr-chip" onclick="ajouterConsigne(this)">Mentionne toujours nos horaires d'ouverture</button>
+          <button class="instr-chip" onclick="ajouterConsigne(this)">Ne jamais s'engager sur les prix sans devis</button>
+          <button class="instr-chip" onclick="ajouterConsigne(this)">Toujours proposer un rendez-vous téléphonique</button>
+          <button class="instr-chip" onclick="ajouterConsigne(this)">Signe avec mon prénom uniquement</button>
+          <button class="instr-chip" onclick="ajouterConsigne(this)">Ne jamais mentionner les concurrents</button>
+          <button class="instr-chip" onclick="ajouterConsigne(this)">Ajoute toujours notre site web en fin d'email</button>
+        </div>
+
+        <textarea id="instr-texte" rows="6"
+          placeholder="Ex : Mentionne toujours nos horaires (9h-18h du lundi au vendredi). Ne jamais s'engager sur les délais sans consulter l'équipe. Proposer systématiquement un rappel téléphonique si la demande est complexe."
+          oninput="majInstrCompteur()"
+          style="width:100%;background:#060d1c;border:1px solid #1e2d4a;border-radius:10px;color:var(--text);font-size:13px;padding:12px 14px;outline:none;font-family:inherit;resize:vertical;line-height:1.6;box-sizing:border-box;transition:border-color .15s"
+          onfocus="this.style.borderColor='var(--blue)'" onblur="this.style.borderColor='#1e2d4a'"></textarea>
+
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px;margin-bottom:16px">
+          <span style="font-size:11px;color:var(--muted)">💡 L'IA les applique comme des règles impératives</span>
+          <span id="instr-compteur" style="font-size:11px;color:var(--muted)">0 / 2000</span>
+        </div>
+
+        <div style="display:flex;gap:10px">
+          <button onclick="sauverInstructions()" style="flex:1;padding:9px;background:linear-gradient(135deg,#a855f7,#7c3aed);border:none;border-radius:9px;color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;box-shadow:0 4px 14px rgba(168,85,247,.25)">💾 Enregistrer</button>
+          <button onclick="effacerInstructions()" style="padding:9px 14px;background:transparent;border:1px solid var(--border);border-radius:9px;color:var(--muted);font-size:12px;cursor:pointer;font-family:inherit;transition:all .15s" onmouseover="this.style.color='var(--red)';this.style.borderColor='rgba(239,68,68,.4)'" onmouseout="this.style.color='var(--muted)';this.style.borderColor='var(--border)'">Effacer</button>
+        </div>
+        <div id="instr-status" style="font-size:12px;color:var(--green);text-align:center;margin-top:8px;display:none"></div>
+      </div>
+    </div>
+
     <!-- Ton de rédaction -->
     <div class="param-card full-width" id="card-ton" style="border-color:rgba(251,146,60,.2)">
       <div style="padding:16px 18px;display:flex;align-items:center;gap:16px;cursor:pointer" onclick="toggleTonPanel()">
@@ -1641,6 +1696,15 @@
 
       <!-- Paramètres IA -->
       <div class="drawer-section">IA & Communication</div>
+
+      <button class="drawer-item" onclick="ouvrirSettings('card-instructions','✏️ Instructions personnalisées')">
+        <div class="drawer-item-icon" style="background:rgba(168,85,247,.1);box-shadow:0 0 0 1px rgba(168,85,247,.2)">✏️</div>
+        <div class="drawer-item-text">
+          <div class="drawer-item-title">Instructions personnalisées</div>
+          <div class="drawer-item-sub" id="d-instr-sub">Consignes globales pour l'IA</div>
+        </div>
+        <div class="drawer-item-badge purple" id="d-instr-badge" style="display:none">ACTIF</div>
+      </button>
 
       <button class="drawer-item" onclick="ouvrirSettings('card-ton','🎨 Ton de rédaction')">
         <div class="drawer-item-icon" style="background:rgba(251,146,60,.1);box-shadow:0 0 0 1px rgba(251,146,60,.2)">🎨</div>
@@ -2921,6 +2985,94 @@
     };
     let langueActive = 'auto';
 
+    // ── Instructions personnalisées ───────────────────────────
+    function toggleInstructionsPanel() {
+      const panel   = document.getElementById('instr-panel');
+      const chevron = document.getElementById('instr-chevron');
+      const open    = panel.style.display === 'none';
+      panel.style.display = open ? 'block' : 'none';
+      chevron.style.transform = open ? 'rotate(90deg)' : '';
+      if (open) chargerInstructions();
+    }
+
+    async function chargerInstructions() {
+      try {
+        const r = await fetch(`/api/instructions-globales/${COMPTE_ID}`);
+        const j = await r.json();
+        if (j.ok) {
+          const ta = document.getElementById('instr-texte');
+          if (ta) { ta.value = j.instructions || ''; majInstrCompteur(); }
+          majInstrBadge(j.instructions || '');
+        }
+      } catch(e) {}
+    }
+
+    function majInstrCompteur() {
+      const ta  = document.getElementById('instr-texte');
+      const cpt = document.getElementById('instr-compteur');
+      if (ta && cpt) {
+        const n = ta.value.length;
+        cpt.textContent = `${n} / 2000`;
+        cpt.style.color = n > 1800 ? 'var(--yellow)' : 'var(--muted)';
+      }
+    }
+
+    function majInstrBadge(texte) {
+      const actif = texte.trim().length > 0;
+      const badge = document.getElementById('instr-badge');
+      if (badge) badge.style.display = actif ? '' : 'none';
+      const dBadge = document.getElementById('d-instr-badge');
+      if (dBadge) dBadge.style.display = actif ? '' : 'none';
+      const dSub = document.getElementById('d-instr-sub');
+      if (dSub) dSub.textContent = actif
+        ? texte.trim().slice(0, 40) + (texte.trim().length > 40 ? '…' : '')
+        : 'Consignes globales pour l\'IA';
+      const sub = document.getElementById('instr-desc-sub');
+      if (sub) sub.textContent = actif
+        ? `${texte.trim().split(/\n/).length} consigne(s) active(s)`
+        : 'Consignes globales appliquées à tous les brouillons IA';
+    }
+
+    function ajouterConsigne(btn) {
+      const ta = document.getElementById('instr-texte');
+      if (!ta) return;
+      const consigne = btn.textContent.trim();
+      ta.value = ta.value.trim()
+        ? ta.value.trim() + '\n' + consigne
+        : consigne;
+      majInstrCompteur();
+      ta.focus();
+    }
+
+    async function sauverInstructions() {
+      const ta = document.getElementById('instr-texte');
+      const st = document.getElementById('instr-status');
+      const texte = ta ? ta.value.trim() : '';
+      try {
+        const r = await fetch(`/api/instructions-globales/${COMPTE_ID}`, {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({ instructions: texte }),
+        });
+        const j = await r.json();
+        if (j.ok) {
+          majInstrBadge(texte);
+          st.textContent = '✅ Instructions enregistrées';
+          st.style.display = 'block';
+          setTimeout(() => st.style.display = 'none', 3000);
+          toast(texte ? '✏️ Instructions actives' : '✏️ Instructions effacées');
+        } else {
+          toast('⚠️ ' + (j.message || 'Erreur'));
+        }
+      } catch(e) { toast('⚠️ Erreur réseau'); }
+    }
+
+    async function effacerInstructions() {
+      const ta = document.getElementById('instr-texte');
+      if (ta) { ta.value = ''; majInstrCompteur(); }
+      await sauverInstructions();
+    }
+
     // ── Ton de rédaction ─────────────────────────────────────
     const TON_LABELS = { formel: 'Formel', neutre: 'Neutre', detendu: 'Détendu' };
     const TON_EXEMPLES = {
@@ -3942,6 +4094,7 @@
     chargerTemplates();
     chargerLangue();
     chargerTon();
+    chargerInstructions();
     rafraichir().then(() => {
       chargerStats();
       chargerToutesAbsences();
