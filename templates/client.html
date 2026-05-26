@@ -53,22 +53,26 @@
 
     /* ── Header ── */
     header {
-      max-width: 680px; margin: 0 auto;
+      position: sticky; top: 0; z-index: 100;
+      background: rgba(6,11,24,.88); backdrop-filter: blur(24px);
+      border-bottom: 1px solid rgba(255,255,255,.06);
+      margin-bottom: 0;
+    }
+    .header-inner {
+      max-width: 920px; margin: 0 auto;
       display: flex; align-items: center; gap: 14px;
-      padding: 20px 24px 20px;
-      border-bottom: 1px solid rgba(255,255,255,.05);
-      margin-bottom: 32px;
+      padding: 14px 28px;
     }
     .logo-icon {
-      width: 40px; height: 40px;
+      width: 38px; height: 38px;
       background: linear-gradient(135deg, var(--blue), var(--blue2));
-      border-radius: 12px; display: flex; align-items: center; justify-content: center;
-      font-size: 20px; flex-shrink: 0;
-      box-shadow: 0 0 24px rgba(79,110,247,.4), 0 2px 8px rgba(0,0,0,.4);
+      border-radius: 11px; display: flex; align-items: center; justify-content: center;
+      font-size: 18px; flex-shrink: 0;
+      box-shadow: 0 0 20px rgba(79,110,247,.45), 0 2px 8px rgba(0,0,0,.4);
     }
     .logo-text { flex: 1; }
     .logo-text h1 {
-      font-size: 19px; font-weight: 800; letter-spacing: -.4px;
+      font-size: 17px; font-weight: 800; letter-spacing: -.4px;
       background: linear-gradient(90deg, #fff 50%, rgba(147,180,240,.7));
       -webkit-background-clip: text; -webkit-text-fill-color: transparent;
     }
@@ -76,9 +80,9 @@
     .nav-btns { display: flex; gap: 8px; align-items: center; }
     .nav-btn {
       color: var(--muted); font-size: 12px; font-weight: 600; text-decoration: none;
-      padding: 7px 14px; border: 1px solid var(--border); border-radius: 10px;
+      padding: 7px 14px; border: 1px solid var(--border); border-radius: 9px;
       transition: all .15s; white-space: nowrap; background: transparent;
-      font-family: inherit; cursor: pointer;
+      font-family: inherit; cursor: pointer; letter-spacing: .01em;
     }
     .nav-btn:hover { color: var(--text); border-color: rgba(79,110,247,.5); background: rgba(79,110,247,.08); }
     .nav-btn.primary {
@@ -86,59 +90,104 @@
     }
     .nav-btn.primary:hover { background: rgba(79,110,247,.22); color: #fff; }
 
+    /* Avatar utilisateur */
+    .user-avatar {
+      width: 32px; height: 32px; border-radius: 50%; flex-shrink: 0;
+      background: linear-gradient(135deg, var(--blue), var(--blue2));
+      display: flex; align-items: center; justify-content: center;
+      font-size: 13px; font-weight: 800; color: #fff; letter-spacing: -.3px;
+      box-shadow: 0 0 0 2px rgba(79,110,247,.3);
+    }
+
+    /* ── Hero greeting ── */
+    .hero {
+      max-width: 920px; margin: 0 auto;
+      padding: 32px 28px 0;
+    }
+    .hero-greeting {
+      display: flex; align-items: flex-end; justify-content: space-between;
+      margin-bottom: 28px;
+    }
+    .hero-greeting h2 {
+      font-size: 26px; font-weight: 800; letter-spacing: -.5px; line-height: 1.2;
+    }
+    .hero-greeting h2 span {
+      background: linear-gradient(90deg, var(--blue), var(--blue2));
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    }
+    .hero-date {
+      font-size: 12px; color: var(--muted); font-weight: 500; text-align: right; line-height: 1.5;
+    }
+
     /* ── Wrapper centré ── */
-    .page-wrap { max-width: 680px; margin: 0 auto; padding: 0 24px; }
+    .page-wrap { max-width: 920px; margin: 0 auto; padding: 0 28px; }
 
     /* ── Section label ── */
     .section-label {
       display: flex; align-items: center; gap: 10px;
       font-size: 11px; font-weight: 700; color: var(--muted);
-      text-transform: uppercase; letter-spacing: .08em;
-      margin-bottom: 14px;
+      text-transform: uppercase; letter-spacing: .1em;
+      margin-bottom: 16px; margin-top: 36px;
     }
+    .section-label:first-child { margin-top: 0; }
     .section-label::after {
       content: ''; flex: 1; height: 1px; background: var(--border);
     }
 
     /* ── Stats bar ── */
     .stats-bar {
-      display: grid; grid-template-columns: repeat(3,1fr); gap: 12px;
+      display: grid; grid-template-columns: repeat(3,1fr); gap: 14px;
       margin-bottom: 32px;
     }
     .stat-card {
       background: var(--card); border: 1px solid var(--border);
-      border-radius: var(--radius); padding: 18px 16px;
-      display: flex; align-items: center; gap: 14px;
-      transition: border-color .2s;
+      border-radius: var(--radius); padding: 22px 20px;
+      display: flex; align-items: center; gap: 16px;
+      transition: border-color .2s, transform .2s, box-shadow .2s;
+      position: relative; overflow: hidden;
     }
-    .stat-card:hover { border-color: #2a3d6a; }
+    .stat-card::after {
+      content: ''; position: absolute; bottom: 0; left: 0; right: 0; height: 2px;
+      opacity: 0; transition: opacity .2s;
+    }
+    .stat-card.s-blue::after  { background: linear-gradient(90deg, var(--blue), var(--blue2)); }
+    .stat-card.s-green::after { background: linear-gradient(90deg, #16a34a, var(--green)); }
+    .stat-card.s-yellow::after{ background: linear-gradient(90deg, #d97706, var(--yellow)); }
+    .stat-card:hover { border-color: #2a3d6a; transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,.3); }
+    .stat-card:hover::after { opacity: 1; }
     .stat-icon {
-      width: 42px; height: 42px; border-radius: 12px;
+      width: 48px; height: 48px; border-radius: 14px;
       display: flex; align-items: center; justify-content: center;
-      font-size: 18px; flex-shrink: 0;
+      font-size: 22px; flex-shrink: 0;
     }
-    .stat-icon.blue   { background: rgba(79,110,247,.15); box-shadow: 0 0 0 1px rgba(79,110,247,.2); }
-    .stat-icon.green  { background: rgba(34,197,94,.12);  box-shadow: 0 0 0 1px rgba(34,197,94,.2); }
-    .stat-icon.yellow { background: rgba(245,158,11,.12); box-shadow: 0 0 0 1px rgba(245,158,11,.2); }
-    .stat-num   { font-size: 24px; font-weight: 800; line-height: 1; display: block; }
-    .stat-num.blue   { color: var(--blue); }
-    .stat-num.green  { color: var(--green); }
-    .stat-num.yellow { color: var(--yellow); }
-    .stat-lbl { font-size: 11px; color: var(--muted); margin-top: 3px; }
+    .stat-icon.blue   { background: rgba(79,110,247,.15); box-shadow: 0 0 0 1px rgba(79,110,247,.2), 0 0 20px rgba(79,110,247,.1); }
+    .stat-icon.green  { background: rgba(34,197,94,.12);  box-shadow: 0 0 0 1px rgba(34,197,94,.2),  0 0 20px rgba(34,197,94,.08); }
+    .stat-icon.yellow { background: rgba(245,158,11,.12); box-shadow: 0 0 0 1px rgba(245,158,11,.2), 0 0 20px rgba(245,158,11,.08); }
+    .stat-num   { font-size: 30px; font-weight: 800; line-height: 1; display: block; letter-spacing: -.5px; }
+    .stat-num.blue   { color: var(--blue); text-shadow: 0 0 20px rgba(79,110,247,.3); }
+    .stat-num.green  { color: var(--green); text-shadow: 0 0 20px rgba(34,197,94,.25); }
+    .stat-num.yellow { color: var(--yellow); text-shadow: 0 0 20px rgba(245,158,11,.25); }
+    .stat-lbl { font-size: 11px; color: var(--muted); margin-top: 5px; font-weight: 600; letter-spacing: .03em; text-transform: uppercase; }
 
     /* ── Carte boîte mail ── */
     .boite-card {
       background: var(--card); border: 1px solid var(--border);
       border-radius: var(--radius); overflow: hidden;
-      transition: border-color .25s, box-shadow .25s;
-      box-shadow: 0 4px 20px rgba(0,0,0,.3);
-      margin-bottom: 12px;
+      transition: border-color .25s, box-shadow .25s, transform .2s;
+      box-shadow: 0 4px 24px rgba(0,0,0,.35);
+      margin-bottom: 14px; position: relative;
     }
-    .boite-card:hover { border-color: #253959; }
+    .boite-card::before {
+      content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px;
+      background: var(--border); transition: background .25s;
+    }
+    .boite-card:hover { border-color: #253959; transform: translateY(-1px); box-shadow: 0 8px 32px rgba(0,0,0,.4); }
+    .boite-card:hover::before { background: var(--blue); }
     .boite-card.actif {
       border-color: rgba(79,110,247,.35);
-      box-shadow: 0 0 0 1px rgba(79,110,247,.12), 0 8px 32px rgba(79,110,247,.08);
+      box-shadow: 0 0 0 1px rgba(79,110,247,.1), 0 8px 32px rgba(79,110,247,.1);
     }
+    .boite-card.actif::before { background: linear-gradient(to bottom, var(--blue), var(--blue2)); }
     .boite-header { display: flex; align-items: center; gap: 14px; padding: 18px 20px 12px; }
     .provider-avatar {
       width: 42px; height: 42px; border-radius: 12px; flex-shrink: 0;
@@ -223,14 +272,21 @@
     }
     .add-boite-btn:hover { border-color: rgba(79,110,247,.5); color: #93b4f0; background: rgba(79,110,247,.05); }
 
+    /* ── Settings grid 2 colonnes ── */
+    .settings-grid {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
+    }
+    .settings-grid .param-card { margin-bottom: 0; }
+    .settings-grid .param-card.full-width { grid-column: span 2; }
+
     /* ── Paramètres cards ── */
     .param-card {
       background: var(--card); border: 1px solid var(--border);
       border-radius: var(--radius); padding: 16px 18px;
       display: flex; align-items: center; gap: 16px;
-      transition: border-color .15s; margin-bottom: 8px;
+      transition: border-color .15s, box-shadow .15s; margin-bottom: 8px;
     }
-    .param-card:hover { border-color: #253959; }
+    .param-card:hover { border-color: #253959; box-shadow: 0 4px 16px rgba(0,0,0,.2); }
     .param-card-icon {
       width: 40px; height: 40px; border-radius: 11px;
       display: flex; align-items: center; justify-content: center;
@@ -586,14 +642,19 @@
     /* ── Responsive mobile ── */
     @media (max-width: 700px) {
       .deco-left, .deco-right { display: none; }
-      header { padding: 14px 16px 14px; margin-bottom: 20px; }
-      .logo-text h1 { font-size: 17px; }
+      .header-inner { padding: 12px 16px; }
+      .logo-text h1 { font-size: 16px; }
       .nav-btn { padding: 6px 10px; font-size: 11px; }
+      .hero { padding: 20px 16px 0; }
+      .hero-greeting h2 { font-size: 20px; }
+      .hero-date { display: none; }
       .page-wrap { padding: 0 14px; }
+      .settings-grid { grid-template-columns: 1fr; }
+      .settings-grid .param-card.full-width { grid-column: span 1; }
       .stats-bar { grid-template-columns: repeat(3,1fr); gap: 8px; margin-bottom: 20px; }
-      .stat-card { padding: 12px 10px; gap: 8px; flex-direction: column; align-items: flex-start; }
-      .stat-icon { width: 32px; height: 32px; font-size: 14px; border-radius: 8px; }
-      .stat-num { font-size: 20px; }
+      .stat-card { padding: 14px 12px; gap: 8px; flex-direction: column; align-items: flex-start; }
+      .stat-icon { width: 36px; height: 36px; font-size: 16px; border-radius: 10px; }
+      .stat-num { font-size: 22px; }
       .stat-lbl { font-size: 10px; }
       .boite-header { padding: 14px 14px 10px; gap: 10px; }
       .provider-avatar { width: 36px; height: 36px; font-size: 16px; border-radius: 10px; }
@@ -665,37 +726,51 @@
   </div>
 
   <header>
-    <div class="logo-icon">✉️</div>
-    <div class="logo-text">
-      <h1>MailPilot</h1>
-      <p>{{ compte.nom }}{% if compte.agence %} — {{ compte.agence }}{% endif %}</p>
-    </div>
-    <div class="nav-btns">
-      <a id="lien-agenda" href="/agenda/{{ compte.id }}" class="nav-btn primary"
-        {% if compte.agenda_actif == false %}style="display:none"{% endif %}>🗓️ Agenda</a>
-      <a href="/logout" class="nav-btn">Déconnexion</a>
+    <div class="header-inner">
+      <div class="logo-icon">✉️</div>
+      <div class="logo-text">
+        <h1>MailPilot</h1>
+        <p>{% if compte.agence %}{{ compte.agence }}{% else %}Dashboard{% endif %}</p>
+      </div>
+      <div class="nav-btns">
+        <a id="lien-agenda" href="/agenda/{{ compte.id }}" class="nav-btn primary"
+          {% if compte.agenda_actif == false %}style="display:none"{% endif %}>🗓️ Agenda</a>
+        <a href="/logout" class="nav-btn">Déconnexion</a>
+        <div class="user-avatar" title="{{ compte.nom }}">{{ compte.nom[:2].upper() }}</div>
+      </div>
     </div>
   </header>
+
+  <!-- Hero greeting -->
+  <div class="hero">
+    <div class="hero-greeting">
+      <div>
+        <h2>Bonjour, <span>{{ compte.nom.split()[0] }}</span> 👋</h2>
+        <p style="font-size:13px;color:var(--muted);margin-top:6px">Voici l'état de vos boîtes mail en temps réel.</p>
+      </div>
+      <div class="hero-date" id="hero-date"></div>
+    </div>
+  </div>
 
   <div class="page-wrap">
 
   <!-- Barre de stats -->
   <div class="stats-bar" id="stats-bar">
-    <div class="stat-card">
+    <div class="stat-card s-blue">
       <div class="stat-icon blue">📧</div>
       <div>
         <span class="stat-num blue" id="stat-emails">—</span>
         <div class="stat-lbl">Emails traités</div>
       </div>
     </div>
-    <div class="stat-card">
+    <div class="stat-card s-green">
       <div class="stat-icon green">🤖</div>
       <div>
         <span class="stat-num green" id="stat-actifs">—</span>
         <div class="stat-lbl">Agents actifs</div>
       </div>
     </div>
-    <div class="stat-card">
+    <div class="stat-card s-yellow">
       <div class="stat-icon yellow">🗓️</div>
       <div>
         <span class="stat-num yellow" id="stat-rdvs">—</span>
@@ -714,10 +789,11 @@
   <button class="add-boite-btn" onclick="ouvrirAjoutBoite()">+ Ajouter une boîte mail</button>
 
   <!-- Paramètres du compte -->
-  <div style="margin-top:36px">
+  <div>
     <div class="section-label">⚙️ Paramètres</div>
+    <div class="settings-grid">
 
-    <div class="param-card">
+    <div class="param-card full-width">
       <div class="param-card-icon calendar">🗓️</div>
       <div class="param-card-body">
         <div class="param-card-title">Module Agenda</div>
@@ -1017,6 +1093,36 @@
         <div id="nettoyage-status" style="font-size:12px;color:var(--muted);text-align:center;margin-top:10px"></div>
       </div>
     </div>
+
+    <!-- Sécurité — Changer mot de passe -->
+    <div class="param-card" style="border-color:rgba(99,102,241,.2)">
+      <div style="padding:16px 18px;display:flex;align-items:center;gap:16px;cursor:pointer" onclick="togglePwdPanel()">
+        <div style="width:38px;height:38px;border-radius:10px;background:rgba(99,102,241,.1);display:flex;align-items:center;justify-content:center;font-size:18px;box-shadow:0 0 0 1px rgba(99,102,241,.2);flex-shrink:0">🔑</div>
+        <div style="flex:1">
+          <div class="param-card-title">Sécurité</div>
+          <div class="param-card-sub">Changer votre mot de passe MailPilot</div>
+        </div>
+        <span id="pwd-chevron" style="color:var(--muted);font-size:20px;transition:.2s;flex-shrink:0">›</span>
+      </div>
+      <div id="pwd-panel" style="display:none;border-top:1px solid var(--border);padding:18px 20px">
+        <div style="margin-bottom:12px">
+          <label style="display:block;font-size:11px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px">Mot de passe actuel</label>
+          <input type="password" id="pwd-ancien" placeholder="••••••••" class="form-input" />
+        </div>
+        <div style="margin-bottom:12px">
+          <label style="display:block;font-size:11px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px">Nouveau mot de passe</label>
+          <input type="password" id="pwd-nouveau" placeholder="6 caractères min" class="form-input" />
+        </div>
+        <div style="margin-bottom:14px">
+          <label style="display:block;font-size:11px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px">Confirmer le nouveau</label>
+          <input type="password" id="pwd-nouveau2" placeholder="••••••••" class="form-input" />
+        </div>
+        <button onclick="changerMotDePasse()" style="width:100%;padding:10px;background:linear-gradient(135deg,#6366f1,#8b5cf6);border:none;border-radius:9px;color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;box-shadow:0 4px 14px rgba(99,102,241,.35);transition:all .15s">🔑 Changer le mot de passe</button>
+        <div id="pwd-status" style="font-size:12px;text-align:center;margin-top:10px;display:none"></div>
+      </div>
+    </div>
+
+    </div><!-- /settings-grid -->
   </div>
 
   </div><!-- /page-wrap -->
@@ -1899,6 +2005,59 @@
       btn.disabled = false;
     }
 
+    // ── Sécurité — Changement de mot de passe ────────────────
+    function togglePwdPanel() {
+      const panel = document.getElementById('pwd-panel');
+      const chevron = document.getElementById('pwd-chevron');
+      const open = panel.style.display === 'none';
+      panel.style.display = open ? 'block' : 'none';
+      chevron.style.transform = open ? 'rotate(90deg)' : '';
+      if (open) {
+        document.getElementById('pwd-ancien').value = '';
+        document.getElementById('pwd-nouveau').value = '';
+        document.getElementById('pwd-nouveau2').value = '';
+        document.getElementById('pwd-status').style.display = 'none';
+      }
+    }
+
+    async function changerMotDePasse() {
+      const ancien  = document.getElementById('pwd-ancien').value;
+      const nouveau = document.getElementById('pwd-nouveau').value;
+      const nouveau2= document.getElementById('pwd-nouveau2').value;
+      const st = document.getElementById('pwd-status');
+      st.style.display = 'none';
+
+      if (!ancien || !nouveau || !nouveau2) {
+        st.textContent = '⚠️ Tous les champs sont requis';
+        st.style.color = 'var(--yellow)'; st.style.display = 'block'; return;
+      }
+      if (nouveau.length < 6) {
+        st.textContent = '⚠️ Le nouveau mot de passe doit faire au moins 6 caractères';
+        st.style.color = 'var(--yellow)'; st.style.display = 'block'; return;
+      }
+      if (nouveau !== nouveau2) {
+        st.textContent = '⚠️ Les nouveaux mots de passe ne correspondent pas';
+        st.style.color = 'var(--yellow)'; st.style.display = 'block'; return;
+      }
+
+      const res = await fetch(`/api/change-password/${COMPTE_ID}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ancien, nouveau })
+      });
+      const j = await res.json();
+      if (j.ok) {
+        st.textContent = '✅ Mot de passe changé avec succès !';
+        st.style.color = 'var(--green)'; st.style.display = 'block';
+        document.getElementById('pwd-ancien').value = '';
+        document.getElementById('pwd-nouveau').value = '';
+        document.getElementById('pwd-nouveau2').value = '';
+      } else {
+        st.textContent = '❌ ' + (j.message || 'Erreur');
+        st.style.color = 'var(--red)'; st.style.display = 'block';
+      }
+    }
+
     // ── Éditeur message commun ────────────────────────────────
     const PREVIEW_SAMPLE = {
       client_nom:  "Jean Martin",
@@ -2459,6 +2618,16 @@
     function escHtml(s) {
       return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
     }
+
+    // ── Date hero ─────────────────────────────────────────────
+    (function() {
+      const el = document.getElementById('hero-date');
+      if (!el) return;
+      const now = new Date();
+      const jours = ['Dimanche','Lundi','Mardi','Mercredi','Jeudi','Vendredi','Samedi'];
+      const mois  = ['jan.','fév.','mars','avr.','mai','juin','juil.','août','sep.','oct.','nov.','déc.'];
+      el.innerHTML = `<strong>${jours[now.getDay()]}</strong> ${now.getDate()} ${mois[now.getMonth()]} ${now.getFullYear()}<br>${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+    })();
 
     // ── Init ──────────────────────────────────────────────────
     setInterval(rafraichir, 3000);

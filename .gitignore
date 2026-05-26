@@ -6,6 +6,16 @@
 .env
 credentials.json
 token.json
+.secret_key
+.admin_hash
+
+# Données utilisateurs (ne pas versionner)
+comptes.json
+tokens/
+emails_recents_*.json
+
+# Claude Code
+.claude/
 
 # Environnement virtuel Python
 venv/

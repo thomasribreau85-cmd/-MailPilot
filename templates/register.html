@@ -16,49 +16,143 @@
     :root {
       --bg: #060b18; --card: #0d1526; --card2: #111d35; --border: #1a2c47;
       --text: #f0f4ff; --muted: #5a7090; --blue: #4f6ef7; --blue2: #7c4ff8; --red: #ef4444;
+      --green: #22c55e;
     }
+    html, body { height: 100%; }
     body {
       background: var(--bg); color: var(--text);
       font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Inter", sans-serif;
-      min-height: 100vh; display: flex; align-items: flex-start; justify-content: center;
-      padding: 40px 20px 60px; position: relative; overflow-x: hidden;
+      min-height: 100vh; display: flex; align-items: stretch; justify-content: center;
+      position: relative; overflow-x: hidden;
       background-image:
-        radial-gradient(ellipse 70% 50% at 15% 10%, rgba(79,110,247,.16) 0%, transparent 65%),
-        radial-gradient(ellipse 60% 45% at 85% 90%, rgba(124,79,248,.12) 0%, transparent 65%);
+        radial-gradient(ellipse 80% 60% at 10% 15%, rgba(79,110,247,.15) 0%, transparent 65%),
+        radial-gradient(ellipse 60% 50% at 90% 85%, rgba(124,79,248,.12) 0%, transparent 65%);
     }
 
-    /* Background decorations */
     .bg-orb {
-      position: fixed; border-radius: 50%; filter: blur(90px);
+      position: fixed; border-radius: 50%; filter: blur(100px);
       pointer-events: none; z-index: 0;
     }
     .bg-dots {
-      position: fixed; pointer-events: none; z-index: 0; opacity: .06;
+      position: fixed; pointer-events: none; z-index: 0; opacity: .05;
     }
 
-    /* Card */
-    .card {
+    /* ─── WRAPPER ─── */
+    .page-wrapper {
       position: relative; z-index: 1;
-      background: rgba(13,21,38,.92); border: 1px solid var(--border);
-      border-radius: 24px; padding: 40px 36px; width: 100%; max-width: 460px;
-      box-shadow: 0 32px 80px rgba(0,0,0,.6), 0 0 0 1px rgba(79,110,247,.06);
-      backdrop-filter: blur(20px);
+      display: flex; width: 100%; max-width: 980px;
+      margin: 30px 20px;
+      border-radius: 28px; overflow: hidden;
+      box-shadow: 0 40px 100px rgba(0,0,0,.7), 0 0 0 1px rgba(79,110,247,.08);
+      align-self: flex-start;
     }
 
-    /* Logo */
-    .logo { display: flex; align-items: center; gap: 14px; margin-bottom: 6px; }
+    /* ─── LEFT PANEL (sticky) ─── */
+    .panel-left {
+      flex: 0 0 380px;
+      background: linear-gradient(160deg, rgba(13,21,38,.99) 0%, rgba(9,15,30,.97) 100%);
+      border-right: 1px solid var(--border);
+      position: sticky; top: 30px; align-self: flex-start;
+      padding: 52px 42px; overflow: hidden;
+    }
+    .panel-left::before {
+      content: '';
+      position: absolute; top: -100px; right: -70px;
+      width: 300px; height: 300px;
+      background: radial-gradient(circle, rgba(79,110,247,.2), transparent 70%);
+      pointer-events: none;
+    }
+    .panel-left::after {
+      content: '';
+      position: absolute; bottom: -80px; left: -50px;
+      width: 260px; height: 260px;
+      background: radial-gradient(circle, rgba(124,79,248,.15), transparent 70%);
+      pointer-events: none;
+    }
+
+    .logo { display: flex; align-items: center; gap: 13px; margin-bottom: 6px; position: relative; z-index: 1; }
     .logo-icon {
-      width: 46px; height: 46px; background: linear-gradient(135deg, var(--blue), var(--blue2));
+      width: 46px; height: 46px;
+      background: linear-gradient(135deg, var(--blue), var(--blue2));
       border-radius: 13px; display: flex; align-items: center; justify-content: center;
-      font-size: 22px; flex-shrink: 0;
-      box-shadow: 0 0 28px rgba(79,110,247,.5), 0 4px 12px rgba(0,0,0,.4);
+      font-size: 21px; flex-shrink: 0;
+      box-shadow: 0 0 30px rgba(79,110,247,.55), 0 4px 14px rgba(0,0,0,.4);
     }
     .logo h1 {
       font-size: 24px; font-weight: 800; letter-spacing: -.4px;
-      background: linear-gradient(90deg, #fff 35%, var(--blue));
+      background: linear-gradient(90deg, #fff 30%, #a5b8ff);
       -webkit-background-clip: text; -webkit-text-fill-color: transparent;
     }
-    .page-subtitle { font-size: 13px; color: var(--muted); margin-bottom: 30px; line-height: 1.5; }
+    .logo-badge {
+      font-size: 10px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase;
+      color: var(--blue); background: rgba(79,110,247,.12);
+      border: 1px solid rgba(79,110,247,.25); border-radius: 6px;
+      padding: 2px 8px; margin-top: 2px; display: inline-block;
+    }
+
+    .left-headline {
+      font-size: 26px; font-weight: 800; line-height: 1.25; letter-spacing: -.4px;
+      margin: 28px 0 12px; color: #fff; position: relative; z-index: 1;
+    }
+    .left-headline span {
+      background: linear-gradient(90deg, var(--blue), var(--blue2));
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    }
+    .left-sub {
+      font-size: 13px; color: var(--muted); line-height: 1.65;
+      margin-bottom: 32px; position: relative; z-index: 1;
+    }
+
+    .check-list { display: flex; flex-direction: column; gap: 12px; position: relative; z-index: 1; }
+    .check-item { display: flex; align-items: center; gap: 11px; }
+    .check-dot {
+      width: 22px; height: 22px; border-radius: 50%; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 11px; font-weight: 700;
+      background: rgba(34,197,94,.12); border: 1px solid rgba(34,197,94,.25); color: #4ade80;
+    }
+    .check-item span { font-size: 13px; color: #c5d4f0; line-height: 1.4; }
+
+    .left-divider {
+      height: 1px; background: var(--border); margin: 30px 0;
+      position: relative; z-index: 1;
+    }
+
+    .trial-badge {
+      display: flex; align-items: center; gap: 10px;
+      background: rgba(79,110,247,.08); border: 1px solid rgba(79,110,247,.2);
+      border-radius: 12px; padding: 14px 16px; position: relative; z-index: 1;
+    }
+    .trial-icon { font-size: 22px; }
+    .trial-text strong { display: block; font-size: 13px; font-weight: 700; color: var(--text); }
+    .trial-text span { font-size: 12px; color: var(--muted); }
+
+    /* ─── RIGHT FORM PANEL ─── */
+    .panel-right {
+      flex: 1; padding: 48px 44px 60px;
+      background: rgba(8,14,30,.97);
+      overflow-y: auto;
+    }
+
+    .form-header { margin-bottom: 34px; }
+    .form-title { font-size: 22px; font-weight: 800; letter-spacing: -.3px; margin-bottom: 6px; }
+    .form-subtitle { font-size: 13px; color: var(--muted); line-height: 1.5; }
+
+    /* Section divider */
+    .section-divider {
+      font-size: 11px; color: var(--muted); font-weight: 700; letter-spacing: .08em;
+      text-transform: uppercase; margin: 28px 0 16px;
+      display: flex; align-items: center; gap: 10px;
+    }
+    .section-divider .sdot {
+      width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0;
+    }
+    .section-divider.s-blue .sdot { background: var(--blue); }
+    .section-divider.s-purple .sdot { background: var(--blue2); }
+    .section-divider.s-green .sdot { background: #22c55e; }
+    .section-divider::after {
+      content: ''; flex: 1; height: 1px; background: var(--border);
+    }
 
     /* Fields */
     .field-group { margin-bottom: 16px; }
@@ -67,70 +161,71 @@
       margin-bottom: 7px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase;
     }
     input, select {
-      width: 100%; background: rgba(5,9,26,.8); border: 1px solid var(--border);
+      width: 100%; background: rgba(5,9,26,.9); border: 1px solid var(--border);
       border-radius: 11px; color: var(--text); font-size: 14px;
-      padding: 11px 14px; outline: none; font-family: inherit;
+      padding: 12px 15px; outline: none; font-family: inherit;
       transition: border-color .15s, box-shadow .15s;
     }
     input:focus, select:focus { border-color: var(--blue); box-shadow: 0 0 0 3px rgba(79,110,247,.15); }
-    input::placeholder { color: #2e4060; }
+    input::placeholder { color: #2a3a55; }
     select option { background: #0d1526; }
 
     .row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px; }
     .row .field-group { margin-bottom: 0; }
 
-    /* Section divider */
-    .section-divider {
-      font-size: 11px; color: var(--muted); font-weight: 700; letter-spacing: .08em;
-      text-transform: uppercase; margin: 8px 0 18px;
-      display: flex; align-items: center; gap: 10px;
-    }
-    .section-divider::after {
-      content: ''; flex: 1; height: 1px; background: var(--border);
-    }
-
     /* Provider selector */
     .provider-btns { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 20px; }
     .provider-btn {
-      background: rgba(5,9,26,.8); border: 1px solid var(--border); border-radius: 11px;
-      color: var(--muted); font-size: 13px; font-weight: 600; padding: 11px 6px;
+      background: rgba(5,9,26,.9); border: 1px solid var(--border); border-radius: 12px;
+      color: var(--muted); font-size: 12px; font-weight: 700; padding: 14px 8px;
       cursor: pointer; text-align: center; transition: all .15s; font-family: inherit;
+      letter-spacing: .01em;
     }
-    .provider-btn:hover { border-color: rgba(79,110,247,.4); color: var(--text); }
+    .provider-btn:hover { border-color: rgba(79,110,247,.4); color: var(--text); background: rgba(79,110,247,.05); }
     .provider-btn.active {
       border-color: var(--blue); color: var(--text);
       background: rgba(79,110,247,.1);
-      box-shadow: 0 0 0 1px rgba(79,110,247,.2);
+      box-shadow: 0 0 0 1px rgba(79,110,247,.2), 0 4px 16px rgba(79,110,247,.15);
     }
-    .provider-btn .icon { font-size: 20px; display: block; margin-bottom: 5px; }
+    .provider-btn .icon { font-size: 22px; display: block; margin-bottom: 7px; }
 
     /* IMAP section */
     .imap-section { display: none; }
     .imap-section.visible { display: block; }
 
     .info-box {
-      background: rgba(79,110,247,.07); border: 1px solid rgba(79,110,247,.2); border-radius: 11px;
-      padding: 11px 14px; font-size: 12px; color: #93b4f0; margin-bottom: 16px; line-height: 1.5;
+      background: rgba(79,110,247,.07); border: 1px solid rgba(79,110,247,.2);
+      border-radius: 11px; padding: 12px 15px; font-size: 12px; color: #93b4f0;
+      margin-bottom: 16px; line-height: 1.55; display: flex; align-items: flex-start; gap: 9px;
     }
+    .info-box .info-icon { font-size: 14px; flex-shrink: 0; margin-top: 1px; }
+
     .preset-row { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; }
     .preset-row label { margin: 0; white-space: nowrap; font-size: 11px; text-transform: uppercase; letter-spacing: .04em; }
     .preset-row select { margin: 0; flex: 1; }
 
     /* Submit */
     button.btn-main {
-      width: 100%; background: linear-gradient(135deg, var(--blue), var(--blue2));
-      color: #fff; border: none; border-radius: 11px; padding: 13px;
-      font-size: 15px; font-weight: 700; cursor: pointer; font-family: inherit; margin-top: 4px;
-      box-shadow: 0 4px 20px rgba(79,110,247,.45); transition: all .15s; letter-spacing: .01em;
+      width: 100%;
+      background: linear-gradient(135deg, var(--blue) 0%, var(--blue2) 100%);
+      color: #fff; border: none; border-radius: 12px; padding: 14px;
+      font-size: 15px; font-weight: 700; cursor: pointer; font-family: inherit;
+      box-shadow: 0 4px 24px rgba(79,110,247,.5); transition: all .15s;
+      letter-spacing: .01em; margin-top: 6px; position: relative; overflow: hidden;
     }
-    button.btn-main:hover { transform: translateY(-1px); box-shadow: 0 6px 28px rgba(79,110,247,.55); }
+    button.btn-main::after {
+      content: ''; position: absolute; inset: 0;
+      background: linear-gradient(135deg, rgba(255,255,255,.08), transparent);
+      pointer-events: none;
+    }
+    button.btn-main:hover { transform: translateY(-1px); box-shadow: 0 8px 32px rgba(79,110,247,.6); }
     button.btn-main:active { transform: translateY(0); }
 
     #erreur {
       color: var(--red); font-size: 13px; margin-top: 14px;
       text-align: center; display: none;
       background: rgba(239,68,68,.06); border: 1px solid rgba(239,68,68,.2);
-      border-radius: 8px; padding: 9px 14px;
+      border-radius: 9px; padding: 10px 14px;
     }
 
     .login-link { text-align: center; margin-top: 20px; }
@@ -139,151 +234,227 @@
       transition: color .15s;
     }
     .login-link a:hover { color: var(--blue); }
+    .login-link a span { color: var(--blue); }
+
+    /* ─── MOBILE ─── */
+    @media (max-width: 820px) {
+      .page-wrapper {
+        flex-direction: column; max-width: 480px; margin: 16px;
+        border-radius: 24px;
+      }
+      .panel-left {
+        flex: none; padding: 30px 28px 26px;
+        border-right: none; border-bottom: 1px solid var(--border);
+        position: static;
+      }
+      .left-headline { font-size: 20px; margin: 16px 0 10px; }
+      .left-sub, .check-list, .left-divider, .trial-badge { display: none; }
+      .panel-right { padding: 32px 28px 48px; }
+    }
+    @media (max-width: 500px) {
+      body { align-items: flex-start; }
+      .page-wrapper { margin: 0; border-radius: 0; }
+      .panel-right { padding: 28px 22px 48px; }
+      .panel-left { padding: 26px 22px 20px; }
+      .provider-btns { grid-template-columns: 1fr 1fr 1fr; }
+      .row { grid-template-columns: 1fr; }
+    }
   </style>
 </head>
 <body>
 
   <!-- Background orbs -->
-  <div class="bg-orb" style="width:400px;height:400px;background:radial-gradient(circle,rgba(79,110,247,.2),transparent);top:-100px;left:-140px"></div>
-  <div class="bg-orb" style="width:320px;height:320px;background:radial-gradient(circle,rgba(124,79,248,.16),transparent);bottom:-80px;right:-100px"></div>
+  <div class="bg-orb" style="width:480px;height:480px;background:radial-gradient(circle,rgba(79,110,247,.18),transparent);top:-160px;left:-150px"></div>
+  <div class="bg-orb" style="width:380px;height:380px;background:radial-gradient(circle,rgba(124,79,248,.15),transparent);bottom:-120px;right:-110px"></div>
   <svg class="bg-dots" style="top:0;left:0;width:100%;height:100%" xmlns="http://www.w3.org/2000/svg">
     <defs><pattern id="dgrid" x="0" y="0" width="28" height="28" patternUnits="userSpaceOnUse"><circle cx="1.5" cy="1.5" r="1.5" fill="#4f6ef7"/></pattern></defs>
     <rect width="100%" height="100%" fill="url(#dgrid)"/>
   </svg>
 
-  <div class="card">
-    <div class="logo">
-      <div class="logo-icon">✉️</div>
-      <div><h1>MailPilot</h1></div>
+  <div class="page-wrapper">
+
+    <!-- ── LEFT PANEL ── -->
+    <div class="panel-left">
+      <div class="logo">
+        <div class="logo-icon">✉️</div>
+        <div>
+          <h1>MailPilot</h1>
+          <span class="logo-badge">Pro</span>
+        </div>
+      </div>
+
+      <p class="left-headline">Votre email,<br>piloté par <span>l'IA</span>.</p>
+      <p class="left-sub">Rejoignez les agents immobiliers qui ne passent plus leur temps dans leur boîte mail.</p>
+
+      <div class="check-list">
+        <div class="check-item">
+          <div class="check-dot">✓</div>
+          <span>Réponses automatiques intelligentes 24/7</span>
+        </div>
+        <div class="check-item">
+          <div class="check-dot">✓</div>
+          <span>Agenda et RDV avec confirmations auto</span>
+        </div>
+        <div class="check-item">
+          <div class="check-dot">✓</div>
+          <span>Relances et rappels configurables</span>
+        </div>
+        <div class="check-item">
+          <div class="check-dot">✓</div>
+          <span>Chat IA pour affiner vos brouillons</span>
+        </div>
+        <div class="check-item">
+          <div class="check-dot">✓</div>
+          <span>Compatible Gmail, Outlook, IMAP</span>
+        </div>
+      </div>
+
+      <div class="left-divider"></div>
+
+      <div class="trial-badge">
+        <div class="trial-icon">🚀</div>
+        <div class="trial-text">
+          <strong>Démarrez dès aujourd'hui</strong>
+          <span>Configuration en moins de 5 minutes</span>
+        </div>
+      </div>
     </div>
-    <p class="page-subtitle">Créez votre compte pour gérer votre boîte mail avec l'IA.</p>
 
-    <!-- Infos personnelles -->
-    <div class="section-divider">Votre profil</div>
+    <!-- ── RIGHT PANEL ── -->
+    <div class="panel-right">
+      <div class="form-header">
+        <p class="form-title">Créer mon compte</p>
+        <p class="form-subtitle">Remplissez les informations ci-dessous pour commencer.</p>
+      </div>
 
-    <div class="field-group">
-      <label>Votre nom *</label>
-      <input type="text" id="nom" placeholder="Jean Dupont" />
-    </div>
+      <!-- Votre profil -->
+      <div class="section-divider s-blue"><span class="sdot"></span>Votre profil</div>
 
-    <div class="row">
       <div class="field-group">
-        <label>Agence / Société</label>
-        <input type="text" id="agence" placeholder="Nom de l'agence" />
-      </div>
-      <div class="field-group">
-        <label>Téléphone</label>
-        <input type="text" id="tel" placeholder="06 00 00 00" />
-      </div>
-    </div>
-
-    <div class="field-group">
-      <label>Ville / Zone</label>
-      <input type="text" id="zone" placeholder="ex: Châtellerault" />
-    </div>
-
-    <!-- Choix du fournisseur -->
-    <div class="section-divider">Boîte mail</div>
-
-    <label>Type de boîte mail *</label>
-    <div class="provider-btns" style="margin-top:8px">
-      <button class="provider-btn active" onclick="setProvider('gmail')" id="btn-gmail">
-        <span class="icon">📧</span>Gmail
-      </button>
-      <button class="provider-btn" onclick="setProvider('microsoft')" id="btn-microsoft">
-        <span class="icon">💼</span>Outlook
-      </button>
-      <button class="provider-btn" onclick="setProvider('imap')" id="btn-imap">
-        <span class="icon">🌐</span>Autre
-      </button>
-    </div>
-
-    <!-- Adresse email (commune à tous) -->
-    <div class="field-group">
-      <label>Adresse email à connecter *</label>
-      <input type="email" id="email" placeholder="votre@email.com" autocomplete="email" />
-    </div>
-
-    <!-- Info Microsoft OAuth -->
-    <div class="imap-section" id="microsoft-section">
-      <div class="info-box">
-        💼 Vous serez redirigé vers Microsoft pour autoriser l'accès à votre boîte mail après la création du compte.
-      </div>
-    </div>
-
-    <!-- Section IMAP (Autre uniquement) -->
-    <div class="imap-section" id="imap-section">
-      <div class="section-divider">Connexion IMAP / SMTP</div>
-
-      <div class="info-box">
-        💡 Utilisez un <strong>mot de passe d'application</strong> (pas votre mot de passe habituel).
-      </div>
-
-      <div class="preset-row">
-        <label>Préconfigurer :</label>
-        <select onchange="appliquerPreset(this.value)">
-          <option value="">Choisir un fournisseur...</option>
-          <option value="ovh">OVH Mail</option>
-          <option value="orange">Orange</option>
-          <option value="free">Free</option>
-          <option value="yahoo">Yahoo</option>
-          <option value="sfr">SFR</option>
-        </select>
+        <label>Votre nom *</label>
+        <input type="text" id="nom" placeholder="Jean Dupont" />
       </div>
 
       <div class="row">
         <div class="field-group">
-          <label>Serveur IMAP *</label>
-          <input type="text" id="imap_server" placeholder="imap.exemple.fr" />
+          <label>Agence / Société</label>
+          <input type="text" id="agence" placeholder="Nom de l'agence" />
         </div>
         <div class="field-group">
-          <label>Port IMAP</label>
-          <input type="number" id="imap_port" placeholder="993" value="993" />
-        </div>
-      </div>
-      <div class="row">
-        <div class="field-group">
-          <label>Serveur SMTP *</label>
-          <input type="text" id="smtp_server" placeholder="smtp.exemple.fr" />
-        </div>
-        <div class="field-group">
-          <label>Port SMTP</label>
-          <input type="number" id="smtp_port" placeholder="465" value="465" />
+          <label>Téléphone</label>
+          <input type="text" id="tel" placeholder="06 00 00 00" />
         </div>
       </div>
 
       <div class="field-group">
-        <label>Mot de passe d'application *</label>
-        <input type="password" id="imap_password" placeholder="Mot de passe d'application" />
+        <label>Ville / Zone</label>
+        <input type="text" id="zone" placeholder="ex : Châtellerault" />
+      </div>
+
+      <!-- Boîte mail -->
+      <div class="section-divider s-purple"><span class="sdot"></span>Boîte mail</div>
+
+      <label style="margin-bottom:10px;">Type de boîte mail *</label>
+      <div class="provider-btns">
+        <button class="provider-btn active" onclick="setProvider('gmail')" id="btn-gmail">
+          <span class="icon">📧</span>Gmail
+        </button>
+        <button class="provider-btn" onclick="setProvider('microsoft')" id="btn-microsoft">
+          <span class="icon">💼</span>Outlook
+        </button>
+        <button class="provider-btn" onclick="setProvider('imap')" id="btn-imap">
+          <span class="icon">🌐</span>Autre
+        </button>
+      </div>
+
+      <div class="field-group">
+        <label>Adresse email à connecter *</label>
+        <input type="email" id="email" placeholder="votre@gmail.com" autocomplete="email" />
+      </div>
+
+      <!-- Microsoft info -->
+      <div class="imap-section" id="microsoft-section">
+        <div class="info-box">
+          <span class="info-icon">💼</span>
+          <span>Vous serez redirigé vers Microsoft pour autoriser l'accès à votre boîte mail après la création du compte.</span>
+        </div>
+      </div>
+
+      <!-- IMAP -->
+      <div class="imap-section" id="imap-section">
+        <div class="section-divider s-green"><span class="sdot"></span>Connexion IMAP / SMTP</div>
+
+        <div class="info-box">
+          <span class="info-icon">💡</span>
+          <span>Utilisez un <strong>mot de passe d'application</strong> (pas votre mot de passe habituel).</span>
+        </div>
+
+        <div class="preset-row">
+          <label>Préconfigurer :</label>
+          <select onchange="appliquerPreset(this.value)">
+            <option value="">Choisir un fournisseur...</option>
+            <option value="ovh">OVH Mail</option>
+            <option value="orange">Orange</option>
+            <option value="free">Free</option>
+            <option value="yahoo">Yahoo</option>
+            <option value="sfr">SFR</option>
+          </select>
+        </div>
+
+        <div class="row">
+          <div class="field-group">
+            <label>Serveur IMAP *</label>
+            <input type="text" id="imap_server" placeholder="imap.exemple.fr" />
+          </div>
+          <div class="field-group">
+            <label>Port IMAP</label>
+            <input type="number" id="imap_port" placeholder="993" value="993" />
+          </div>
+        </div>
+        <div class="row">
+          <div class="field-group">
+            <label>Serveur SMTP *</label>
+            <input type="text" id="smtp_server" placeholder="smtp.exemple.fr" />
+          </div>
+          <div class="field-group">
+            <label>Port SMTP</label>
+            <input type="number" id="smtp_port" placeholder="465" value="465" />
+          </div>
+        </div>
+
+        <div class="field-group">
+          <label>Mot de passe d'application *</label>
+          <input type="password" id="imap_password" placeholder="Mot de passe d'application" />
+        </div>
+      </div>
+
+      <!-- Sécurité -->
+      <div class="section-divider s-blue"><span class="sdot"></span>Sécurité</div>
+
+      <div class="field-group">
+        <label>Mot de passe MailPilot * <span style="color:#3a5070;font-weight:500;text-transform:none;letter-spacing:0">(6 caractères min)</span></label>
+        <input type="password" id="pwd" placeholder="Choisissez un mot de passe fort" />
+      </div>
+
+      <div class="field-group">
+        <label>Confirmer le mot de passe *</label>
+        <input type="password" id="pwd2" placeholder="••••••••" onkeydown="if(event.key==='Enter')inscrire()" />
+      </div>
+
+      <button class="btn-main" onclick="inscrire()">Créer mon compte →</button>
+      <p id="erreur"></p>
+
+      <div class="login-link">
+        <a href="/login">Déjà un compte ? <span>Se connecter</span></a>
       </div>
     </div>
 
-    <!-- Mot de passe compte MailPilot -->
-    <div class="section-divider">Sécurité</div>
-
-    <div class="field-group">
-      <label>Mot de passe MailPilot * (6 caractères min)</label>
-      <input type="password" id="pwd" placeholder="Choisissez un mot de passe" />
-    </div>
-
-    <div class="field-group">
-      <label>Confirmer le mot de passe *</label>
-      <input type="password" id="pwd2" placeholder="••••••••" onkeydown="if(event.key==='Enter')inscrire()" />
-    </div>
-
-    <button class="btn-main" onclick="inscrire()">Créer mon compte →</button>
-    <p id="erreur"></p>
-
-    <div class="login-link">
-      <a href="/login">Déjà un compte ? Se connecter</a>
-    </div>
   </div>
 
   <script>
     let provider = 'gmail';
 
     const PRESETS = {
-      outlook: { imap_server: 'imap-mail.outlook.com', imap_port: 993, smtp_server: 'smtp-mail.outlook.com', smtp_port: 587 },
       ovh:     { imap_server: 'imap.mail.ovh.com',     imap_port: 993, smtp_server: 'ssl0.ovh.net',          smtp_port: 465 },
       orange:  { imap_server: 'imap.orange.fr',         imap_port: 993, smtp_server: 'smtp.orange.fr',        smtp_port: 465 },
       free:    { imap_server: 'imap.free.fr',           imap_port: 993, smtp_server: 'smtp.free.fr',          smtp_port: 465 },
@@ -327,6 +498,10 @@
         err.textContent = 'Nom, email et mot de passe sont requis';
         err.style.display = 'block'; return;
       }
+      if (pwd.length < 6) {
+        err.textContent = 'Le mot de passe doit faire au moins 6 caractères';
+        err.style.display = 'block'; return;
+      }
       if (pwd !== pwd2) {
         err.textContent = 'Les mots de passe ne correspondent pas';
         err.style.display = 'block'; return;
@@ -341,7 +516,7 @@
         const smtp_port     = document.getElementById('smtp_port').value.trim();
         const imap_password = document.getElementById('imap_password').value;
         if (!imap_server || !smtp_server || !imap_password) {
-          err.textContent = 'Serveur IMAP, SMTP et mot de passe d\'application sont requis';
+          err.textContent = "Serveur IMAP, SMTP et mot de passe d'application sont requis";
           err.style.display = 'block'; return;
         }
         Object.assign(body, { imap_server, imap_port, smtp_server, smtp_port, imap_password });

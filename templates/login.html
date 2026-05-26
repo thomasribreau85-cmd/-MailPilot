@@ -21,92 +21,170 @@
       background: var(--bg); color: var(--text);
       font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Inter", sans-serif;
       min-height: 100vh; display: flex; align-items: center; justify-content: center;
-      padding: 20px; position: relative; overflow: hidden;
+      position: relative; overflow: hidden;
       background-image:
-        radial-gradient(ellipse 70% 50% at 15% 20%, rgba(79,110,247,.18) 0%, transparent 65%),
-        radial-gradient(ellipse 60% 45% at 85% 80%, rgba(124,79,248,.14) 0%, transparent 65%),
-        radial-gradient(ellipse 50% 40% at 55% 45%, rgba(79,110,247,.07) 0%, transparent 60%);
+        radial-gradient(ellipse 80% 60% at 10% 20%, rgba(79,110,247,.16) 0%, transparent 65%),
+        radial-gradient(ellipse 60% 50% at 90% 80%, rgba(124,79,248,.12) 0%, transparent 65%),
+        radial-gradient(ellipse 50% 40% at 50% 50%, rgba(79,110,247,.05) 0%, transparent 60%);
     }
 
     /* Background decorations */
     .bg-orb {
-      position: fixed; border-radius: 50%; filter: blur(90px);
+      position: fixed; border-radius: 50%; filter: blur(100px);
       pointer-events: none; z-index: 0;
     }
     .bg-dots {
-      position: fixed; pointer-events: none; z-index: 0; opacity: .07;
+      position: fixed; pointer-events: none; z-index: 0; opacity: .055;
     }
 
-    /* Card */
-    .card {
+    /* ─── TWO-COLUMN WRAPPER ─── */
+    .page-wrapper {
       position: relative; z-index: 1;
-      background: rgba(13,21,38,.92); border: 1px solid var(--border);
-      border-radius: 24px; padding: 42px 38px; width: 100%; max-width: 400px;
-      box-shadow: 0 32px 80px rgba(0,0,0,.6), 0 0 0 1px rgba(79,110,247,.06);
+      display: flex; width: 100%; max-width: 960px; min-height: 580px;
+      margin: 30px 20px;
+      border-radius: 28px; overflow: hidden;
+      box-shadow: 0 40px 100px rgba(0,0,0,.7), 0 0 0 1px rgba(79,110,247,.08);
+    }
+
+    /* ─── LEFT BRANDING PANEL ─── */
+    .panel-left {
+      flex: 0 0 420px; padding: 52px 48px;
+      background: linear-gradient(145deg, rgba(13,21,38,.98) 0%, rgba(10,16,34,.96) 100%);
+      border-right: 1px solid var(--border);
+      display: flex; flex-direction: column; justify-content: space-between;
+      position: relative; overflow: hidden;
+    }
+    .panel-left::before {
+      content: '';
+      position: absolute; top: -120px; right: -80px;
+      width: 320px; height: 320px;
+      background: radial-gradient(circle, rgba(79,110,247,.18), transparent 70%);
+      pointer-events: none;
+    }
+    .panel-left::after {
+      content: '';
+      position: absolute; bottom: -100px; left: -60px;
+      width: 280px; height: 280px;
+      background: radial-gradient(circle, rgba(124,79,248,.14), transparent 70%);
+      pointer-events: none;
+    }
+
+    .brand { position: relative; z-index: 1; }
+    .logo { display: flex; align-items: center; gap: 14px; margin-bottom: 28px; }
+    .logo-icon {
+      width: 48px; height: 48px;
+      background: linear-gradient(135deg, var(--blue), var(--blue2));
+      border-radius: 14px; display: flex; align-items: center; justify-content: center;
+      font-size: 22px; flex-shrink: 0;
+      box-shadow: 0 0 32px rgba(79,110,247,.55), 0 4px 16px rgba(0,0,0,.4);
+    }
+    .logo h1 {
+      font-size: 26px; font-weight: 800; letter-spacing: -.5px;
+      background: linear-gradient(90deg, #fff 30%, #a5b8ff);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    }
+    .logo-badge {
+      font-size: 10px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase;
+      color: var(--blue); background: rgba(79,110,247,.12);
+      border: 1px solid rgba(79,110,247,.25); border-radius: 6px;
+      padding: 2px 8px; margin-top: 2px; display: inline-block;
+    }
+
+    .headline {
+      font-size: 28px; font-weight: 800; line-height: 1.25; letter-spacing: -.5px;
+      margin-bottom: 14px; color: #fff;
+    }
+    .headline span {
+      background: linear-gradient(90deg, var(--blue), var(--blue2));
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    }
+    .sub-headline {
+      font-size: 14px; color: var(--muted); line-height: 1.6; margin-bottom: 36px;
+    }
+
+    .features { display: flex; flex-direction: column; gap: 14px; position: relative; z-index: 1; }
+    .feature-item {
+      display: flex; align-items: flex-start; gap: 12px;
+    }
+    .feature-icon {
+      width: 32px; height: 32px; border-radius: 9px; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center; font-size: 14px;
+    }
+    .feature-icon.blue { background: rgba(79,110,247,.15); border: 1px solid rgba(79,110,247,.2); }
+    .feature-icon.purple { background: rgba(124,79,248,.15); border: 1px solid rgba(124,79,248,.2); }
+    .feature-icon.green { background: rgba(34,197,94,.1); border: 1px solid rgba(34,197,94,.2); }
+    .feature-icon.yellow { background: rgba(245,158,11,.1); border: 1px solid rgba(245,158,11,.2); }
+    .feature-text strong { font-size: 13px; font-weight: 700; color: var(--text); display: block; }
+    .feature-text span { font-size: 12px; color: var(--muted); line-height: 1.4; }
+
+    .stats-row {
+      display: flex; gap: 28px; padding-top: 24px;
+      border-top: 1px solid rgba(255,255,255,.05);
+      position: relative; z-index: 1;
+    }
+    .stat strong { display: block; font-size: 22px; font-weight: 800; color: #fff; letter-spacing: -.4px; }
+    .stat span { font-size: 11px; color: var(--muted); font-weight: 500; }
+
+    /* ─── RIGHT FORM PANEL ─── */
+    .panel-right {
+      flex: 1; padding: 52px 48px;
+      background: rgba(8,14,30,.97);
+      display: flex; flex-direction: column; justify-content: center;
       backdrop-filter: blur(20px);
     }
 
-    /* Logo */
-    .logo { display: flex; align-items: center; gap: 14px; margin-bottom: 10px; }
-    .logo-icon {
-      width: 46px; height: 46px; background: linear-gradient(135deg, var(--blue), var(--blue2));
-      border-radius: 13px; display: flex; align-items: center; justify-content: center;
-      font-size: 22px; flex-shrink: 0;
-      box-shadow: 0 0 28px rgba(79,110,247,.5), 0 4px 12px rgba(0,0,0,.4);
-    }
-    .logo h1 {
-      font-size: 24px; font-weight: 800; letter-spacing: -.4px;
-      background: linear-gradient(90deg, #fff 35%, var(--blue));
-      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-    }
+    .form-header { margin-bottom: 36px; }
+    .form-title { font-size: 22px; font-weight: 800; letter-spacing: -.3px; margin-bottom: 6px; }
+    .form-subtitle { font-size: 13px; color: var(--muted); line-height: 1.5; }
 
-    .page-subtitle {
-      font-size: 13px; color: var(--muted); margin-bottom: 32px; line-height: 1.5;
-    }
-
-    /* Divider label */
     .field-group { margin-bottom: 18px; }
     label {
       display: block; font-size: 11px; color: var(--muted);
       margin-bottom: 7px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase;
     }
     input {
-      width: 100%; background: rgba(5,9,26,.8); border: 1px solid var(--border);
+      width: 100%; background: rgba(5,9,26,.9); border: 1px solid var(--border);
       border-radius: 11px; color: var(--text); font-size: 14px;
-      padding: 12px 15px; outline: none; font-family: inherit;
+      padding: 13px 16px; outline: none; font-family: inherit;
       transition: border-color .15s, box-shadow .15s;
     }
     input:focus { border-color: var(--blue); box-shadow: 0 0 0 3px rgba(79,110,247,.15); }
-    input::placeholder { color: #2e4060; }
+    input::placeholder { color: #2a3a55; }
 
     button.btn-main {
-      width: 100%; background: linear-gradient(135deg, var(--blue), var(--blue2));
-      color: #fff; border: none; border-radius: 11px; padding: 13px;
+      width: 100%;
+      background: linear-gradient(135deg, var(--blue) 0%, var(--blue2) 100%);
+      color: #fff; border: none; border-radius: 11px; padding: 14px;
       font-size: 15px; font-weight: 700; cursor: pointer; font-family: inherit;
-      box-shadow: 0 4px 20px rgba(79,110,247,.45); transition: all .15s;
-      letter-spacing: .01em; margin-top: 4px;
+      box-shadow: 0 4px 24px rgba(79,110,247,.5); transition: all .15s;
+      letter-spacing: .01em; margin-top: 4px; position: relative; overflow: hidden;
     }
-    button.btn-main:hover { transform: translateY(-1px); box-shadow: 0 6px 28px rgba(79,110,247,.55); }
+    button.btn-main::after {
+      content: ''; position: absolute; inset: 0;
+      background: linear-gradient(135deg, rgba(255,255,255,.08), transparent);
+      pointer-events: none;
+    }
+    button.btn-main:hover { transform: translateY(-1px); box-shadow: 0 8px 32px rgba(79,110,247,.6); }
     button.btn-main:active { transform: translateY(0); }
 
     .divider {
       display: flex; align-items: center; gap: 12px;
       color: var(--muted); font-size: 11px; font-weight: 600;
-      margin: 22px 0; letter-spacing: .05em;
+      margin: 24px 0; letter-spacing: .05em;
     }
     .divider::before, .divider::after {
       content: ''; flex: 1; height: 1px; background: var(--border);
     }
 
     .btn-register {
-      display: flex; align-items: center; justify-content: center;
+      display: flex; align-items: center; justify-content: center; gap: 8px;
       width: 100%; background: transparent; border: 1px solid var(--border);
-      border-radius: 11px; padding: 12px; font-size: 14px; font-weight: 600;
+      border-radius: 11px; padding: 13px; font-size: 14px; font-weight: 600;
       color: var(--text); text-decoration: none; cursor: pointer;
       font-family: inherit; transition: all .15s; letter-spacing: .01em;
     }
     .btn-register:hover {
-      border-color: rgba(79,110,247,.5); color: var(--blue);
+      border-color: rgba(79,110,247,.45); color: var(--blue);
       background: rgba(79,110,247,.07);
     }
 
@@ -114,55 +192,144 @@
       color: var(--red); font-size: 13px; margin-top: 14px;
       text-align: center; display: none;
       background: rgba(239,68,68,.06); border: 1px solid rgba(239,68,68,.2);
-      border-radius: 8px; padding: 9px 14px;
+      border-radius: 9px; padding: 10px 14px;
     }
 
-    .admin-link { text-align: center; margin-top: 22px; }
+    .admin-link { text-align: center; margin-top: 20px; }
     .admin-link a {
       color: var(--muted); font-size: 11px; text-decoration: none;
       transition: color .15s; letter-spacing: .02em;
     }
     .admin-link a:hover { color: var(--text); }
+
+    /* ─── MOBILE ─── */
+    @media (max-width: 780px) {
+      .page-wrapper {
+        flex-direction: column; max-width: 460px; margin: 16px;
+        min-height: unset; border-radius: 24px;
+      }
+      .panel-left {
+        flex: none; padding: 32px 28px 28px;
+        border-right: none; border-bottom: 1px solid var(--border);
+      }
+      .headline { font-size: 22px; }
+      .sub-headline, .features, .stats-row { display: none; }
+      .logo { margin-bottom: 8px; }
+      .panel-right { padding: 32px 28px; }
+      .form-header { margin-bottom: 24px; }
+    }
+    @media (max-width: 480px) {
+      body { align-items: flex-start; }
+      .page-wrapper { margin: 0; border-radius: 0; min-height: 100vh; }
+      .panel-right { padding: 28px 24px; }
+      .panel-left { padding: 28px 24px 22px; }
+    }
   </style>
 </head>
 <body>
 
   <!-- Background orbs -->
-  <div class="bg-orb" style="width:380px;height:380px;background:radial-gradient(circle,rgba(79,110,247,.22),transparent);top:-80px;left:-120px"></div>
-  <div class="bg-orb" style="width:300px;height:300px;background:radial-gradient(circle,rgba(124,79,248,.18),transparent);bottom:-60px;right:-80px"></div>
+  <div class="bg-orb" style="width:500px;height:500px;background:radial-gradient(circle,rgba(79,110,247,.2),transparent);top:-180px;left:-160px"></div>
+  <div class="bg-orb" style="width:400px;height:400px;background:radial-gradient(circle,rgba(124,79,248,.16),transparent);bottom:-120px;right:-120px"></div>
+  <div class="bg-orb" style="width:260px;height:260px;background:radial-gradient(circle,rgba(79,110,247,.1),transparent);top:50%;left:40%"></div>
   <svg class="bg-dots" style="top:0;left:0;width:100%;height:100%" xmlns="http://www.w3.org/2000/svg">
     <defs><pattern id="dgrid" x="0" y="0" width="28" height="28" patternUnits="userSpaceOnUse"><circle cx="1.5" cy="1.5" r="1.5" fill="#4f6ef7"/></pattern></defs>
     <rect width="100%" height="100%" fill="url(#dgrid)"/>
   </svg>
 
-  <div class="card">
-    <div class="logo">
-      <div class="logo-icon">✉️</div>
-      <div>
-        <h1>MailPilot</h1>
+  <div class="page-wrapper">
+
+    <!-- ── LEFT PANEL ── -->
+    <div class="panel-left">
+      <div class="brand">
+        <div class="logo">
+          <div class="logo-icon">✉️</div>
+          <div>
+            <h1>MailPilot</h1>
+            <span class="logo-badge">Pro</span>
+          </div>
+        </div>
+        <p class="headline">Gérez votre mail<br>avec <span>l'intelligence</span><br>artificielle.</p>
+        <p class="sub-headline">Réponses automatiques, relances, rappels de RDV — tout ce dont votre agence a besoin.</p>
+
+        <div class="features">
+          <div class="feature-item">
+            <div class="feature-icon blue">🤖</div>
+            <div class="feature-text">
+              <strong>Réponses IA automatiques</strong>
+              <span>Classifie et répond à chaque email en quelques secondes</span>
+            </div>
+          </div>
+          <div class="feature-item">
+            <div class="feature-icon purple">📅</div>
+            <div class="feature-text">
+              <strong>Gestion des RDV</strong>
+              <span>Agenda intelligent avec confirmations et rappels auto</span>
+            </div>
+          </div>
+          <div class="feature-item">
+            <div class="feature-icon yellow">🔔</div>
+            <div class="feature-text">
+              <strong>Relances automatiques</strong>
+              <span>Ne laissez plus aucun prospect sans réponse</span>
+            </div>
+          </div>
+          <div class="feature-item">
+            <div class="feature-icon green">💬</div>
+            <div class="feature-text">
+              <strong>Chat IA sur vos emails</strong>
+              <span>Affinez vos brouillons en langage naturel</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="stats-row">
+        <div class="stat">
+          <strong>500+</strong>
+          <span>agents actifs</span>
+        </div>
+        <div class="stat">
+          <strong>99.9%</strong>
+          <span>disponibilité</span>
+        </div>
+        <div class="stat">
+          <strong>24/7</strong>
+          <span>traitement</span>
+        </div>
       </div>
     </div>
-    <p class="page-subtitle">Connectez-vous pour gérer votre boîte mail avec l'IA.</p>
 
-    <div class="field-group">
-      <label>Adresse email</label>
-      <input type="email" id="email" placeholder="votre@email.com" autocomplete="email" />
+    <!-- ── RIGHT PANEL ── -->
+    <div class="panel-right">
+      <div class="form-header">
+        <p class="form-title">Bienvenue 👋</p>
+        <p class="form-subtitle">Connectez-vous à votre espace MailPilot Pro.</p>
+      </div>
+
+      <div class="field-group">
+        <label>Adresse email</label>
+        <input type="email" id="email" placeholder="votre@email.com" autocomplete="email" />
+      </div>
+
+      <div class="field-group">
+        <label>Mot de passe</label>
+        <input type="password" id="pwd" placeholder="••••••••" onkeydown="if(event.key==='Enter')connexion()" />
+      </div>
+
+      <button class="btn-main" onclick="connexion()">Se connecter →</button>
+      <p id="erreur"></p>
+
+      <div class="divider">ou</div>
+      <a class="btn-register" href="/register">
+        <span>✨</span> Créer un compte gratuitement
+      </a>
+
+      <div class="admin-link">
+        <a href="/admin">Accès administrateur</a>
+      </div>
     </div>
 
-    <div class="field-group">
-      <label>Mot de passe</label>
-      <input type="password" id="pwd" placeholder="••••••••" onkeydown="if(event.key==='Enter')connexion()" />
-    </div>
-
-    <button class="btn-main" onclick="connexion()">Se connecter</button>
-    <p id="erreur"></p>
-
-    <div class="divider">ou</div>
-    <a class="btn-register" href="/register">Créer un compte</a>
-
-    <div class="admin-link">
-      <a href="/admin">Accès administrateur</a>
-    </div>
   </div>
 
   <script>

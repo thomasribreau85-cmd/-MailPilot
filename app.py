@@ -5,6 +5,8 @@
 
 import sys
 import os
+# Autoriser OAuth sur HTTP en développement local
+os.environ.setdefault("OAUTHLIB_INSECURE_TRANSPORT", "1")
 import uuid
 import json
 import time
@@ -28,8 +30,37 @@ MS_TOKEN_URL = "https://login.microsoftonline.com/common/oauth2/v2.0/token"
 MS_SCOPES    = "https://graph.microsoft.com/Mail.Read https://graph.microsoft.com/Mail.ReadWrite https://graph.microsoft.com/Mail.Send offline_access"
 
 app = Flask(__name__)
-app.secret_key = os.environ.get("SECRET_KEY", secrets.token_hex(32))
-ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "mailpilot2024")
+
+# ── Secret key stable ─────────────────────────────────────────
+_sk_file = Path(os.environ.get("DATA_DIR", str(Path(__file__).parent))) / ".secret_key"
+if not _sk_file.exists():
+    _sk_file.write_text(secrets.token_hex(32))
+app.secret_key = os.environ.get("SECRET_KEY", _sk_file.read_text().strip())
+
+# ── Session sécurisée ─────────────────────────────────────────
+app.config.update(
+    SESSION_COOKIE_HTTPONLY  = True,    # JS ne peut pas lire le cookie
+    SESSION_COOKIE_SAMESITE  = "Lax",   # Protection CSRF de base
+    SESSION_COOKIE_SECURE    = not os.environ.get("DEV_MODE", "1") == "1",
+    PERMANENT_SESSION_LIFETIME = 86400 * 7,  # 7 jours
+)
+
+# ── Mot de passe admin (hashé) ────────────────────────────────
+ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "Loulou06")
+_admin_hash_file = Path(os.environ.get("DATA_DIR", str(Path(__file__).parent))) / ".admin_hash"
+if not _admin_hash_file.exists():
+    _admin_hash_file.write_text(generate_password_hash(ADMIN_PASSWORD, method="pbkdf2:sha256"))
+ADMIN_PASSWORD_HASH = _admin_hash_file.read_text().strip()
+
+# ── Rate limiting ─────────────────────────────────────────────
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
+limiter = Limiter(
+    app=app,
+    key_func=get_remote_address,
+    default_limits=[],
+    storage_uri="memory://",
+)
 
 from prompts import TOUS_LES_LABELS, LABELS_DEFAUT
 
@@ -294,9 +325,25 @@ def auto_restart_agents():
         print(f"✅ Auto-restart terminé: {restarted} agent(s) relancé(s)")
 
 
+# ── Security headers ──────────────────────────────────────────
+@app.after_request
+def set_security_headers(resp):
+    resp.headers["X-Content-Type-Options"]  = "nosniff"
+    resp.headers["X-Frame-Options"]         = "SAMEORIGIN"
+    resp.headers["X-XSS-Protection"]        = "1; mode=block"
+    resp.headers["Referrer-Policy"]         = "strict-origin-when-cross-origin"
+    resp.headers["Permissions-Policy"]      = "geolocation=(), microphone=(), camera=()"
+    return resp
+
+# ── Rate limit error handler ───────────────────────────────────
+@app.errorhandler(429)
+def trop_de_requetes(e):
+    return jsonify({"ok": False, "message": "Trop de tentatives. Réessayez dans quelques minutes."}), 429
+
 # ── Routes ────────────────────────────────────────────────────
 
 @app.route("/login", methods=["GET", "POST"])
+@limiter.limit("10 per minute; 30 per hour", methods=["POST"])
 def login():
     if request.method == "POST":
         d     = request.json
@@ -307,6 +354,7 @@ def login():
             if get_login_email(c).lower() == email and c.get("password_hash"):
                 if check_password_hash(c["password_hash"], pwd):
                     session["user_id"] = c["id"]
+                    session.permanent = True
                     return jsonify({"ok": True})
         return jsonify({"ok": False, "message": "Email ou mot de passe incorrect"})
     if session.get("admin"):
@@ -317,6 +365,7 @@ def login():
 
 
 @app.route("/register", methods=["GET", "POST"])
+@limiter.limit("5 per minute; 20 per hour", methods=["POST"])
 def register():
     if request.method == "POST":
         d     = request.json
@@ -357,7 +406,7 @@ def register():
         compte = {
             "id":            str(uuid.uuid4())[:8],
             "access_token":  secrets.token_urlsafe(16),
-            "password_hash": generate_password_hash(pwd),
+            "password_hash": generate_password_hash(pwd, method="pbkdf2:sha256"),
             "login_email":   email,
             "nom":           nom,
             "agence":        d.get("agence", ""),
@@ -410,14 +459,38 @@ def logout():
     return redirect("/login")
 
 
+@app.route("/api/change-password/<compte_id>", methods=["POST"])
+def change_password(compte_id):
+    if session.get("user_id") != compte_id:
+        return jsonify({"ok": False, "message": "Non autorisé"}), 403
+    d = request.json
+    ancien = d.get("ancien", "")
+    nouveau = d.get("nouveau", "")
+    if not ancien or not nouveau:
+        return jsonify({"ok": False, "message": "Champs manquants"})
+    if len(nouveau) < 6:
+        return jsonify({"ok": False, "message": "Le nouveau mot de passe doit faire au moins 6 caractères"})
+    data = charger_comptes()
+    for c in data["comptes"]:
+        if c["id"] == compte_id:
+            if not c.get("password_hash") or not check_password_hash(c["password_hash"], ancien):
+                return jsonify({"ok": False, "message": "Ancien mot de passe incorrect"})
+            c["password_hash"] = generate_password_hash(nouveau, method="pbkdf2:sha256")
+            sauver_comptes(data)
+            return jsonify({"ok": True})
+    return jsonify({"ok": False, "message": "Compte introuvable"})
+
+
 # ── Admin ─────────────────────────────────────────────────────
 
 @app.route("/admin", methods=["GET", "POST"])
+@limiter.limit("5 per minute; 15 per hour", methods=["POST"])
 def admin_login():
     if request.method == "POST":
         pwd = request.json.get("password", "")
-        if pwd == ADMIN_PASSWORD:
+        if check_password_hash(ADMIN_PASSWORD_HASH, pwd):
             session["admin"] = True
+            session.permanent = True
             return jsonify({"ok": True})
         return jsonify({"ok": False, "message": "Mot de passe incorrect"})
     if session.get("admin"):
@@ -472,15 +545,17 @@ def ajouter_compte():
         "labels_actifs": LABELS_DEFAUT,
         "intervalle":    d.get("intervalle", "60"),
     }
+    pwd = d.get("password", "")
     compte = {
-        "id":           str(uuid.uuid4())[:8],
-        "access_token": secrets.token_urlsafe(16),
-        "login_email":  email,
-        "nom":          d.get("nom", ""),
-        "agence":       d.get("agence", ""),
-        "tel":          d.get("tel", ""),
-        "zone":         d.get("zone", ""),
-        "boites":       [boite],
+        "id":            str(uuid.uuid4())[:8],
+        "access_token":  secrets.token_urlsafe(16),
+        "login_email":   email,
+        "password_hash": generate_password_hash(pwd, method="pbkdf2:sha256") if pwd else "",
+        "nom":           d.get("nom", ""),
+        "agence":        d.get("agence", ""),
+        "tel":           d.get("tel", ""),
+        "zone":          d.get("zone", ""),
+        "boites":        [boite],
     }
     data = charger_comptes()
     data["comptes"].append(compte)
