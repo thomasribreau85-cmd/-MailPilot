@@ -998,6 +998,18 @@ def traiter_email(service, client_anthropic, email, label_ids):
             if texte_reponse:
                 creer_brouillon(service, email, texte_reponse, categorie)
                 brouillon_cree = True
+                # Enregistrer pour relance intelligente (Gmail uniquement)
+                if os.getenv("RELANCE_INTELLIGENTE_ACTIF", "0") == "1" and email.get("thread_id"):
+                    try:
+                        compte_id, boite_id = _get_compte_boite_ids()
+                        db_module.ajouter_relance(
+                            compte_id, boite_id,
+                            email["id"], email["thread_id"],
+                            email["expediteur"], email["sujet"],
+                        )
+                        logger.info("  → Relance intelligente programmée")
+                    except Exception as e:
+                        logger.warning(f"  ✗ Relance non enregistrée : {e}")
             else:
                 logger.warning("  ✗ Brouillon non créé (réponse vide)")
         except Exception as e:
@@ -1275,6 +1287,121 @@ def envoyer_notification_smtp(sujet, corps):
         logger.error(f"Erreur envoi notification SMTP : {e}")
 
 
+# ============================================================
+# RELANCE INTELLIGENTE
+# ============================================================
+
+def rediger_relance_intelligente(client_anthropic, sujet_orig, expediteur):
+    """Génère un court email de relance pour un client qui n'a pas répondu."""
+    nom   = os.getenv("AGENT_NOM", "l'équipe")
+    agence = os.getenv("AGENT_AGENCE", "")
+    signature = os.getenv("AGENT_SIGNATURE", "").strip()
+
+    prompt = f"""Tu es {nom}{(' chez ' + agence) if agence else ''}.
+Tu as envoyé une réponse il y a quelques jours à un client ({expediteur}) concernant : "{sujet_orig}".
+Le client n'a pas répondu. Rédige un email de relance court et chaleureux (3-4 lignes maximum).
+Règles :
+- Rappelle brièvement l'objet du message
+- Demande si le client a bien reçu ta réponse et si tu peux l'aider
+- Ton professionnel mais humain, pas insistant
+- Commence directement par "Bonjour," sans objet ni préambule
+- Ne signe pas à la fin (la signature sera ajoutée automatiquement)"""
+
+    try:
+        r = client_anthropic.messages.create(
+            model="claude-haiku-4-5",
+            max_tokens=200,
+            messages=[{"role": "user", "content": prompt}],
+        )
+        texte = r.content[0].text.strip()
+        if signature:
+            texte += f"\n\n{signature}"
+        return texte
+    except Exception as e:
+        logger.error(f"Erreur rédaction relance intelligente : {e}")
+        return None
+
+
+def envoyer_relance_intelligente_gmail(service, relance, texte):
+    """Envoie l'email de relance via Gmail dans le thread d'origine."""
+    sujet = relance["sujet"]
+    if not sujet.lower().startswith("re:"):
+        sujet = f"Re: {sujet}"
+
+    msg = MIMEMultipart()
+    msg["To"]      = relance["expediteur"]
+    msg["From"]    = os.getenv("AGENT_EMAIL", "")
+    msg["Subject"] = sujet
+    msg.attach(MIMEText(texte, "plain", "utf-8"))
+
+    raw = base64.urlsafe_b64encode(msg.as_bytes()).decode("utf-8")
+    service.users().messages().send(
+        userId="me",
+        body={"raw": raw, "threadId": relance["thread_id"]},
+    ).execute()
+
+
+def verifier_relances_intelligentes(service, client_anthropic):
+    """
+    Vérifie les brouillons sans réponse et envoie une relance si besoin.
+    Appelé périodiquement depuis la boucle principale (Gmail uniquement).
+    """
+    if os.getenv("RELANCE_INTELLIGENTE_ACTIF", "0") != "1":
+        return
+    if os.getenv("MAIL_PROVIDER", "gmail") != "gmail":
+        return
+
+    jours = int(os.getenv("RELANCE_INTELLIGENTE_JOURS", "3"))
+    compte_id, boite_id = _get_compte_boite_ids()
+    pending = db_module.get_relances_pending(compte_id, boite_id, jours * 86400)
+
+    if not pending:
+        return
+
+    logger.info(f"🔔 Relances intelligentes : {len(pending)} à vérifier…")
+
+    for relance in pending:
+        try:
+            # Vérifier si le client a répondu dans le thread
+            thread = service.users().threads().get(
+                userId="me", id=relance["thread_id"], format="metadata",
+                metadataHeaders=["From", "Date"],
+            ).execute()
+
+            messages = thread.get("messages", [])
+            created_dt = datetime.fromisoformat(relance["created_at"])
+
+            from email.utils import parseaddr
+            expediteur_email = parseaddr(relance["expediteur"])[1].lower()
+
+            client_a_repondu = False
+            for msg in messages:
+                headers = {h["name"]: h["value"]
+                           for h in msg.get("payload", {}).get("headers", [])}
+                sender = parseaddr(headers.get("From", ""))[1].lower()
+                # Date du message en secondes → datetime
+                ts = int(msg.get("internalDate", 0)) / 1000
+                msg_dt = datetime.fromtimestamp(ts)
+                if sender == expediteur_email and msg_dt > created_dt:
+                    client_a_repondu = True
+                    break
+
+            if client_a_repondu:
+                db_module.marquer_relance(relance["id"], "replied")
+                logger.info(f"  ✅ {relance['expediteur']} a répondu — relance annulée")
+            else:
+                texte = rediger_relance_intelligente(client_anthropic, relance["sujet"], relance["expediteur"])
+                if texte:
+                    envoyer_relance_intelligente_gmail(service, relance, texte)
+                    db_module.marquer_relance(relance["id"], "sent")
+                    logger.info(f"  📤 Relance envoyée à {relance['expediteur']}")
+                else:
+                    logger.warning(f"  ✗ Relance non générée pour {relance['expediteur']}")
+
+        except Exception as e:
+            logger.error(f"  ✗ Erreur relance {relance['id']} : {e}")
+
+
 def boucle_principale():
     """
     Boucle infinie qui surveille les emails toutes les N secondes.
@@ -1341,9 +1468,11 @@ def boucle_principale():
 
     logger.info("\n🚀 MailPilot actif ! Surveillance en cours...\n")
 
-    dernier_bilan_date = None
-    bilan_jour  = int(os.getenv("BILAN_JOUR",  "-1"))  # -1=désactivé, 0=lundi … 6=dimanche
-    bilan_heure = int(os.getenv("BILAN_HEURE", "8"))   # heure 0-23
+    dernier_bilan_date     = None
+    bilan_jour             = int(os.getenv("BILAN_JOUR",  "-1"))
+    bilan_heure            = int(os.getenv("BILAN_HEURE", "8"))
+    _cycle_count           = 0          # compteur pour les tâches périodiques
+    _relance_check_interval = max(1, 600 // max(1, int(os.getenv("CHECK_INTERVAL", "60"))))  # ~10 min
 
     # --- Boucle infinie ---
     while True:
@@ -1473,6 +1602,14 @@ def boucle_principale():
 
         except Exception as e:
             logger.error(f"Erreur dans le cycle de vérification : {e}")
+
+        # --- Relances intelligentes (toutes les ~10 min, Gmail uniquement) ---
+        _cycle_count += 1
+        if service and _cycle_count % _relance_check_interval == 0:
+            try:
+                verifier_relances_intelligentes(service, client_anthropic)
+            except Exception as e:
+                logger.error(f"Erreur relances intelligentes : {e}")
 
         logger.info(f"\n⏳ Prochain cycle dans {intervalle} secondes...\n")
         time.sleep(intervalle)

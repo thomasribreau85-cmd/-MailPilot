@@ -145,6 +145,21 @@ CREATE TABLE IF NOT EXISTS settings (
     valeur    TEXT NOT NULL DEFAULT '{}',
     PRIMARY KEY (compte_id, cle)
 );
+
+CREATE TABLE IF NOT EXISTS relances_intelligentes (
+    id          TEXT PRIMARY KEY,
+    compte_id   TEXT NOT NULL,
+    boite_id    TEXT NOT NULL,
+    email_id    TEXT NOT NULL,
+    thread_id   TEXT NOT NULL,
+    expediteur  TEXT NOT NULL,
+    sujet       TEXT NOT NULL,
+    created_at  TEXT NOT NULL,
+    relance_at  TEXT,
+    statut      TEXT NOT NULL DEFAULT 'pending'
+);
+CREATE INDEX IF NOT EXISTS idx_relances_pending
+    ON relances_intelligentes(compte_id, boite_id, statut);
 """
 
 
@@ -545,6 +560,64 @@ def set_setting(compte_id, cle, valeur):
         ON CONFLICT(compte_id,cle) DO UPDATE SET valeur=excluded.valeur
     """, (compte_id, cle, json.dumps(valeur, ensure_ascii=False)))
     _conn().commit()
+
+
+# ══════════════════════════════════════════════════════════════
+# RELANCES INTELLIGENTES
+# ══════════════════════════════════════════════════════════════
+
+import uuid as _uuid
+
+def ajouter_relance(compte_id, boite_id, email_id, thread_id, expediteur, sujet):
+    """Enregistre un email à relancer si le client ne répond pas."""
+    from datetime import datetime
+    # On évite les doublons sur (email_id, statut=pending)
+    existing = _conn().execute(
+        "SELECT id FROM relances_intelligentes WHERE email_id=? AND statut='pending'",
+        (email_id,)
+    ).fetchone()
+    if existing:
+        return existing["id"]
+    rid = str(_uuid.uuid4())
+    _conn().execute("""
+        INSERT INTO relances_intelligentes
+        (id, compte_id, boite_id, email_id, thread_id, expediteur, sujet, created_at, statut)
+        VALUES (?,?,?,?,?,?,?,?,?)
+    """, (rid, compte_id, boite_id, email_id, thread_id, expediteur, sujet,
+          __import__('datetime').datetime.now().isoformat(), 'pending'))
+    _conn().commit()
+    return rid
+
+def get_relances_pending(compte_id, boite_id, older_than_seconds):
+    """Retourne les relances en attente depuis plus de X secondes."""
+    from datetime import datetime, timedelta
+    cutoff = (datetime.now() - timedelta(seconds=older_than_seconds)).isoformat()
+    rows = _conn().execute("""
+        SELECT * FROM relances_intelligentes
+        WHERE compte_id=? AND boite_id=? AND statut='pending' AND created_at < ?
+        ORDER BY created_at
+        LIMIT 20
+    """, (compte_id, boite_id, cutoff)).fetchall()
+    return [dict(r) for r in rows]
+
+def marquer_relance(relance_id, statut):
+    """Met à jour le statut d'une relance (sent / replied / cancelled)."""
+    from datetime import datetime
+    _conn().execute(
+        "UPDATE relances_intelligentes SET statut=?, relance_at=? WHERE id=?",
+        (statut, datetime.now().isoformat(), relance_id)
+    )
+    _conn().commit()
+
+def stats_relances(compte_id, boite_id):
+    """Retourne les compteurs (pending, sent, replied) pour une boîte."""
+    rows = _conn().execute("""
+        SELECT statut, COUNT(*) as n
+        FROM relances_intelligentes
+        WHERE compte_id=? AND boite_id=?
+        GROUP BY statut
+    """, (compte_id, boite_id)).fetchall()
+    return {r["statut"]: r["n"] for r in rows}
 
 
 # ══════════════════════════════════════════════════════════════

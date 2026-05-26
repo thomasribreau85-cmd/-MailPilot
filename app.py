@@ -249,6 +249,11 @@ def _get_absence(compte_id, boite_id):
     return get_setting(compte_id, f"absence_{boite_id}", {"actif": False, "date_retour": "", "message": ""})
 
 
+def _get_relance_intelligente(compte_id):
+    """Retourne la config relance intelligente du compte."""
+    return get_setting(compte_id, "relance_intelligente", {"actif": False, "jours": 3})
+
+
 def _lancer_agent(compte_id, boite_id, c, b, data):
     """Lance le subprocess mailpilot pour une boite donnée."""
     pk       = pkey(compte_id, boite_id)
@@ -273,9 +278,11 @@ def _lancer_agent(compte_id, boite_id, c, b, data):
         "AGENDA_ACTIF":        "1" if c.get("agenda_actif", True) else "0",
         "AGENT_SIGNATURE":     _get_signature_text(compte_id),
         "AGENT_TEMPLATES":     json.dumps(_get_templates(compte_id), ensure_ascii=False),
-        "AGENT_ABSENCE_ACTIF": "1" if _get_absence(compte_id, boite_id).get("actif") else "0",
-        "AGENT_ABSENCE_DATE":  _get_absence(compte_id, boite_id).get("date_retour", ""),
-        "AGENT_ABSENCE_MSG":   _get_absence(compte_id, boite_id).get("message", ""),
+        "AGENT_ABSENCE_ACTIF":         "1" if _get_absence(compte_id, boite_id).get("actif") else "0",
+        "AGENT_ABSENCE_DATE":          _get_absence(compte_id, boite_id).get("date_retour", ""),
+        "AGENT_ABSENCE_MSG":           _get_absence(compte_id, boite_id).get("message", ""),
+        "RELANCE_INTELLIGENTE_ACTIF":  "1" if _get_relance_intelligente(compte_id).get("actif") else "0",
+        "RELANCE_INTELLIGENTE_JOURS":  str(_get_relance_intelligente(compte_id).get("jours", 3)),
         **_nettoyage_env(compte_id),
         "TRANSFERTS_RULES":    "|".join(
             f"{r['categorie']}:{r['to']}"
@@ -1119,6 +1126,36 @@ def sauver_absence(compte_id, boite_id):
     }
     set_setting(compte_id, f"absence_{boite_id}", absence)
     return jsonify({"ok": True, **absence})
+
+# ── Relance intelligente ─────────────────────────────────────
+
+@app.route("/api/relance-intelligente/<compte_id>", methods=["GET"])
+def get_relance_intelligente(compte_id):
+    if not check_access(compte_id):
+        return jsonify({"ok": False}), 403
+    cfg = _get_relance_intelligente(compte_id)
+    # Ajouter les stats globales (toutes boites)
+    data = charger_comptes()
+    c    = trouver_compte(data, compte_id)
+    stats_total = {"pending": 0, "sent": 0, "replied": 0}
+    if c:
+        for b in c.get("boites", []):
+            s = db_module.stats_relances(compte_id, b.get("id", ""))
+            for k in stats_total:
+                stats_total[k] += s.get(k, 0)
+    return jsonify({"ok": True, **cfg, "stats": stats_total})
+
+@app.route("/api/relance-intelligente/<compte_id>", methods=["POST"])
+def sauver_relance_intelligente(compte_id):
+    if not check_access(compte_id):
+        return jsonify({"ok": False}), 403
+    d = request.json or {}
+    cfg = {
+        "actif": bool(d.get("actif", False)),
+        "jours": max(1, min(30, int(d.get("jours", 3)))),
+    }
+    set_setting(compte_id, "relance_intelligente", cfg)
+    return jsonify({"ok": True, **cfg})
 
 # ── Labels ────────────────────────────────────────────────────
 
