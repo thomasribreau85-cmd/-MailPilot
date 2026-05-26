@@ -598,6 +598,18 @@
     /* Legacy stat boxes (still used in stats-bar) */
     .stats-semaine-label { font-size: 11px; color: var(--muted); margin-bottom: 8px; }
 
+    /* ── Langue des réponses ── */
+    .langue-grid { display: grid; grid-template-columns: repeat(5,1fr); gap: 8px; margin-bottom: 18px; }
+    .langue-btn {
+      padding: 10px 4px; border-radius: 10px; border: 1px solid var(--border);
+      background: var(--card2); cursor: pointer; font-family: inherit;
+      text-align: center; transition: all .15s; color: var(--muted); font-size: 11px; font-weight: 600;
+    }
+    .langue-btn .l-flag  { font-size: 22px; display: block; margin-bottom: 4px; line-height: 1; }
+    .langue-btn:hover    { border-color: rgba(79,110,247,.5); color: var(--text); }
+    .langue-btn.active   { border-color: var(--blue); background: rgba(79,110,247,.12); color: var(--text); }
+    .langue-btn.auto-btn { grid-column: span 5; display: flex; align-items: center; justify-content: center; gap: 10px; padding: 11px; }
+
     /* ── Relance intelligente ── */
     .relint-delay-btn {
       padding: 7px 14px; border-radius: 8px; font-size: 12px; font-weight: 600;
@@ -1214,6 +1226,41 @@
 
         <button onclick="sauverRelanceInt()" style="width:100%;padding:9px;background:linear-gradient(135deg,#7c4ff8,#4f6ef7);border:none;border-radius:9px;color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;box-shadow:0 4px 14px rgba(124,79,248,.3)">💾 Enregistrer</button>
         <div id="relint-status" style="font-size:12px;color:var(--green);text-align:center;margin-top:8px;display:none"></div>
+      </div>
+    </div>
+
+    <!-- Langue des réponses -->
+    <div class="param-card full-width" id="card-langue" style="border-color:rgba(6,182,212,.2)">
+      <div style="padding:16px 18px;display:flex;align-items:center;gap:16px;cursor:pointer" onclick="toggleLanguePanel()">
+        <div style="width:38px;height:38px;border-radius:10px;background:rgba(6,182,212,.1);display:flex;align-items:center;justify-content:center;font-size:20px;box-shadow:0 0 0 1px rgba(6,182,212,.2);flex-shrink:0">🌍</div>
+        <div style="flex:1">
+          <div class="param-card-title">Langue des réponses</div>
+          <div class="param-card-sub" id="langue-desc-sub">Détection automatique de la langue du client</div>
+        </div>
+        <div id="langue-badge" style="font-size:11px;font-weight:700;padding:3px 9px;border-radius:6px;background:rgba(6,182,212,.1);color:#22d3ee;border:1px solid rgba(6,182,212,.25);flex-shrink:0">AUTO</div>
+        <span id="langue-chevron" style="color:var(--muted);font-size:20px;transition:.2s;flex-shrink:0">›</span>
+      </div>
+      <div id="langue-panel" style="display:none;border-top:1px solid var(--border);padding:18px 20px">
+        <p style="font-size:12px;color:var(--muted);margin-bottom:16px;line-height:1.5">
+          Choisis dans quelle langue l'IA rédige les brouillons et le Chat IA. En mode <strong style="color:var(--text)">Auto</strong>, elle détecte et répond dans la langue du client.
+        </p>
+        <div class="langue-grid">
+          <button class="langue-btn auto-btn" data-l="auto" onclick="setLangue('auto')">
+            <span style="font-size:20px">🤖</span>
+            <span style="font-size:12px;font-weight:700">Auto-détection <span style="font-weight:400;color:var(--muted)">(répond dans la langue du client)</span></span>
+          </button>
+          <button class="langue-btn" data-l="fr"  onclick="setLangue('fr')"><span class="l-flag">🇫🇷</span>Français</button>
+          <button class="langue-btn" data-l="en"  onclick="setLangue('en')"><span class="l-flag">🇬🇧</span>English</button>
+          <button class="langue-btn" data-l="es"  onclick="setLangue('es')"><span class="l-flag">🇪🇸</span>Español</button>
+          <button class="langue-btn" data-l="de"  onclick="setLangue('de')"><span class="l-flag">🇩🇪</span>Deutsch</button>
+          <button class="langue-btn" data-l="it"  onclick="setLangue('it')"><span class="l-flag">🇮🇹</span>Italiano</button>
+          <button class="langue-btn" data-l="pt"  onclick="setLangue('pt')"><span class="l-flag">🇵🇹</span>Português</button>
+          <button class="langue-btn" data-l="nl"  onclick="setLangue('nl')"><span class="l-flag">🇳🇱</span>Nederlands</button>
+          <button class="langue-btn" data-l="ar"  onclick="setLangue('ar')"><span class="l-flag">🇸🇦</span>العربية</button>
+          <button class="langue-btn" data-l="zh"  onclick="setLangue('zh')"><span class="l-flag">🇨🇳</span>中文</button>
+        </div>
+        <button onclick="sauverLangue()" style="width:100%;padding:9px;background:linear-gradient(135deg,#06b6d4,#0891b2);border:none;border-radius:9px;color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;box-shadow:0 4px 14px rgba(6,182,212,.25)">💾 Enregistrer</button>
+        <div id="langue-status" style="font-size:12px;color:var(--green);text-align:center;margin-top:8px;display:none"></div>
       </div>
     </div>
 
@@ -2384,6 +2431,62 @@
       }
     }
 
+    // ── Langue des réponses ───────────────────────────────────
+    const LANGUE_LABELS = {
+      auto:'Auto', fr:'Français', en:'English', es:'Español',
+      de:'Deutsch', it:'Italiano', pt:'Português', nl:'Nederlands', ar:'العربية', zh:'中文'
+    };
+    let langueActive = 'auto';
+
+    function toggleLanguePanel() {
+      const panel   = document.getElementById('langue-panel');
+      const chevron = document.getElementById('langue-chevron');
+      const open    = panel.style.display === 'none';
+      panel.style.display = open ? 'block' : 'none';
+      chevron.style.transform = open ? 'rotate(90deg)' : '';
+      if (open) chargerLangue();
+    }
+
+    async function chargerLangue() {
+      try {
+        const r = await fetch(`/api/langue/${COMPTE_ID}`);
+        const j = await r.json();
+        if (j.ok) setLangue(j.langue || 'auto');
+      } catch(e) {}
+    }
+
+    function setLangue(code) {
+      langueActive = code;
+      document.querySelectorAll('.langue-btn').forEach(b =>
+        b.classList.toggle('active', b.dataset.l === code)
+      );
+      const lbl = LANGUE_LABELS[code] || 'Auto';
+      document.getElementById('langue-badge').textContent = lbl.toUpperCase();
+      document.getElementById('langue-desc-sub').textContent =
+        code === 'auto'
+          ? 'Détection automatique de la langue du client'
+          : `Réponses toujours en ${lbl}`;
+    }
+
+    async function sauverLangue() {
+      const st = document.getElementById('langue-status');
+      try {
+        const r = await fetch(`/api/langue/${COMPTE_ID}`, {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({ langue: langueActive }),
+        });
+        const j = await r.json();
+        if (j.ok) {
+          st.textContent = '✅ Langue enregistrée';
+          st.style.display = 'block';
+          setTimeout(() => st.style.display = 'none', 3000);
+          const lbl = LANGUE_LABELS[langueActive] || 'Auto';
+          toast(langueActive === 'auto' ? '🌍 Langue : Auto-détection' : `🌍 Langue : ${lbl}`);
+        }
+      } catch(e) { toast('⚠️ Erreur réseau'); }
+    }
+
     // ── Relance intelligente ──────────────────────────────────
     let relintJours = 3;
 
@@ -3284,6 +3387,7 @@
     chargerRappel();
     chargerSignature();
     chargerTemplates();
+    chargerLangue();
     rafraichir().then(() => {
       chargerStats();
       chargerToutesAbsences();

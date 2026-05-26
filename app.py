@@ -254,6 +254,14 @@ def _get_relance_intelligente(compte_id):
     return get_setting(compte_id, "relance_intelligente", {"actif": False, "jours": 3})
 
 
+LANGUES_VALIDES = {"auto", "fr", "en", "es", "de", "it", "pt", "nl", "ar", "zh"}
+
+def _get_langue(compte_id):
+    """Retourne la langue de réponse configurée ('auto' par défaut)."""
+    l = get_setting(compte_id, "langue_reponse", "auto")
+    return l if l in LANGUES_VALIDES else "auto"
+
+
 def _lancer_agent(compte_id, boite_id, c, b, data):
     """Lance le subprocess mailpilot pour une boite donnée."""
     pk       = pkey(compte_id, boite_id)
@@ -283,6 +291,7 @@ def _lancer_agent(compte_id, boite_id, c, b, data):
         "AGENT_ABSENCE_MSG":           _get_absence(compte_id, boite_id).get("message", ""),
         "RELANCE_INTELLIGENTE_ACTIF":  "1" if _get_relance_intelligente(compte_id).get("actif") else "0",
         "RELANCE_INTELLIGENTE_JOURS":  str(_get_relance_intelligente(compte_id).get("jours", 3)),
+        "AGENT_LANGUE":                _get_langue(compte_id),
         **_nettoyage_env(compte_id),
         "TRANSFERTS_RULES":    "|".join(
             f"{r['categorie']}:{r['to']}"
@@ -1157,6 +1166,24 @@ def sauver_relance_intelligente(compte_id):
     set_setting(compte_id, "relance_intelligente", cfg)
     return jsonify({"ok": True, **cfg})
 
+# ── Langue de réponse ────────────────────────────────────────
+
+@app.route("/api/langue/<compte_id>", methods=["GET"])
+def get_langue(compte_id):
+    if not check_access(compte_id):
+        return jsonify({"ok": False}), 403
+    return jsonify({"ok": True, "langue": _get_langue(compte_id)})
+
+@app.route("/api/langue/<compte_id>", methods=["POST"])
+def sauver_langue(compte_id):
+    if not check_access(compte_id):
+        return jsonify({"ok": False}), 403
+    langue = str((request.json or {}).get("langue", "auto")).lower().strip()
+    if langue not in LANGUES_VALIDES:
+        return jsonify({"ok": False, "message": "Langue non supportée"}), 400
+    set_setting(compte_id, "langue_reponse", langue)
+    return jsonify({"ok": True, "langue": langue})
+
 # ── Labels ────────────────────────────────────────────────────
 
 @app.route("/labels/<compte_id>/<boite_id>", methods=["GET", "POST"])
@@ -1538,7 +1565,23 @@ def chat_email(compte_id, boite_id):
 ---""" if signature else ""
 
     secteur_txt = f" ({agent_zone})" if agent_zone else ""
+    langue_cfg  = _get_langue(compte_id)
+    _LANGUE_INSTRUCTIONS = {
+        "auto": "Détecte la langue de l'email reçu et réponds dans cette même langue.",
+        "fr":   "Réponds toujours en français.",
+        "en":   "Always respond in English.",
+        "es":   "Responde siempre en español.",
+        "de":   "Antworte immer auf Deutsch.",
+        "it":   "Rispondi sempre in italiano.",
+        "pt":   "Responda sempre em português.",
+        "nl":   "Antwoord altijd in het Nederlands.",
+        "ar":   "أجب دائمًا باللغة العربية.",
+        "zh":   "始终用中文回复。",
+    }
+    langue_instr = _LANGUE_INSTRUCTIONS.get(langue_cfg, _LANGUE_INSTRUCTIONS["auto"])
+
     prompt = f"""Tu es l'assistant email de {agent_nom}{(' — ' + agent_agence) if agent_agence else ''}{secteur_txt}.
+{langue_instr}
 
 Voici l'email reçu d'un client :
 ---

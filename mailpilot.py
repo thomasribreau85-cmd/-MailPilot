@@ -346,6 +346,23 @@ def rediger_reponse(client_anthropic, email, categorie):
     if instructions:
         prompt += f"\n\n--- CONSIGNES PERSONNALISÉES (à respecter impérativement) ---\n{instructions}\n---"
 
+    # Instruction de langue
+    _LANGUE_INSTRUCTIONS = {
+        "auto": "Détecte la langue de l'email reçu et réponds dans cette même langue.",
+        "fr":   "Réponds toujours en français.",
+        "en":   "Always respond in English.",
+        "es":   "Responde siempre en español.",
+        "de":   "Antworte immer auf Deutsch.",
+        "it":   "Rispondi sempre in italiano.",
+        "pt":   "Responda sempre em português.",
+        "nl":   "Antwoord altijd in het Nederlands.",
+        "ar":   "أجب دائمًا باللغة العربية.",
+        "zh":   "始终用中文回复。",
+    }
+    langue = os.getenv("AGENT_LANGUE", "auto")
+    langue_instr = _LANGUE_INSTRUCTIONS.get(langue, _LANGUE_INSTRUCTIONS["auto"])
+    prompt += f"\n\n--- LANGUE ---\n{langue_instr}\n---"
+
     # Modèle de réponse pour cette catégorie (suggestion, pas copie exacte)
     templates_raw = os.getenv("AGENT_TEMPLATES", "")
     if templates_raw:
