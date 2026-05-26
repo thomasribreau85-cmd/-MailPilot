@@ -523,6 +523,36 @@ def _stats_paths():
         os.path.join(stats_dir, f"stats_hist_{compte_id}.json"),
     )
 
+def sauver_email_recent(email, categorie, brouillon):
+    """Persiste l'email traité + son brouillon IA dans emails_recents_{pk}.json."""
+    stats_dir = os.getenv("STATS_DIR", os.path.dirname(os.path.abspath(__file__)))
+    pk        = os.getenv("COMPTE_ID", "default")
+    path      = os.path.join(stats_dir, f"emails_recents_{pk}.json")
+    try:
+        liste = json.loads(open(path).read()) if os.path.exists(path) else []
+    except Exception:
+        liste = []
+    # Corps tronqué à 2000 chars pour éviter des fichiers trop lourds
+    corps_court = (email.get("corps") or "")[:2000]
+    entree = {
+        "id":          email.get("id", str(uuid.uuid4())[:8]),
+        "sujet":       email.get("sujet", ""),
+        "expediteur":  email.get("expediteur", ""),
+        "corps":       corps_court,
+        "categorie":   categorie,
+        "brouillon":   brouillon or "",
+        "traite_at":   datetime.now().isoformat(),
+    }
+    # Dédoublonner sur l'id email, mettre le plus récent en premier
+    liste = [e for e in liste if e.get("id") != entree["id"]]
+    liste.insert(0, entree)
+    liste = liste[:30]  # garder max 30
+    try:
+        with open(path, "w", encoding="utf-8") as f:
+            json.dump(liste, f, ensure_ascii=False, indent=2)
+    except Exception as ex:
+        logger.warning(f"Impossible de sauver emails_recents: {ex}")
+
 def charger_stats_semaine():
     """Charge les stats de la semaine courante."""
     stats_file, _ = _stats_paths()
@@ -976,9 +1006,10 @@ def traiter_email(service, client_anthropic, email, label_ids):
         logger.error(f"  ✗ Erreur label : {e}")
 
     # --- Étape 3 : Rédaction du brouillon (sauf INUTILE) ---
+    texte_reponse = ""
     if categorie != "INUTILE":
         try:
-            texte_reponse = rediger_reponse(client_anthropic, email, categorie)
+            texte_reponse = rediger_reponse(client_anthropic, email, categorie) or ""
             if texte_reponse:
                 creer_brouillon(service, email, texte_reponse, categorie)
                 brouillon_cree = True
@@ -996,7 +1027,7 @@ def traiter_email(service, client_anthropic, email, label_ids):
     except Exception as e:
         logger.error(f"  ✗ Erreur marquage lu : {e}")
 
-    return {"categorie": categorie, "brouillon_cree": brouillon_cree}
+    return {"categorie": categorie, "brouillon_cree": brouillon_cree, "brouillon_texte": texte_reponse}
 
 
 # ============================================================
@@ -1409,11 +1440,12 @@ def boucle_principale():
                             appliquer_label_microsoft(em["id"], categorie)
                             marquer_comme_lu_microsoft(em["id"])
                             brouillon_cree = False
+                            texte_ms = ""
                             if categorie != "INUTILE":
-                                texte = rediger_reponse(client_anthropic, em, categorie)
-                                if texte:
-                                    brouillon_cree = creer_brouillon_microsoft(em, texte)
-                            resultat = {"categorie": categorie, "brouillon_cree": brouillon_cree}
+                                texte_ms = rediger_reponse(client_anthropic, em, categorie) or ""
+                                if texte_ms:
+                                    brouillon_cree = creer_brouillon_microsoft(em, texte_ms)
+                            resultat = {"categorie": categorie, "brouillon_cree": brouillon_cree, "brouillon_texte": texte_ms}
                         else:
                             # --- Pipeline IMAP ---
                             categorie = classifier_email(client_anthropic, em)
@@ -1430,11 +1462,12 @@ def boucle_principale():
                             appliquer_label_imap(imap_conn, em["uid_imap"], categorie)
                             marquer_comme_lu_imap(imap_conn, em["uid_imap"])
                             brouillon_cree = False
+                            texte_imap = ""
                             if categorie != "INUTILE":
-                                texte = rediger_reponse(client_anthropic, em, categorie)
-                                if texte:
-                                    brouillon_cree = creer_brouillon_imap(imap_conn, em, texte)
-                            resultat = {"categorie": categorie, "brouillon_cree": brouillon_cree}
+                                texte_imap = rediger_reponse(client_anthropic, em, categorie) or ""
+                                if texte_imap:
+                                    brouillon_cree = creer_brouillon_imap(imap_conn, em, texte_imap)
+                            resultat = {"categorie": categorie, "brouillon_cree": brouillon_cree, "brouillon_texte": texte_imap}
 
                         if resultat:
                             stats["traites"] += 1
@@ -1442,6 +1475,11 @@ def boucle_principale():
                             stats["categories"][cat] = stats["categories"].get(cat, 0) + 1
                             if resultat.get("brouillon_cree"):
                                 stats["brouillons"] += 1
+                            # Persister l'email + brouillon pour le chat IA
+                            try:
+                                sauver_email_recent(em, cat, resultat.get("brouillon_texte", ""))
+                            except Exception:
+                                pass
                     except Exception as e:
                         logger.error(f"  ✗ Erreur sur '{em.get('sujet','?')}' : {e}")
 

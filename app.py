@@ -14,6 +14,7 @@ import subprocess
 from pathlib import Path
 from urllib.parse import urlencode
 
+import anthropic as anthropic_sdk
 import requests as http_requests
 from flask import Flask, render_template, request, jsonify, redirect, session
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -1280,6 +1281,99 @@ def supprimer_rdv(compte_id, rdv_id):
     rdvs = [r for r in rdvs if r["id"] != rdv_id]
     sauver_agenda(compte_id, rdvs)
     return jsonify({"ok": True})
+
+
+# ══════════════════════════════════════════════════════════════
+# CHAT IA EMAIL — Emails récents + rafraîchissement brouillon
+# ══════════════════════════════════════════════════════════════
+
+def emails_recents_file(compte_id, boite_id):
+    return DATA_DIR / f"emails_recents_{pkey(compte_id, boite_id)}.json"
+
+@app.route("/api/emails-recents/<compte_id>/<boite_id>")
+def get_emails_recents(compte_id, boite_id):
+    if not check_access(compte_id):
+        return jsonify({"ok": False}), 403
+    f = emails_recents_file(compte_id, boite_id)
+    if f.exists():
+        try:
+            return jsonify({"ok": True, "emails": json.loads(f.read_text())})
+        except Exception:
+            pass
+    return jsonify({"ok": True, "emails": []})
+
+@app.route("/api/chat-email/<compte_id>/<boite_id>", methods=["POST"])
+def chat_email(compte_id, boite_id):
+    if not check_access(compte_id):
+        return jsonify({"ok": False}), 403
+    d = request.json or {}
+    instruction     = d.get("instruction", "").strip()
+    email_sujet     = d.get("email_sujet", "")
+    email_expediteur= d.get("email_expediteur", "")
+    email_corps     = d.get("email_corps", "")
+    brouillon_actuel= d.get("brouillon_actuel", "")
+    if not instruction:
+        return jsonify({"ok": False, "message": "Instruction manquante"}), 400
+
+    data = charger_comptes()
+    c    = trouver_compte(data, compte_id)
+    if not c:
+        return jsonify({"ok": False, "message": "Compte introuvable"}), 404
+    api_key = data.get("api_key", "")
+    if not api_key:
+        return jsonify({"ok": False, "message": "Clé API Anthropic manquante"}), 400
+
+    agent_nom    = c.get("nom", "L'agent")
+    agent_agence = c.get("agence", "")
+    agent_tel    = c.get("tel", "")
+    agent_zone   = c.get("zone", "")
+
+    prompt = f"""Tu es l'assistant email de {agent_nom}{(' (' + agent_agence + ')') if agent_agence else ''}, agent immobilier{(' spécialisé ' + agent_zone) if agent_zone else ''}.
+
+Voici l'email reçu d'un client :
+---
+SUJET : {email_sujet}
+EXPÉDITEUR : {email_expediteur}
+
+{email_corps}
+---
+
+Voici le brouillon de réponse actuel généré par l'IA :
+---
+{brouillon_actuel}
+---
+
+INSTRUCTION DE L'AGENT : {instruction}
+
+Réécris uniquement le corps de la réponse email en appliquant l'instruction ci-dessus. Conserve un ton professionnel et courtois. Réponds directement avec le texte de l'email, sans commentaire ni introduction."""
+
+    try:
+        client_ai = anthropic_sdk.Anthropic(api_key=api_key)
+        msg = client_ai.messages.create(
+            model="claude-opus-4-7",
+            max_tokens=800,
+            messages=[{"role": "user", "content": prompt}],
+        )
+        nouveau_brouillon = msg.content[0].text.strip()
+
+        # Mettre à jour l'email récent avec le nouveau brouillon
+        f = emails_recents_file(compte_id, boite_id)
+        if f.exists():
+            try:
+                emails = json.loads(f.read_text())
+                email_id = d.get("email_id")
+                for em in emails:
+                    if em.get("id") == email_id:
+                        em["brouillon"] = nouveau_brouillon
+                        em["brouillon_modifie"] = True
+                        break
+                f.write_text(json.dumps(emails, indent=2, ensure_ascii=False))
+            except Exception:
+                pass
+
+        return jsonify({"ok": True, "brouillon": nouveau_brouillon})
+    except Exception as e:
+        return jsonify({"ok": False, "message": str(e)}), 500
 
 
 # ══════════════════════════════════════════════════════════════

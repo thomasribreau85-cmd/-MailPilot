@@ -360,6 +360,99 @@
     .modal h2 { font-size: 17px; font-weight: 700; margin-bottom: 6px; }
     .modal p.subtitle { font-size: 12px; color: var(--muted); margin-bottom: 20px; }
 
+    /* ── Chat IA Email ── */
+    .chat-overlay {
+      display: none; position: fixed; inset: 0; background: rgba(0,0,0,.7);
+      z-index: 1000; align-items: center; justify-content: center; padding: 16px;
+    }
+    .chat-overlay.open { display: flex; }
+    .chat-modal {
+      background: #0a0f1e; border: 1px solid #1a2c47;
+      border-radius: 18px; width: 100%; max-width: 900px; height: 88vh;
+      display: flex; flex-direction: column; overflow: hidden;
+      box-shadow: 0 24px 80px rgba(0,0,0,.7);
+    }
+    .chat-header {
+      padding: 16px 20px; border-bottom: 1px solid #1a2c47;
+      display: flex; align-items: center; gap: 12px; flex-shrink: 0;
+    }
+    .chat-header h2 { font-size: 15px; font-weight: 700; flex: 1; }
+    .chat-body { display: flex; flex: 1; overflow: hidden; }
+    /* Colonne gauche — liste emails */
+    .chat-email-list {
+      width: 240px; flex-shrink: 0; border-right: 1px solid #1a2c47;
+      overflow-y: auto; display: flex; flex-direction: column;
+    }
+    .chat-email-item {
+      padding: 12px 14px; border-bottom: 1px solid #111d35; cursor: pointer;
+      transition: background .1s;
+    }
+    .chat-email-item:hover { background: rgba(79,110,247,.06); }
+    .chat-email-item.active { background: rgba(79,110,247,.12); border-left: 2px solid var(--blue); }
+    .chat-email-item-sujet { font-size: 12px; font-weight: 600; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .chat-email-item-from  { font-size: 10px; color: var(--muted); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .chat-email-item-cat   { font-size: 10px; margin-top: 4px; }
+    /* Colonne droite — contenu */
+    .chat-content { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+    .chat-panels { flex: 1; display: grid; grid-template-columns: 1fr 1fr; gap: 0; overflow: hidden; }
+    .chat-panel { display: flex; flex-direction: column; overflow: hidden; border-right: 1px solid #1a2c47; }
+    .chat-panel:last-child { border-right: none; }
+    .chat-panel-header {
+      padding: 10px 14px; font-size: 11px; font-weight: 700; color: var(--muted);
+      text-transform: uppercase; letter-spacing: .05em; border-bottom: 1px solid #1a2c47;
+      flex-shrink: 0; display: flex; align-items: center; gap: 8px;
+    }
+    .chat-panel-content { flex: 1; overflow-y: auto; padding: 14px; font-size: 12px; color: #94a3b8; line-height: 1.6; white-space: pre-wrap; }
+    .chat-draft-area {
+      flex: 1; overflow-y: auto; padding: 14px; font-size: 12px; color: var(--text);
+      line-height: 1.6; background: transparent; border: none; outline: none; resize: none;
+      font-family: -apple-system, BlinkMacSystemFont, sans-serif; width: 100%;
+    }
+    /* Zone de chat */
+    .chat-input-zone {
+      border-top: 1px solid #1a2c47; padding: 14px 16px; flex-shrink: 0;
+      background: #060b18;
+    }
+    .chat-history { max-height: 110px; overflow-y: auto; margin-bottom: 10px; display: flex; flex-direction: column; gap: 6px; }
+    .chat-msg-user {
+      align-self: flex-end; background: rgba(79,110,247,.15); border: 1px solid rgba(79,110,247,.25);
+      border-radius: 10px 10px 2px 10px; padding: 6px 11px; font-size: 12px; color: #93b4f0; max-width: 80%;
+    }
+    .chat-msg-ai {
+      align-self: flex-start; background: rgba(34,197,94,.08); border: 1px solid rgba(34,197,94,.2);
+      border-radius: 10px 10px 10px 2px; padding: 6px 11px; font-size: 12px; color: #86efac; max-width: 80%;
+    }
+    .chat-input-row { display: flex; gap: 8px; }
+    .chat-input {
+      flex: 1; background: rgba(5,9,26,.8); border: 1px solid #1a2c47; border-radius: 10px;
+      color: var(--text); font-size: 13px; padding: 10px 14px; outline: none; font-family: inherit;
+      transition: border-color .15s;
+    }
+    .chat-input:focus { border-color: var(--blue); }
+    .chat-send-btn {
+      background: linear-gradient(135deg, var(--blue), var(--blue2)); border: none;
+      border-radius: 10px; padding: 10px 18px; color: #fff; font-size: 13px; font-weight: 700;
+      cursor: pointer; font-family: inherit; white-space: nowrap; transition: opacity .15s;
+    }
+    .chat-send-btn:disabled { opacity: .5; cursor: not-allowed; }
+    .chat-copy-btn {
+      background: transparent; border: 1px solid #1a2c47; border-radius: 8px;
+      padding: 4px 10px; color: var(--muted); font-size: 11px; cursor: pointer;
+      font-family: inherit; transition: all .15s; margin-left: auto;
+    }
+    .chat-copy-btn:hover { border-color: var(--blue); color: var(--blue); }
+    .chat-empty {
+      flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
+      color: var(--muted); font-size: 13px; gap: 10px; padding: 40px;
+    }
+    .chat-empty-icon { font-size: 40px; }
+    @media (max-width: 700px) {
+      .chat-modal { height: 95vh; max-width: 100%; border-radius: 14px; }
+      .chat-email-list { width: 160px; }
+      .chat-panels { grid-template-columns: 1fr; grid-template-rows: 1fr 1fr; }
+      .chat-panel { border-right: none; border-bottom: 1px solid #1a2c47; }
+    }
+
     /* Labels */
     .label-grid { display: flex; flex-direction: column; gap: 8px; }
     .label-item {
@@ -928,6 +1021,54 @@
 
   </div><!-- /page-wrap -->
 
+  <!-- ── Chat IA Email ── -->
+  <div class="chat-overlay" id="chat-overlay" onclick="fermerChatEmail(event)">
+    <div class="chat-modal" onclick="event.stopPropagation()">
+      <div class="chat-header">
+        <div style="width:32px;height:32px;border-radius:8px;background:linear-gradient(135deg,var(--blue),var(--blue2));display:flex;align-items:center;justify-content:center;font-size:16px;">💬</div>
+        <h2>Chat IA — Emails récents</h2>
+        <div id="chat-boite-label" style="font-size:11px;color:var(--muted);background:rgba(79,110,247,.1);border:1px solid rgba(79,110,247,.2);border-radius:6px;padding:3px 9px;"></div>
+        <button onclick="fermerChatEmail()" style="background:none;border:none;color:var(--muted);font-size:20px;cursor:pointer;padding:4px 8px;margin-left:8px">✕</button>
+      </div>
+      <div class="chat-body">
+        <!-- Liste emails -->
+        <div class="chat-email-list" id="chat-email-list">
+          <div class="chat-empty"><div class="chat-empty-icon">📭</div><div>Chargement…</div></div>
+        </div>
+        <!-- Contenu + chat -->
+        <div class="chat-content" id="chat-content">
+          <div class="chat-empty" id="chat-empty-state">
+            <div class="chat-empty-icon">👈</div>
+            <div>Sélectionne un email dans la liste</div>
+            <div style="font-size:11px;color:#475569">Les emails traités par l'IA apparaissent ici</div>
+          </div>
+          <div id="chat-active" style="display:none;flex:1;flex-direction:column;overflow:hidden;display:none">
+            <div class="chat-panels">
+              <div class="chat-panel">
+                <div class="chat-panel-header">📧 Email reçu</div>
+                <div class="chat-panel-content" id="chat-email-corps"></div>
+              </div>
+              <div class="chat-panel">
+                <div class="chat-panel-header">
+                  ✍️ Brouillon IA
+                  <button class="chat-copy-btn" onclick="copierBrouillon()">📋 Copier</button>
+                </div>
+                <textarea class="chat-draft-area" id="chat-brouillon-area" placeholder="Le brouillon IA apparaîtra ici…"></textarea>
+              </div>
+            </div>
+            <div class="chat-input-zone">
+              <div class="chat-history" id="chat-history"></div>
+              <div class="chat-input-row">
+                <input class="chat-input" id="chat-input" placeholder='Ex : "Sois plus ferme sur le prix" ou "Ajoute qu\'on a d\'autres visites"' onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();envoyerChat()}" />
+                <button class="chat-send-btn" id="chat-send-btn" onclick="envoyerChat()">Envoyer ↵</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- ── Wizard Onboarding ── -->
   <div class="wizard-overlay" id="wizard-overlay">
     <div class="wizard-box">
@@ -1326,6 +1467,7 @@
           </div>
           <div class="status-bar ${statusCls}" id="status-${id}">${statusTxt}</div>
           <div class="boite-actions">
+            <button class="action-btn" onclick="ouvrirChatEmail('${id}')">💬 Chat IA</button>
             <button class="action-btn" onclick="ouvrirLabels('${id}')">⚙️ Catégories</button>
             <button class="action-btn" onclick="ouvrirStats('${id}', '${email}')">📊 Stats</button>
             <button class="action-btn" onclick="ouvrirBilan('${id}')">⏰ Bilan hebdo</button>
@@ -2189,6 +2331,133 @@
       fermerAjoutBoite();
       toast('✓ Boîte ajoutée !');
       rafraichir();
+    }
+
+    // ── Chat IA Email ─────────────────────────────────────────
+    const CAT_LABELS = {
+      URGENT:'🔴 Urgent', PROSPECT:'🔵 Prospect', VISITE:'🔵 Visite',
+      OFFRE:'🟢 Offre', RENDEZ_VOUS:'🔵 RDV', DEVIS:'🟠 Devis',
+      ADMIN:'🟣 Admin', INFO:'🟡 Info', INUTILE:'⚫ Inutile',
+    };
+    let chatBoiteId     = null;
+    let chatEmailActif  = null;
+    let chatEmails      = [];
+
+    async function ouvrirChatEmail(boiteId) {
+      chatBoiteId = boiteId;
+      const boite = boitesState[boiteId] || {};
+      document.getElementById('chat-boite-label').textContent = boite.email || boiteId;
+      document.getElementById('chat-overlay').classList.add('open');
+      document.getElementById('chat-empty-state').style.display = 'flex';
+      document.getElementById('chat-active').style.display = 'none';
+      chatEmailActif = null;
+      await chargerListeEmails();
+    }
+
+    function fermerChatEmail(e) {
+      if (e && e.target !== document.getElementById('chat-overlay')) return;
+      document.getElementById('chat-overlay').classList.remove('open');
+    }
+
+    async function chargerListeEmails() {
+      const liste = document.getElementById('chat-email-list');
+      liste.innerHTML = '<div class="chat-empty"><div class="chat-empty-icon" style="font-size:24px">⏳</div><div>Chargement…</div></div>';
+      try {
+        const r = await fetch(`/api/emails-recents/${COMPTE_ID}/${chatBoiteId}`);
+        const j = await r.json();
+        chatEmails = j.emails || [];
+        if (!chatEmails.length) {
+          liste.innerHTML = '<div class="chat-empty" style="padding:30px 14px"><div class="chat-empty-icon">📭</div><div style="text-align:center">Aucun email traité<br><span style="font-size:11px;color:#475569">Lance l\'agent pour traiter des emails</span></div></div>';
+          return;
+        }
+        liste.innerHTML = chatEmails.map((em, i) => `
+          <div class="chat-email-item" id="chat-item-${i}" onclick="selectionnerEmail(${i})">
+            <div class="chat-email-item-sujet">${escHtml(em.sujet || '(sans sujet)')}</div>
+            <div class="chat-email-item-from">${escHtml(em.expediteur || '')}</div>
+            <div class="chat-email-item-cat">${CAT_LABELS[em.categorie] || em.categorie || ''} ${em.brouillon_modifie ? '✏️' : ''}</div>
+          </div>`).join('');
+      } catch(e) {
+        liste.innerHTML = '<div class="chat-empty">Erreur de chargement</div>';
+      }
+    }
+
+    function selectionnerEmail(idx) {
+      chatEmailActif = chatEmails[idx];
+      // Active item
+      document.querySelectorAll('.chat-email-item').forEach((el,i) =>
+        el.classList.toggle('active', i === idx));
+      // Afficher le contenu
+      document.getElementById('chat-empty-state').style.display = 'none';
+      const activeDiv = document.getElementById('chat-active');
+      activeDiv.style.display = 'flex';
+      activeDiv.style.flexDirection = 'column';
+      activeDiv.style.overflow = 'hidden';
+      activeDiv.style.flex = '1';
+      // Remplir email
+      const em = chatEmailActif;
+      document.getElementById('chat-email-corps').textContent =
+        `DE : ${em.expediteur || ''}\nSUJET : ${em.sujet || ''}\n\n${em.corps || ''}`;
+      document.getElementById('chat-brouillon-area').value = em.brouillon || '(aucun brouillon généré)';
+      // Vider historique chat
+      document.getElementById('chat-history').innerHTML = '';
+      document.getElementById('chat-input').value = '';
+    }
+
+    async function envoyerChat() {
+      const input = document.getElementById('chat-input');
+      const instruction = input.value.trim();
+      if (!instruction || !chatEmailActif) return;
+      const btn = document.getElementById('chat-send-btn');
+      btn.disabled = true;
+      btn.textContent = '⏳';
+      // Ajouter message utilisateur
+      const hist = document.getElementById('chat-history');
+      hist.innerHTML += `<div class="chat-msg-user">${escHtml(instruction)}</div>`;
+      hist.scrollTop = hist.scrollHeight;
+      input.value = '';
+      try {
+        const brouillonActuel = document.getElementById('chat-brouillon-area').value;
+        const r = await fetch(`/api/chat-email/${COMPTE_ID}/${chatBoiteId}`, {
+          method: 'POST',
+          headers: {'Content-Type':'application/json'},
+          body: JSON.stringify({
+            email_id:         chatEmailActif.id,
+            email_sujet:      chatEmailActif.sujet,
+            email_expediteur: chatEmailActif.expediteur,
+            email_corps:      chatEmailActif.corps,
+            brouillon_actuel: brouillonActuel,
+            instruction,
+          })
+        });
+        const j = await r.json();
+        if (j.ok) {
+          document.getElementById('chat-brouillon-area').value = j.brouillon;
+          chatEmailActif.brouillon = j.brouillon;
+          hist.innerHTML += `<div class="chat-msg-ai">✅ Brouillon mis à jour</div>`;
+          // Mettre à jour la liste
+          const items = document.querySelectorAll('.chat-email-item');
+          items.forEach(el => { if (el.classList.contains('active')) {
+            const cat = el.querySelector('.chat-email-item-cat');
+            if (cat && !cat.textContent.includes('✏️')) cat.textContent += ' ✏️';
+          }});
+        } else {
+          hist.innerHTML += `<div class="chat-msg-ai" style="color:#fca5a5">❌ ${escHtml(j.message||'Erreur')}</div>`;
+        }
+      } catch(e) {
+        hist.innerHTML += `<div class="chat-msg-ai" style="color:#fca5a5">❌ Erreur réseau</div>`;
+      }
+      hist.scrollTop = hist.scrollHeight;
+      btn.disabled = false;
+      btn.textContent = 'Envoyer ↵';
+    }
+
+    function copierBrouillon() {
+      const txt = document.getElementById('chat-brouillon-area').value;
+      navigator.clipboard.writeText(txt).then(() => toast('📋 Brouillon copié !'));
+    }
+
+    function escHtml(s) {
+      return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
     }
 
     // ── Init ──────────────────────────────────────────────────
