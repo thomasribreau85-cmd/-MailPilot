@@ -75,51 +75,55 @@ limiter = Limiter(
 from prompts import TOUS_LES_LABELS, LABELS_DEFAUT
 
 # ── Chemins ──────────────────────────────────────────────────
-BASE_DIR     = Path(__file__).parent
-DATA_DIR     = Path(os.environ.get("DATA_DIR", str(BASE_DIR)))
+BASE_DIR   = Path(__file__).parent
+DATA_DIR   = Path(os.environ.get("DATA_DIR", str(BASE_DIR)))
 DATA_DIR.mkdir(parents=True, exist_ok=True)
-COMPTES_FILE = DATA_DIR / "comptes.json"
-TOKENS_DIR   = DATA_DIR / "tokens"
+TOKENS_DIR = DATA_DIR / "tokens"
 TOKENS_DIR.mkdir(exist_ok=True)
 
 GMAIL_SCOPES = ["https://www.googleapis.com/auth/gmail.modify"]
 
+# ── Base de données SQLite ────────────────────────────────────
+import database as db_module
+db_module.init_db()
+
+# Migration automatique depuis les anciens fichiers JSON (une seule fois)
+_migration_done_flag = DATA_DIR / ".db_migrated"
+if not _migration_done_flag.exists():
+    db_module.migrate_from_json(DATA_DIR)
+    _migration_done_flag.write_text("ok")
+
+# Raccourcis pratiques
+from database import (
+    charger_comptes, sauver_comptes,
+    charger_agenda, sauver_agenda,
+    charger_transferts, sauver_transferts_db,
+    charger_emails_recents,
+    get_setting, set_setting,
+    get_config, set_config,
+)
+
 # ── État en mémoire ───────────────────────────────────────────
-# Clé = f"{compte_id}_{boite_id}"
 processus       = {}
 logs_par_compte = {}
 emails_comptes  = {}
 oauth_statut    = {}
-oauth_flows     = {}  # state -> {compte_id, boite_id, ...}
+oauth_flows     = {}
 lock            = threading.Lock()
 MAX_LOGS        = 150
 
-# ── Persistance agents actifs (auto-restart après reboot) ─────
-AGENTS_ACTIFS_FILE = DATA_DIR / "agents_actifs.json"
-
+# ── Agents actifs (SQLite) ────────────────────────────────────
 def charger_agents_actifs():
-    if AGENTS_ACTIFS_FILE.exists():
-        try:
-            return json.loads(AGENTS_ACTIFS_FILE.read_text())
-        except Exception:
-            return {}
-    return {}
+    return db_module.charger_agents_actifs()
 
 def sauver_agents_actifs(agents):
-    try:
-        AGENTS_ACTIFS_FILE.write_text(json.dumps(agents, indent=2))
-    except Exception:
-        pass
+    db_module.sauver_agents_actifs(agents)
 
 def marquer_agent_actif(compte_id, boite_id):
-    agents = charger_agents_actifs()
-    agents[pkey(compte_id, boite_id)] = {"compte_id": compte_id, "boite_id": boite_id}
-    sauver_agents_actifs(agents)
+    db_module.marquer_agent_actif_db(compte_id, boite_id)
 
 def marquer_agent_inactif(compte_id, boite_id):
-    agents = charger_agents_actifs()
-    agents.pop(pkey(compte_id, boite_id), None)
-    sauver_agents_actifs(agents)
+    db_module.marquer_agent_inactif_db(compte_id, boite_id)
 
 
 # ── Helpers ───────────────────────────────────────────────────
@@ -161,25 +165,7 @@ def migrer_compte_vers_boites(c):
     c["boites"] = [boite]
 
 
-def charger_comptes():
-    if COMPTES_FILE.exists():
-        data = json.loads(COMPTES_FILE.read_text())
-        modifie = False
-        for c in data.get("comptes", []):
-            if not c.get("access_token"):
-                c["access_token"] = secrets.token_urlsafe(16)
-                modifie = True
-            if "boites" not in c:
-                migrer_compte_vers_boites(c)
-                modifie = True
-        if modifie:
-            sauver_comptes(data)
-        return data
-    return {"api_key": "", "comptes": []}
-
-
-def sauver_comptes(data):
-    COMPTES_FILE.write_text(json.dumps(data, indent=2, ensure_ascii=False))
+# charger_comptes et sauver_comptes sont importés depuis database.py
 
 
 def trouver_compte(data, compte_id):
@@ -642,8 +628,7 @@ def supprimer_compte(compte_id):
                 p = processus.pop(pk)
                 if p.poll() is None:
                     p.terminate()
-    data["comptes"] = [c for c in data["comptes"] if c["id"] != compte_id]
-    sauver_comptes(data)
+    db_module.supprimer_compte_db(compte_id)
     for f in TOKENS_DIR.glob(f"token_{compte_id}_*.json"):
         f.unlink()
     for f in TOKENS_DIR.glob(f"token_ms_{compte_id}_*.json"):
@@ -718,8 +703,7 @@ def supprimer_boite(compte_id, boite_id):
         p = processus.pop(pk)
         if p.poll() is None:
             p.terminate()
-    c["boites"] = [b for b in c["boites"] if b["id"] != boite_id]
-    sauver_comptes(data)
+    db_module.supprimer_boite_db(boite_id)
     return jsonify({"ok": True})
 
 
@@ -1066,22 +1050,8 @@ def gerer_labels(compte_id, boite_id):
 def stats_compte_route(compte_id, boite_id):
     if not check_access(compte_id):
         return jsonify({"ok": False}), 403
-    stats_id   = pkey(compte_id, boite_id)
-    stats_file = DATA_DIR / f"stats_{stats_id}.json"
-    hist_file  = DATA_DIR / f"stats_hist_{stats_id}.json"
-    semaine_courante = {}
-    historique       = []
-    if stats_file.exists():
-        try:
-            semaine_courante = json.loads(stats_file.read_text(encoding="utf-8"))
-        except Exception:
-            pass
-    if hist_file.exists():
-        try:
-            historique = json.loads(hist_file.read_text(encoding="utf-8")).get("semaines", [])
-        except Exception:
-            pass
-    return jsonify({"ok": True, "semaine_courante": semaine_courante, "historique": historique[-12:]})
+    semaine_courante, historique = db_module.charger_stats_route(compte_id, boite_id)
+    return jsonify({"ok": True, "semaine_courante": semaine_courante, "historique": historique})
 
 
 @app.route("/statut_global")
@@ -1100,19 +1070,7 @@ def statut_global():
     return jsonify(result)
 
 
-# ── Règles de transfert ───────────────────────────────────────
-
-def transferts_file(compte_id, boite_id):
-    return DATA_DIR / f"transferts_{pkey(compte_id, boite_id)}.json"
-
-def charger_transferts(compte_id, boite_id):
-    f = transferts_file(compte_id, boite_id)
-    if f.exists():
-        try:
-            return json.loads(f.read_text())
-        except Exception:
-            pass
-    return []
+# ── Règles de transfert  (charger_transferts importé depuis database.py) ──────
 
 @app.route("/api/transferts/<compte_id>/<boite_id>", methods=["GET"])
 def get_transferts(compte_id, boite_id):
@@ -1132,9 +1090,7 @@ def sauver_transferts(compte_id, boite_id):
         for r in regles
         if r.get("categorie") and r.get("to", "").strip()
     ]
-    transferts_file(compte_id, boite_id).write_text(
-        json.dumps(regles_valides, indent=2, ensure_ascii=False)
-    )
+    sauver_transferts_db(compte_id, boite_id, regles_valides)
     # Encoder pour l'env var de l'agent
     encoded = "|".join(f"{r['categorie']}:{r['to']}" for r in regles_valides)
     # Mettre à jour le processus actif si en cours
@@ -1153,26 +1109,11 @@ HORAIRES_DEFAUT = {
     "dimanche": {"ouvert": False, "debut": "09:00", "fin": "12:00"},
 }
 
-def horaires_file(compte_id):
-    return DATA_DIR / f"horaires_{compte_id}.json"
-
 def charger_horaires(compte_id):
-    f = horaires_file(compte_id)
-    if f.exists():
-        try:
-            return json.loads(f.read_text())
-        except Exception:
-            pass
-    return HORAIRES_DEFAUT.copy()
+    return get_setting(compte_id, "horaires", HORAIRES_DEFAUT.copy())
 
 def _nettoyage_env(compte_id):
-    f = DATA_DIR / f"nettoyage_{compte_id}.json"
-    cfg = {"actif": False, "jours": 365, "categories": ["INUTILE"]}
-    if f.exists():
-        try:
-            cfg = json.loads(f.read_text())
-        except Exception:
-            pass
+    cfg = get_setting(compte_id, "nettoyage", {"actif": False, "jours": 365, "categories": ["INUTILE"]})
     return {
         "NETTOYAGE_ACTIF": "1" if cfg.get("actif") else "0",
         "NETTOYAGE_JOURS": str(cfg.get("jours", 365)),
@@ -1183,13 +1124,7 @@ def _nettoyage_env(compte_id):
 def get_nettoyage(compte_id):
     if not check_access(compte_id):
         return jsonify({"ok": False}), 403
-    f = DATA_DIR / f"nettoyage_{compte_id}.json"
-    cfg = {"actif": False, "jours": 365, "categories": ["INUTILE"]}
-    if f.exists():
-        try:
-            cfg = json.loads(f.read_text())
-        except Exception:
-            pass
+    cfg = get_setting(compte_id, "nettoyage", {"actif": False, "jours": 365, "categories": ["INUTILE"]})
     return jsonify({"ok": True, "config": cfg})
 
 @app.route("/api/nettoyage/<compte_id>", methods=["POST"])
@@ -1202,9 +1137,7 @@ def sauver_nettoyage(compte_id):
         "jours":      int(d.get("jours", 365)),
         "categories": d.get("categories", ["INUTILE"]),
     }
-    (DATA_DIR / f"nettoyage_{compte_id}.json").write_text(
-        json.dumps(cfg, indent=2, ensure_ascii=False)
-    )
+    set_setting(compte_id, "nettoyage", cfg)
     return jsonify({"ok": True})
 
 @app.route("/api/nettoyage/<compte_id>/maintenant", methods=["POST"])
@@ -1213,15 +1146,11 @@ def nettoyage_maintenant(compte_id):
     if not check_access(compte_id):
         return jsonify({"ok": False}), 403
 
-    f = DATA_DIR / f"nettoyage_{compte_id}.json"
-    if not f.exists():
+    cfg = get_setting(compte_id, "nettoyage", None)
+    if not cfg:
         return jsonify({"ok": False, "message": "Nettoyage non configuré"}), 400
-    try:
-        cfg = json.loads(f.read_text())
-    except Exception:
-        return jsonify({"ok": False, "message": "Config invalide"}), 400
 
-    jours = cfg.get("jours", 365)
+    jours    = cfg.get("jours", 365)
     cats_cfg = cfg.get("categories", ["INUTILE"])
 
     data = charger_comptes()
@@ -1307,7 +1236,7 @@ def sauver_horaires(compte_id):
         return jsonify({"ok": False}), 403
     d = request.json or {}
     horaires = d.get("horaires", {})
-    horaires_file(compte_id).write_text(json.dumps(horaires, indent=2, ensure_ascii=False))
+    set_setting(compte_id, "horaires", horaires)
     return jsonify({"ok": True})
 
 
@@ -1407,20 +1336,12 @@ def supprimer_rdv(compte_id, rdv_id):
 # CHAT IA EMAIL — Emails récents + rafraîchissement brouillon
 # ══════════════════════════════════════════════════════════════
 
-def emails_recents_file(compte_id, boite_id):
-    return DATA_DIR / f"emails_recents_{pkey(compte_id, boite_id)}.json"
-
 @app.route("/api/emails-recents/<compte_id>/<boite_id>")
 def get_emails_recents(compte_id, boite_id):
     if not check_access(compte_id):
         return jsonify({"ok": False}), 403
-    f = emails_recents_file(compte_id, boite_id)
-    if f.exists():
-        try:
-            return jsonify({"ok": True, "emails": json.loads(f.read_text())})
-        except Exception:
-            pass
-    return jsonify({"ok": True, "emails": []})
+    emails = charger_emails_recents(compte_id, boite_id)
+    return jsonify({"ok": True, "emails": emails})
 
 def _sanitize_chat_input(text, max_len=600):
     """Tronque et neutralise les tentatives d'injection de prompt."""
@@ -1500,20 +1421,10 @@ Réécris uniquement le corps de la réponse email en appliquant l'instruction c
         )
         nouveau_brouillon = msg.content[0].text.strip()
 
-        # Mettre à jour l'email récent avec le nouveau brouillon
-        f = emails_recents_file(compte_id, boite_id)
-        if f.exists():
-            try:
-                emails = json.loads(f.read_text())
-                email_id = d.get("email_id")
-                for em in emails:
-                    if em.get("id") == email_id:
-                        em["brouillon"] = nouveau_brouillon
-                        em["brouillon_modifie"] = True
-                        break
-                f.write_text(json.dumps(emails, indent=2, ensure_ascii=False))
-            except Exception:
-                pass
+        # Mettre à jour le brouillon dans la BDD
+        email_id = d.get("email_id")
+        if email_id:
+            db_module.update_brouillon_email_db(compte_id, boite_id, email_id, nouveau_brouillon)
 
         return jsonify({"ok": True, "brouillon": nouveau_brouillon})
     except Exception as e:
@@ -1539,24 +1450,13 @@ Nous vous attendons avec plaisir. En cas d'empêchement, merci de nous prévenir
 À très bientôt,
 {agent_nom}"""
 
-def confirmation_file(compte_id):
-    return DATA_DIR / f"confirmation_{compte_id}.json"
-
 def charger_confirmation_settings(compte_id):
-    f = confirmation_file(compte_id)
-    if f.exists():
-        try:
-            return json.loads(f.read_text())
-        except Exception:
-            pass
-    return {
-        "actif": False,
-        "sujet_template": "", "corps_template": "",
-        "nb_envoyes": 0,
-    }
+    return get_setting(compte_id, "confirmation", {
+        "actif": False, "sujet_template": "", "corps_template": "", "nb_envoyes": 0,
+    })
 
 def sauver_confirmation_settings_file(compte_id, settings):
-    confirmation_file(compte_id).write_text(json.dumps(settings, indent=2, ensure_ascii=False))
+    set_setting(compte_id, "confirmation", settings)
 
 @app.route("/api/confirmation/<compte_id>", methods=["GET"])
 def get_confirmation(compte_id):
@@ -1646,9 +1546,6 @@ def _tenter_confirmation(compte_id, rdv):
 # RELANCE AUTO — Thread de relance des RDV en attente
 # ══════════════════════════════════════════════════════════════
 
-def relance_file(compte_id):
-    return DATA_DIR / f"relance_{compte_id}.json"
-
 RELANCE_SUJET_DEFAULT = "Rappel : votre rendez-vous du {date} — {titre}"
 RELANCE_CORPS_DEFAULT = """\
 Bonjour {client_nom},
@@ -1665,20 +1562,14 @@ Cordialement,
 {agent_nom}"""
 
 def charger_relance_settings(compte_id):
-    f = relance_file(compte_id)
-    if f.exists():
-        try:
-            return json.loads(f.read_text())
-        except Exception:
-            pass
-    return {
+    return get_setting(compte_id, "relance", {
         "actif": False, "delai_heures": 48,
         "sujet_template": "", "corps_template": "",
         "derniere_exec": None, "nb_envoyees": 0,
-    }
+    })
 
 def sauver_relance_settings(compte_id, settings):
-    relance_file(compte_id).write_text(json.dumps(settings, indent=2, ensure_ascii=False))
+    set_setting(compte_id, "relance", settings)
 
 @app.route("/api/relance/<compte_id>", methods=["GET"])
 def get_relance(compte_id):
@@ -1898,9 +1789,6 @@ def thread_relance_auto():
 # RAPPEL RDV — Thread de rappel J-1 / H-X avant les RDV confirmés
 # ══════════════════════════════════════════════════════════════
 
-def rappel_file(compte_id):
-    return DATA_DIR / f"rappel_{compte_id}.json"
-
 RAPPEL_SUJET_DEFAULT = "Rappel de votre rendez-vous — {titre}"
 RAPPEL_CORPS_DEFAULT = """\
 Bonjour {client_nom},
@@ -1917,20 +1805,14 @@ En cas d'empêchement, n'hésitez pas à nous contacter le plus tôt possible af
 {agent_nom}"""
 
 def charger_rappel_settings(compte_id):
-    f = rappel_file(compte_id)
-    if f.exists():
-        try:
-            return json.loads(f.read_text())
-        except Exception:
-            pass
-    return {
+    return get_setting(compte_id, "rappel", {
         "actif": False, "avance_heures": 24,
         "sujet_template": "", "corps_template": "",
         "derniere_exec": None, "nb_envoyes": 0,
-    }
+    })
 
 def sauver_rappel_settings(compte_id, settings):
-    rappel_file(compte_id).write_text(json.dumps(settings, indent=2, ensure_ascii=False))
+    set_setting(compte_id, "rappel", settings)
 
 @app.route("/api/rappel/<compte_id>", methods=["GET"])
 def get_rappel(compte_id):

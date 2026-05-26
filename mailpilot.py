@@ -41,6 +41,12 @@ from googleapiclient.errors import HttpError
 
 from prompts import build_classification_prompt, DRAFTING_PROMPTS, LABELS_DEFAUT, TOUS_LES_LABELS
 
+# --- Base de données SQLite ---
+import sys as _sys
+_sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import database as db_module
+db_module.init_db()
+
 # --- Argument --token pour support multi-comptes ---
 parser = argparse.ArgumentParser()
 parser.add_argument("--token", default="token.json", help="Chemin vers le fichier token Gmail")
@@ -514,99 +520,64 @@ MailPilot — Assistant email IA
 # STATS HEBDOMADAIRES
 # ============================================================
 
-def _stats_paths():
-    """Retourne les chemins des fichiers de stats pour ce compte."""
-    stats_dir = os.getenv("STATS_DIR", os.path.dirname(os.path.abspath(__file__)))
-    compte_id  = os.getenv("COMPTE_ID", "default")
-    return (
-        os.path.join(stats_dir, f"stats_{compte_id}.json"),
-        os.path.join(stats_dir, f"stats_hist_{compte_id}.json"),
-    )
+def _get_compte_boite_ids():
+    """Retourne (compte_id, boite_id) depuis les variables d'environnement."""
+    pk = os.getenv("COMPTE_ID", "default")
+    parts = pk.split("_", 1)
+    return (parts[0], parts[1]) if len(parts) == 2 else (pk, "")
 
 def sauver_email_recent(email, categorie, brouillon):
-    """Persiste l'email traité + son brouillon IA dans emails_recents_{pk}.json."""
-    stats_dir = os.getenv("STATS_DIR", os.path.dirname(os.path.abspath(__file__)))
-    pk        = os.getenv("COMPTE_ID", "default")
-    path      = os.path.join(stats_dir, f"emails_recents_{pk}.json")
-    try:
-        liste = json.loads(open(path).read()) if os.path.exists(path) else []
-    except Exception:
-        liste = []
-    # Corps tronqué à 2000 chars pour éviter des fichiers trop lourds
-    corps_court = (email.get("corps") or "")[:2000]
+    """Persiste l'email traité + son brouillon IA dans SQLite."""
+    compte_id, boite_id = _get_compte_boite_ids()
     entree = {
-        "id":          email.get("id", str(uuid.uuid4())[:8]),
-        "sujet":       email.get("sujet", ""),
-        "expediteur":  email.get("expediteur", ""),
-        "corps":       corps_court,
-        "categorie":   categorie,
-        "brouillon":   brouillon or "",
-        "traite_at":   datetime.now().isoformat(),
+        "id":         email.get("id", str(uuid.uuid4())[:8]),
+        "sujet":      email.get("sujet", ""),
+        "expediteur": email.get("expediteur", ""),
+        "corps":      (email.get("corps") or "")[:2000],
+        "categorie":  categorie,
+        "brouillon":  brouillon or "",
+        "traite_at":  datetime.now().isoformat(),
     }
-    # Dédoublonner sur l'id email, mettre le plus récent en premier
-    liste = [e for e in liste if e.get("id") != entree["id"]]
-    liste.insert(0, entree)
-    liste = liste[:30]  # garder max 30
     try:
-        with open(path, "w", encoding="utf-8") as f:
-            json.dump(liste, f, ensure_ascii=False, indent=2)
+        db_module.sauver_email_recent_db(compte_id, boite_id, entree)
     except Exception as ex:
         logger.warning(f"Impossible de sauver emails_recents: {ex}")
 
 def charger_stats_semaine():
-    """Charge les stats de la semaine courante."""
-    stats_file, _ = _stats_paths()
-    semaine_courante = date.today().isocalendar()[1]
-    annee_courante   = date.today().year
-    vide = {"semaine": semaine_courante, "annee": annee_courante, "traites": 0, "brouillons": 0, "categories": {}}
-    if os.path.exists(stats_file):
-        try:
-            with open(stats_file, "r", encoding="utf-8") as f:
-                data = json.load(f)
-            if data.get("semaine") != semaine_courante or data.get("annee") != annee_courante:
-                return vide
-            return data
-        except Exception:
-            pass
-    return vide
+    """Charge les stats de la semaine courante depuis SQLite."""
+    compte_id, boite_id = _get_compte_boite_ids()
+    semaine = date.today().isocalendar()[1]
+    annee   = date.today().year
+    return db_module.charger_stats_semaine_db(compte_id, boite_id, semaine, annee)
 
 def sauver_stats_semaine(stats):
-    """Sauvegarde les stats de la semaine courante."""
-    stats_file, _ = _stats_paths()
+    """Sauvegarde les stats de la semaine courante dans SQLite."""
+    compte_id, boite_id = _get_compte_boite_ids()
     try:
-        with open(stats_file, "w", encoding="utf-8") as f:
-            json.dump(stats, f, ensure_ascii=False, indent=2)
+        db_module.sauver_stats_semaine_db(compte_id, boite_id, stats)
     except Exception as e:
         logger.error(f"Erreur sauvegarde stats semaine : {e}")
 
 def archiver_semaine_dans_historique(stats):
-    """Ajoute les stats de la semaine terminée à l'historique (12 semaines max)."""
-    _, hist_file = _stats_paths()
+    """Ajoute les stats de la semaine terminée à l'historique dans SQLite."""
+    compte_id, boite_id = _get_compte_boite_ids()
     try:
-        historique = []
-        if os.path.exists(hist_file):
-            with open(hist_file, "r", encoding="utf-8") as f:
-                historique = json.load(f).get("semaines", [])
-        # Évite les doublons
-        historique = [s for s in historique if not (s.get("semaine") == stats["semaine"] and s.get("annee") == stats["annee"])]
-        historique.append({
+        entry = {
             "semaine":    stats["semaine"],
             "annee":      stats["annee"],
             "label":      f"Sem. {stats['semaine']}",
             "traites":    stats["traites"],
             "brouillons": stats["brouillons"],
             "categories": stats.get("categories", {}),
-        })
-        historique = historique[-12:]  # garder les 12 dernières semaines
-        with open(hist_file, "w", encoding="utf-8") as f:
-            json.dump({"semaines": historique}, f, ensure_ascii=False, indent=2)
+        }
+        db_module.archiver_stats_hist_db(compte_id, boite_id, entry)
     except Exception as e:
         logger.error(f"Erreur archivage historique stats : {e}")
 
 def accumuler_stats_semaine(stats_cycle):
     """Ajoute les stats du cycle aux stats hebdomadaires."""
     data = charger_stats_semaine()
-    data["traites"]   += stats_cycle.get("traites", 0)
+    data["traites"]    += stats_cycle.get("traites", 0)
     data["brouillons"] += stats_cycle.get("brouillons", 0)
     for cat, nb in stats_cycle.get("categories", {}).items():
         data["categories"][cat] = data["categories"].get(cat, 0) + nb
@@ -858,18 +829,15 @@ def detecter_rdv(client_anthropic, email, categorie):
     if categorie not in CATEGORIES_RDV:
         return
 
-    stats_dir  = os.getenv("STATS_DIR", os.path.dirname(os.path.abspath(__file__)))
-    compte_id  = os.getenv("COMPTE_ID", "default")
-    # COMPTE_ID est au format "compte_boite" — on prend juste la partie compte
+    compte_id   = os.getenv("COMPTE_ID", "default")
     compte_part = compte_id.split("_")[0] if "_" in compte_id else compte_id
-    agenda_file   = os.path.join(stats_dir, f"agenda_{compte_part}.json")
-    horaires_file = os.path.join(stats_dir, f"horaires_{compte_part}.json")
 
-    # Charger les horaires d'ouverture
+    # Charger les horaires d'ouverture depuis SQLite
     horaires_str = ""
     try:
-        if os.path.exists(horaires_file):
-            horaires = json.loads(open(horaires_file, encoding="utf-8").read())
+        from database import get_setting
+        horaires = get_setting(compte_part, "horaires")
+        if horaires:
             jours_map = {"lundi":"Lundi","mardi":"Mardi","mercredi":"Mercredi",
                          "jeudi":"Jeudi","vendredi":"Vendredi","samedi":"Samedi","dimanche":"Dimanche"}
             lignes = []
@@ -930,15 +898,7 @@ CORPS : {email['corps'][:1000]}
         if not data.get("rdv"):
             return
 
-        # Charger l'agenda existant
-        rdvs = []
-        if os.path.exists(agenda_file):
-            try:
-                rdvs = json.loads(open(agenda_file, encoding="utf-8").read())
-            except Exception:
-                rdvs = []
-
-        # Créer le RDV
+        # Créer le RDV dans SQLite
         today = datetime.now().strftime("%Y-%m-%d")
         rdv = {
             "id":           str(uuid.uuid4())[:8],
@@ -955,10 +915,7 @@ CORPS : {email['corps'][:1000]}
             "boite_id":     "",
             "created_at":   datetime.now().isoformat(),
         }
-        rdvs.append(rdv)
-
-        with open(agenda_file, "w", encoding="utf-8") as f:
-            json.dump(rdvs, f, indent=2, ensure_ascii=False)
+        db_module.creer_rdv_db(compte_part, rdv)
 
         logger.info(f"  📅 RDV détecté et ajouté à l'agenda : {rdv['titre']} ({rdv['date']} {rdv['heure_debut']})")
 
