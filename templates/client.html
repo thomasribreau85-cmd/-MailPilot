@@ -987,12 +987,22 @@
   <!-- Bouton ajouter une boîte -->
   <button class="add-boite-btn" onclick="ouvrirAjoutBoite()">+ Ajouter une boîte mail</button>
 
-  <!-- Paramètres du compte -->
-  <div>
-    <div class="section-label">⚙️ Paramètres</div>
-    <div class="settings-grid">
+  </div><!-- /page-wrap -->
 
-    <div class="param-card full-width">
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  <!-- ── Settings Overlay (accessible via drawer uniquement) ── -->
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  <div id="settings-overlay" style="display:none;position:fixed;inset:0;z-index:600;background:rgba(0,0,0,.92);overflow-y:auto;">
+    <!-- Header sticky -->
+    <div style="position:sticky;top:0;z-index:10;background:#060b18;border-bottom:1px solid #1a2c47;padding:16px 24px;display:flex;align-items:center;gap:14px;">
+      <div id="settings-back-btn" onclick="fermerSettings()" style="width:34px;height:34px;border-radius:10px;background:rgba(255,255,255,.05);border:1px solid #1a2c47;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:18px;transition:all .15s;" onmouseover="this.style.background='rgba(255,255,255,.1)'" onmouseout="this.style.background='rgba(255,255,255,.05)'">←</div>
+      <div id="settings-title" style="font-size:16px;font-weight:700;flex:1">Paramètres</div>
+      <button onclick="fermerSettings()" style="background:none;border:none;color:var(--muted);font-size:22px;cursor:pointer;padding:4px 8px;border-radius:8px;transition:all .15s;line-height:1" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--muted)'">✕</button>
+    </div>
+    <!-- Content -->
+    <div style="max-width:640px;margin:0 auto;padding:24px 24px 60px;">
+
+    <div class="param-card full-width" id="panel-module-agenda">
       <div class="param-card-icon calendar">🗓️</div>
       <div class="param-card-body">
         <div class="param-card-title">Module Agenda</div>
@@ -1007,10 +1017,9 @@
         </span>
       </label>
     </div>
-  </div>
 
   <!-- Confirmation RDV -->
-  <div style="margin-bottom:8px" id="confirmation-panel-parent">
+  <div style="margin-bottom:8px" id="confirmation-panel-parent" data-settings-title="✅ Confirmation de RDV">
     <div style="background:var(--card);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;">
       <div style="padding:16px 18px;display:flex;align-items:center;gap:16px;cursor:pointer" onclick="toggleConfirmationPanel()">
         <div class="param-card-icon" style="background:rgba(79,110,247,.12);box-shadow:0 0 0 1px rgba(79,110,247,.25);">✅</div>
@@ -1472,10 +1481,8 @@
       </div>
     </div>
 
-    </div><!-- /settings-grid -->
-  </div>
-
-  </div><!-- /page-wrap -->
+    </div><!-- /settings inner content -->
+  </div><!-- /settings-overlay -->
 
   <!-- ── Side Drawer ── -->
   <div class="drawer-overlay" id="drawer-overlay" onclick="fermerDrawer()"></div>
@@ -1512,7 +1519,7 @@
       <!-- Navigation principale -->
       <div class="drawer-section">Navigation</div>
 
-      <button class="drawer-item" onclick="scrollToSection('stats-bar');fermerDrawer()">
+      <button class="drawer-item" onclick="fermerDrawer();window.scrollTo({top:0,behavior:'smooth'})">
         <div class="drawer-item-icon" style="background:rgba(79,110,247,.12);box-shadow:0 0 0 1px rgba(79,110,247,.2)">📊</div>
         <div class="drawer-item-text">
           <div class="drawer-item-title">Statistiques</div>
@@ -1520,7 +1527,7 @@
         </div>
       </button>
 
-      <button class="drawer-item" onclick="scrollToSection('boites-container');fermerDrawer()">
+      <button class="drawer-item" onclick="fermerDrawer();document.getElementById('boites-container').scrollIntoView({behavior:'smooth'})">
         <div class="drawer-item-icon" style="background:rgba(34,197,94,.1);box-shadow:0 0 0 1px rgba(34,197,94,.2)">📬</div>
         <div class="drawer-item-text">
           <div class="drawer-item-title">Mes boîtes mail</div>
@@ -1543,7 +1550,7 @@
       <!-- Automatisations -->
       <div class="drawer-section">Automatisations</div>
 
-      <button class="drawer-item" onclick="scrollToSection('confirmation-panel-parent');ouvrirPanel('confirmation-panel');fermerDrawer()">
+      <button class="drawer-item" onclick="ouvrirSettings('confirmation-panel-parent','✅ Confirmation de RDV')">
         <div class="drawer-item-icon" style="background:rgba(79,110,247,.12);box-shadow:0 0 0 1px rgba(79,110,247,.2)">✅</div>
         <div class="drawer-item-text">
           <div class="drawer-item-title">Confirmation RDV</div>
@@ -1552,7 +1559,7 @@
         <div class="drawer-item-badge green" id="d-conf-badge" style="display:none">ON</div>
       </button>
 
-      <button class="drawer-item" onclick="scrollToSection('relance-panel-parent');ouvrirPanel('relance-panel');fermerDrawer()">
+      <button class="drawer-item" onclick="ouvrirSettings('relance-panel-parent','🔔 Relance automatique')">
         <div class="drawer-item-icon" style="background:rgba(245,158,11,.1);box-shadow:0 0 0 1px rgba(245,158,11,.2)">🔔</div>
         <div class="drawer-item-text">
           <div class="drawer-item-title">Relance RDV</div>
@@ -1561,7 +1568,7 @@
         <div class="drawer-item-badge yellow" id="d-relance-badge" style="display:none">ON</div>
       </button>
 
-      <button class="drawer-item" onclick="scrollToSection('rappel-panel-parent');ouvrirPanel('rappel-panel');fermerDrawer()">
+      <button class="drawer-item" onclick="ouvrirSettings('rappel-panel-parent','📅 Rappel de RDV')">
         <div class="drawer-item-icon" style="background:rgba(34,197,94,.1);box-shadow:0 0 0 1px rgba(34,197,94,.2)">📅</div>
         <div class="drawer-item-text">
           <div class="drawer-item-title">Rappel RDV</div>
@@ -1570,7 +1577,7 @@
         <div class="drawer-item-badge green" id="d-rappel-badge" style="display:none">ON</div>
       </button>
 
-      <button class="drawer-item" onclick="scrollToSection('card-relance-int');ouvrirPanel('relint-panel');fermerDrawer()">
+      <button class="drawer-item" onclick="ouvrirSettings('card-relance-int','🔁 Relance intelligente')">
         <div class="drawer-item-icon" style="background:rgba(124,79,248,.1);box-shadow:0 0 0 1px rgba(124,79,248,.2)">🔁</div>
         <div class="drawer-item-text">
           <div class="drawer-item-title">Relance intelligente</div>
@@ -1584,7 +1591,7 @@
       <!-- Paramètres IA -->
       <div class="drawer-section">IA & Communication</div>
 
-      <button class="drawer-item" onclick="scrollToSection('card-langue');ouvrirPanel('langue-panel');fermerDrawer()">
+      <button class="drawer-item" onclick="ouvrirSettings('card-langue','🌍 Langue des réponses')">
         <div class="drawer-item-icon" style="background:rgba(6,182,212,.1);box-shadow:0 0 0 1px rgba(6,182,212,.2)">🌍</div>
         <div class="drawer-item-text">
           <div class="drawer-item-title">Langue des réponses</div>
@@ -1593,7 +1600,7 @@
         <div class="drawer-item-badge cyan" id="d-langue-badge">AUTO</div>
       </button>
 
-      <button class="drawer-item" onclick="scrollToSection('card-templates');ouvrirPanel('tpl-panel');fermerDrawer()">
+      <button class="drawer-item" onclick="ouvrirSettings('card-templates','📋 Modèles de réponse IA')">
         <div class="drawer-item-icon" style="background:rgba(34,197,94,.1);box-shadow:0 0 0 1px rgba(34,197,94,.2)">📋</div>
         <div class="drawer-item-text">
           <div class="drawer-item-title">Modèles de réponse</div>
@@ -1602,7 +1609,7 @@
         <div class="drawer-item-badge green" id="d-tpl-badge">—</div>
       </button>
 
-      <button class="drawer-item" onclick="scrollToSection('card-signature');ouvrirPanel('sig-panel');fermerDrawer()">
+      <button class="drawer-item" onclick="ouvrirSettings('card-signature','✍️ Signature email')">
         <div class="drawer-item-icon" style="background:rgba(79,110,247,.12);box-shadow:0 0 0 1px rgba(79,110,247,.2)">✍️</div>
         <div class="drawer-item-text">
           <div class="drawer-item-title">Signature email</div>
@@ -1611,12 +1618,20 @@
         <div class="drawer-item-badge green" id="d-sig-badge" style="display:none">ACTIVE</div>
       </button>
 
+      <button class="drawer-item" onclick="ouvrirSettings('panel-module-agenda','🗓️ Module Agenda')">
+        <div class="drawer-item-icon" style="background:rgba(79,110,247,.14);box-shadow:0 0 0 1px rgba(79,110,247,.25)">🗓️</div>
+        <div class="drawer-item-text">
+          <div class="drawer-item-title">Module Agenda</div>
+          <div class="drawer-item-sub">Activer/désactiver la détection de RDV</div>
+        </div>
+      </button>
+
       <div class="drawer-divider"></div>
 
       <!-- Autres -->
       <div class="drawer-section">Autres</div>
 
-      <button class="drawer-item" onclick="scrollToSection('nettoyage-panel-parent');ouvrirPanel('nettoyage-panel');fermerDrawer()">
+      <button class="drawer-item" onclick="ouvrirSettings('nettoyage-panel-parent','🗑️ Nettoyage automatique')">
         <div class="drawer-item-icon" style="background:rgba(239,68,68,.08);box-shadow:0 0 0 1px rgba(239,68,68,.2)">🗑️</div>
         <div class="drawer-item-text">
           <div class="drawer-item-title">Nettoyage automatique</div>
@@ -1624,7 +1639,7 @@
         </div>
       </button>
 
-      <button class="drawer-item" onclick="scrollToSection('pwd-panel-parent');ouvrirPanel('pwd-panel');fermerDrawer()">
+      <button class="drawer-item" onclick="ouvrirSettings('pwd-panel-parent','🔑 Sécurité')">
         <div class="drawer-item-icon" style="background:rgba(99,102,241,.1);box-shadow:0 0 0 1px rgba(99,102,241,.2)">🔑</div>
         <div class="drawer-item-text">
           <div class="drawer-item-title">Sécurité</div>
@@ -2579,6 +2594,41 @@
       document.getElementById('drawer-overlay').classList.remove('open');
       document.body.style.overflow = '';
     }
+    // ── Settings Overlay ──────────────────────────────────────
+    function ouvrirSettings(panelId, titre) {
+      fermerDrawer();
+      const overlay = document.getElementById('settings-overlay');
+      overlay.style.display = 'block';
+      document.body.style.overflow = 'hidden';
+      if (titre) document.getElementById('settings-title').textContent = titre;
+      // Scroll to correct panel
+      if (panelId) {
+        setTimeout(() => {
+          const el = document.getElementById(panelId);
+          if (el) {
+            el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            // Auto-open the accordion if it has a toggle
+            const panel = el.querySelector('[id$="-panel"]');
+            if (panel && panel.style.display === 'none') {
+              panel.style.display = 'block';
+              const chevron = el.querySelector('[id$="-chevron"]');
+              if (chevron) chevron.style.transform = 'rotate(90deg)';
+            }
+          }
+        }, 80);
+      } else {
+        overlay.scrollTop = 0;
+      }
+    }
+    function fermerSettings() {
+      const overlay = document.getElementById('settings-overlay');
+      overlay.style.display = 'none';
+      document.body.style.overflow = '';
+    }
+    // Close settings with Escape
+    document.addEventListener('keydown', e => {
+      if (e.key === 'Escape') { fermerDrawer(); fermerSettings(); }
+    });
     // Sync mini stats in drawer
     function syncDrawerStats() {
       const e = document.getElementById('stat-emails');
@@ -2633,32 +2683,6 @@
       const dSig = document.getElementById('d-sig-badge');
       if (sigBdg && dSig) dSig.style.display = sigBdg.style.display;
     }
-    // Smooth scroll to a section and open its accordion panel
-    function scrollToSection(id) {
-      const el = document.getElementById(id);
-      if (!el) return;
-      // small delay so drawer closes first
-      setTimeout(() => {
-        el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      }, 120);
-    }
-    function ouvrirPanel(panelId) {
-      const panel = document.getElementById(panelId);
-      if (!panel) return;
-      setTimeout(() => {
-        if (panel.style.display === 'none' || panel.style.display === '') {
-          panel.style.display = 'block';
-          // Update chevron if present
-          const parent = panel.closest('[style*="overflow:hidden"]');
-          if (parent) {
-            const chevron = parent.querySelector('[id$="-chevron"]');
-            if (chevron) chevron.style.transform = 'rotate(90deg)';
-          }
-        }
-      }, 250);
-    }
-    // Close drawer on Escape
-    document.addEventListener('keydown', e => { if (e.key === 'Escape') fermerDrawer(); });
 
     // ── Nettoyage automatique ─────────────────────────────────
     function toggleNettoyagePanel() {
