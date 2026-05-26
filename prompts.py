@@ -19,7 +19,7 @@ TOUS_LES_LABELS = {
     "RESILIATION": {"nom": "MailPilot - Résiliation", "couleur": {"backgroundColor": "#ac2b16", "textColor": "#ffffff"}, "emoji": "🔴", "description_ui": "Demande de résiliation, fin de contrat"},
     "VISITE":      {"nom": "MailPilot - Visite",      "couleur": {"backgroundColor": "#4a86e8", "textColor": "#ffffff"}, "emoji": "🔵", "description_ui": "Demande de visite, démonstration, rendez-vous découverte"},
     "OFFRE":       {"nom": "MailPilot - Offre",       "couleur": {"backgroundColor": "#149e60", "textColor": "#ffffff"}, "emoji": "🟢", "description_ui": "Proposition commerciale, offre de prix, négociation"},
-    "LOCATION":    {"nom": "MailPilot - Location",    "couleur": {"backgroundColor": "#0d3b33", "textColor": "#ffffff"}, "emoji": "🟢", "description_ui": "Demande de location, bail, loyer"},
+    "LOCATION":    {"nom": "MailPilot - Location",    "couleur": {"backgroundColor": "#0d3b33", "textColor": "#ffffff"}, "emoji": "🟢", "description_ui": "Location de bien, espace, équipement ou service"},
     "SINISTRE":    {"nom": "MailPilot - Sinistre",    "couleur": {"backgroundColor": "#822111", "textColor": "#ffffff"}, "emoji": "🔴", "description_ui": "Déclaration de sinistre, accident, dégât"},
     "LIVRAISON":   {"nom": "MailPilot - Livraison",   "couleur": {"backgroundColor": "#cf8933", "textColor": "#ffffff"}, "emoji": "🟠", "description_ui": "Suivi de livraison, problème de colis"},
     "RETOUR":      {"nom": "MailPilot - Retour",      "couleur": {"backgroundColor": "#d5ae49", "textColor": "#000000"}, "emoji": "🟡", "description_ui": "Retour produit, échange, remboursement"},
@@ -43,7 +43,7 @@ LABEL_DESCRIPTIONS = {
     "RESILIATION": "Demande de résiliation, fin de contrat, désabonnement, non-renouvellement",
     "VISITE":      "Demande de visite, démonstration produit, contre-visite, rendez-vous découverte sur site",
     "OFFRE":       "Proposition commerciale, offre de prix, négociation, contre-proposition",
-    "LOCATION":    "Demande de location, bail, loyer, état des lieux, charges locatives",
+    "LOCATION":    "Demande de location d'un bien, espace, véhicule, équipement ou service ; bail, mise à disposition",
     "SINISTRE":    "Déclaration de sinistre, accident, dégât, vol, incendie, demande d'indemnisation",
     "LIVRAISON":   "Suivi de livraison, retard, colis perdu, problème de livraison",
     "RETOUR":      "Retour produit, échange, remboursement suite à retour, SAV",
@@ -333,11 +333,11 @@ Email reçu :
     "LOCATION": """Tu es {nom}, travaillant chez {agence} ({zone}).
 Ton email : {email} | Ton téléphone : {tel}
 
-Tu reçois une demande liée à une LOCATION. Rédige une réponse professionnelle.
+Tu reçois une demande liée à une LOCATION (bien, espace, équipement ou service). Rédige une réponse professionnelle.
 
 RÈGLES :
 - Confirme la réception de la demande
-- Précise les conditions et les pièces nécessaires
+- Précise les conditions et les informations nécessaires
 - Propose une visite ou un RDV si pertinent
 - Maximum 6 lignes
 

@@ -1142,7 +1142,7 @@
         const titre = (ev['SUMMARY'] || 'RDV importé').trim();
         const tl = titre.toLowerCase();
         let type = 'autre';
-        if (tl.includes('visite') || tl.includes('bien') || tl.includes('appartement') || tl.includes('maison')) type = 'visite';
+        if (tl.includes('visite') || tl.includes('démonstration') || tl.includes('demo') || tl.includes('démo')) type = 'visite';
         else if (tl.includes('réunion') || tl.includes('reunion') || tl.includes('meeting')) type = 'reunion';
         else if (tl.includes('appel') || tl.includes('call') || tl.includes('téléphone') || tl.includes('tel ')) type = 'appel';
 

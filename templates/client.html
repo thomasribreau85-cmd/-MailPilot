@@ -1166,7 +1166,7 @@
           </label>
         </div>
         <label style="display:block;font-size:11px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px">Texte de la signature</label>
-        <textarea id="sig-texte" rows="5" placeholder="Cordialement,&#10;Thomas Ribreau&#10;Agent Immobilier — MailPilot&#10;📞 06 59 51 27 12" style="width:100%;background:#060d1c;border:1px solid #1e2d4a;border-radius:10px;color:var(--text);font-size:13px;padding:10px 14px;outline:none;font-family:inherit;resize:vertical;transition:border-color .15s;box-sizing:border-box" onfocus="this.style.borderColor='var(--blue)'" onblur="this.style.borderColor='#1e2d4a'"></textarea>
+        <textarea id="sig-texte" rows="5" placeholder="Cordialement,&#10;Prénom Nom&#10;Votre Société&#10;📞 06 00 00 00 00" style="width:100%;background:#060d1c;border:1px solid #1e2d4a;border-radius:10px;color:var(--text);font-size:13px;padding:10px 14px;outline:none;font-family:inherit;resize:vertical;transition:border-color .15s;box-sizing:border-box" onfocus="this.style.borderColor='var(--blue)'" onblur="this.style.borderColor='#1e2d4a'"></textarea>
         <div style="font-size:11px;color:var(--muted);margin-top:6px;margin-bottom:14px">💡 Cette signature sera ajoutée à la fin de chaque email généré par l'IA et dans le Chat IA.</div>
         <button onclick="sauverSignature()" style="padding:9px 20px;background:linear-gradient(135deg,var(--blue),var(--blue2));border:none;border-radius:9px;color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;transition:opacity .15s">💾 Enregistrer la signature</button>
         <span id="sig-status" style="font-size:12px;margin-left:12px;color:var(--green);display:none"></span>
@@ -2572,9 +2572,9 @@
       date:        "28/05/2026",
       heure_debut: "10:00",
       heure_fin:   "11:00",
-      titre:       "Visite appartement T3",
-      adresse:     "12 rue du Moulin",
-      adresse_line:"\nAdresse : 12 rue du Moulin",
+      titre:       "Rendez-vous client",
+      adresse:     "12 rue de la Paix",
+      adresse_line:"\nAdresse : 12 rue de la Paix",
       notes:       "",
       agent_nom:   "{{ compte.nom }}{{ ' — ' + compte.agence if compte.agence else '' }}",
       agent_agence:"{{ compte.agence or '' }}",
