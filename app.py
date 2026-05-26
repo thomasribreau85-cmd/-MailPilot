@@ -235,7 +235,7 @@ TEMPLATES_DEFAUT = [
     {"id": "t2", "categorie": "DEVIS",         "titre": "Réponse demande de devis",    "texte": "Bonjour,\n\nMerci pour votre demande. Je reviens vers vous très rapidement avec une estimation détaillée correspondant à votre projet.\n\nCordialement,"},
     {"id": "t3", "categorie": "RELANCE",       "titre": "Relance client",              "texte": "Bonjour,\n\nJe me permets de revenir vers vous suite à notre dernier échange. Avez-vous eu l'occasion d'avancer sur votre projet ? Je reste à votre disposition pour en discuter.\n\nBien cordialement,"},
     {"id": "t4", "categorie": "URGENT",        "titre": "Prise en charge urgente",     "texte": "Bonjour,\n\nJ'ai bien reçu votre message et je comprends l'urgence de la situation. Je traite votre demande en priorité et vous recontacte dans les plus brefs délais.\n\nCordialement,"},
-    {"id": "t5", "categorie": "COMMERCIAL",    "titre": "Remerciement contact",        "texte": "Bonjour,\n\nMerci pour l'intérêt que vous portez à notre agence. Je serais ravi(e) d'en apprendre davantage sur votre projet immobilier et de vous accompagner.\n\nÀ bientôt,"},
+    {"id": "t5", "categorie": "COMMERCIAL",    "titre": "Remerciement contact",        "texte": "Bonjour,\n\nMerci pour l'intérêt que vous portez à nos services. Je serais ravi(e) d'en apprendre davantage sur votre projet et de vous accompagner.\n\nÀ bientôt,"},
 ]
 
 
@@ -1500,7 +1500,8 @@ def chat_email(compte_id, boite_id):
 {signature}
 ---""" if signature else ""
 
-    prompt = f"""Tu es l'assistant email de {agent_nom}{(' (' + agent_agence + ')') if agent_agence else ''}, agent immobilier{(' spécialisé ' + agent_zone) if agent_zone else ''}.
+    secteur_txt = f" ({agent_zone})" if agent_zone else ""
+    prompt = f"""Tu es l'assistant email de {agent_nom}{(' — ' + agent_agence) if agent_agence else ''}{secteur_txt}.
 
 Voici l'email reçu d'un client :
 ---

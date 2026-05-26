@@ -17,8 +17,8 @@ TOUS_LES_LABELS = {
     "RENDEZ_VOUS": {"nom": "MailPilot - Rendez-vous", "couleur": {"backgroundColor": "#285bac", "textColor": "#ffffff"}, "emoji": "🔵", "description_ui": "Demande, confirmation ou annulation de RDV"},
     "CONTRAT":     {"nom": "MailPilot - Contrat",     "couleur": {"backgroundColor": "#1c4587", "textColor": "#ffffff"}, "emoji": "🔵", "description_ui": "Signature, renouvellement, modification de contrat"},
     "RESILIATION": {"nom": "MailPilot - Résiliation", "couleur": {"backgroundColor": "#ac2b16", "textColor": "#ffffff"}, "emoji": "🔴", "description_ui": "Demande de résiliation, fin de contrat"},
-    "VISITE":      {"nom": "MailPilot - Visite",      "couleur": {"backgroundColor": "#4a86e8", "textColor": "#ffffff"}, "emoji": "🔵", "description_ui": "Demande de visite d'un bien immobilier"},
-    "OFFRE":       {"nom": "MailPilot - Offre",       "couleur": {"backgroundColor": "#149e60", "textColor": "#ffffff"}, "emoji": "🟢", "description_ui": "Proposition d'achat, négociation de prix"},
+    "VISITE":      {"nom": "MailPilot - Visite",      "couleur": {"backgroundColor": "#4a86e8", "textColor": "#ffffff"}, "emoji": "🔵", "description_ui": "Demande de visite, démonstration, rendez-vous découverte"},
+    "OFFRE":       {"nom": "MailPilot - Offre",       "couleur": {"backgroundColor": "#149e60", "textColor": "#ffffff"}, "emoji": "🟢", "description_ui": "Proposition commerciale, offre de prix, négociation"},
     "LOCATION":    {"nom": "MailPilot - Location",    "couleur": {"backgroundColor": "#0d3b33", "textColor": "#ffffff"}, "emoji": "🟢", "description_ui": "Demande de location, bail, loyer"},
     "SINISTRE":    {"nom": "MailPilot - Sinistre",    "couleur": {"backgroundColor": "#822111", "textColor": "#ffffff"}, "emoji": "🔴", "description_ui": "Déclaration de sinistre, accident, dégât"},
     "LIVRAISON":   {"nom": "MailPilot - Livraison",   "couleur": {"backgroundColor": "#cf8933", "textColor": "#ffffff"}, "emoji": "🟠", "description_ui": "Suivi de livraison, problème de colis"},
@@ -41,8 +41,8 @@ LABEL_DESCRIPTIONS = {
     "RENDEZ_VOUS": "Demande de RDV, confirmation, annulation ou report d'un rendez-vous",
     "CONTRAT":     "Signature de contrat, renouvellement, avenant, modification des termes d'un contrat",
     "RESILIATION": "Demande de résiliation, fin de contrat, désabonnement, non-renouvellement",
-    "VISITE":      "Demande de visite d'un bien, RDV de visite, contre-visite, retour après visite",
-    "OFFRE":       "Proposition d'achat, offre de prix, négociation, contre-proposition",
+    "VISITE":      "Demande de visite, démonstration produit, contre-visite, rendez-vous découverte sur site",
+    "OFFRE":       "Proposition commerciale, offre de prix, négociation, contre-proposition",
     "LOCATION":    "Demande de location, bail, loyer, état des lieux, charges locatives",
     "SINISTRE":    "Déclaration de sinistre, accident, dégât, vol, incendie, demande d'indemnisation",
     "LIVRAISON":   "Suivi de livraison, retard, colis perdu, problème de livraison",
@@ -74,11 +74,11 @@ INSTRUCTIONS :
 
 
 # --- Prompts de rédaction par catégorie ---
-# Variables disponibles : {nom}, {agence}, {tel}, {email}, {zone}
+# Variables disponibles : {nom}, {agence}, {tel}, {email}, {zone} (secteur d'activité)
 
 DRAFTING_PROMPTS = {
 
-    "URGENT": """Tu es {nom}, travaillant chez {agence} dans la zone de {zone}.
+    "URGENT": """Tu es {nom}, travaillant chez {agence} ({zone}).
 Ton email : {email} | Ton téléphone : {tel}
 
 Tu reçois un email URGENT. Rédige une réponse immédiate.
@@ -96,7 +96,7 @@ Bien cordialement,
 Email reçu :
 """,
 
-    "DEVIS": """Tu es {nom}, travaillant chez {agence} dans la zone de {zone}.
+    "DEVIS": """Tu es {nom}, travaillant chez {agence} ({zone}).
 Ton email : {email} | Ton téléphone : {tel}
 
 Tu reçois une demande de DEVIS ou d'estimation. Rédige une réponse professionnelle.
@@ -114,7 +114,7 @@ Bien cordialement,
 Email reçu :
 """,
 
-    "INFO": """Tu es {nom}, travaillant chez {agence} dans la zone de {zone}.
+    "INFO": """Tu es {nom}, travaillant chez {agence} ({zone}).
 Ton email : {email} | Ton téléphone : {tel}
 
 Tu reçois une demande d'INFORMATION. Rédige une réponse utile et commerciale.
@@ -132,7 +132,7 @@ Bien cordialement,
 Email reçu :
 """,
 
-    "ADMIN": """Tu es {nom}, travaillant chez {agence} dans la zone de {zone}.
+    "ADMIN": """Tu es {nom}, travaillant chez {agence} ({zone}).
 Ton email : {email} | Ton téléphone : {tel}
 
 Tu reçois un email ADMINISTRATIF. Rédige une réponse claire et rigoureuse.
@@ -150,7 +150,7 @@ Bien cordialement,
 Email reçu :
 """,
 
-    "PROSPECT": """Tu es {nom}, travaillant chez {agence} dans la zone de {zone}.
+    "PROSPECT": """Tu es {nom}, travaillant chez {agence} ({zone}).
 Ton email : {email} | Ton téléphone : {tel}
 
 Tu reçois un email d'un PROSPECT (première prise de contact). Rédige une réponse engageante.
@@ -168,7 +168,7 @@ Bien cordialement,
 Email reçu :
 """,
 
-    "COMMANDE": """Tu es {nom}, travaillant chez {agence} dans la zone de {zone}.
+    "COMMANDE": """Tu es {nom}, travaillant chez {agence} ({zone}).
 Ton email : {email} | Ton téléphone : {tel}
 
 Tu reçois un email lié à une COMMANDE. Rédige une confirmation professionnelle.
@@ -186,7 +186,7 @@ Bien cordialement,
 Email reçu :
 """,
 
-    "FACTURE": """Tu es {nom}, travaillant chez {agence} dans la zone de {zone}.
+    "FACTURE": """Tu es {nom}, travaillant chez {agence} ({zone}).
 Ton email : {email} | Ton téléphone : {tel}
 
 Tu reçois un email lié à une FACTURE ou un paiement. Rédige une réponse claire.
@@ -204,7 +204,7 @@ Bien cordialement,
 Email reçu :
 """,
 
-    "RECLAMATION": """Tu es {nom}, travaillant chez {agence} dans la zone de {zone}.
+    "RECLAMATION": """Tu es {nom}, travaillant chez {agence} ({zone}).
 Ton email : {email} | Ton téléphone : {tel}
 
 Tu reçois une RÉCLAMATION ou plainte. Rédige une réponse empathique et constructive.
@@ -222,7 +222,7 @@ Bien cordialement,
 Email reçu :
 """,
 
-    "SUIVI": """Tu es {nom}, travaillant chez {agence} dans la zone de {zone}.
+    "SUIVI": """Tu es {nom}, travaillant chez {agence} ({zone}).
 Ton email : {email} | Ton téléphone : {tel}
 
 Tu reçois une demande de SUIVI de dossier. Rédige une mise à jour rassurante.
@@ -240,7 +240,7 @@ Bien cordialement,
 Email reçu :
 """,
 
-    "RENDEZ_VOUS": """Tu es {nom}, travaillant chez {agence} dans la zone de {zone}.
+    "RENDEZ_VOUS": """Tu es {nom}, travaillant chez {agence} ({zone}).
 Ton email : {email} | Ton téléphone : {tel}
 
 Tu reçois une demande de RENDEZ-VOUS. Rédige une réponse pour planifier la rencontre.
@@ -258,7 +258,7 @@ Bien cordialement,
 Email reçu :
 """,
 
-    "CONTRAT": """Tu es {nom}, travaillant chez {agence} dans la zone de {zone}.
+    "CONTRAT": """Tu es {nom}, travaillant chez {agence} ({zone}).
 Ton email : {email} | Ton téléphone : {tel}
 
 Tu reçois un email lié à un CONTRAT. Rédige une réponse professionnelle et précise.
@@ -276,7 +276,7 @@ Bien cordialement,
 Email reçu :
 """,
 
-    "RESILIATION": """Tu es {nom}, travaillant chez {agence} dans la zone de {zone}.
+    "RESILIATION": """Tu es {nom}, travaillant chez {agence} ({zone}).
 Ton email : {email} | Ton téléphone : {tel}
 
 Tu reçois une demande de RÉSILIATION. Rédige une réponse professionnelle.
@@ -294,16 +294,16 @@ Bien cordialement,
 Email reçu :
 """,
 
-    "VISITE": """Tu es {nom}, travaillant chez {agence} dans la zone de {zone}.
+    "VISITE": """Tu es {nom}, travaillant chez {agence}{' dans le secteur ' + zone if zone else ''}.
 Ton email : {email} | Ton téléphone : {tel}
 
-Tu reçois une demande de VISITE. Rédige une réponse pour organiser la visite.
+Tu reçois une demande de VISITE ou démonstration. Rédige une réponse pour organiser le rendez-vous.
 
 RÈGLES :
 - Confirme la prise en compte de la demande
 - Propose 2-3 créneaux dans les 7 prochains jours
-- Demande la composition du foyer si immobilier
-- Précise qu'un SMS de confirmation sera envoyé
+- Demande toute information utile pour préparer la visite/démo
+- Précise qu'une confirmation sera envoyée
 - Maximum 8 lignes
 
 Bien cordialement,
@@ -312,7 +312,7 @@ Bien cordialement,
 Email reçu :
 """,
 
-    "OFFRE": """Tu es {nom}, travaillant chez {agence} dans la zone de {zone}.
+    "OFFRE": """Tu es {nom}, travaillant chez {agence} ({zone}).
 Ton email : {email} | Ton téléphone : {tel}
 
 Tu reçois une OFFRE ou proposition. Rédige une réponse sérieuse.
@@ -330,7 +330,7 @@ Bien cordialement,
 Email reçu :
 """,
 
-    "LOCATION": """Tu es {nom}, travaillant chez {agence} dans la zone de {zone}.
+    "LOCATION": """Tu es {nom}, travaillant chez {agence} ({zone}).
 Ton email : {email} | Ton téléphone : {tel}
 
 Tu reçois une demande liée à une LOCATION. Rédige une réponse professionnelle.
@@ -347,7 +347,7 @@ Bien cordialement,
 Email reçu :
 """,
 
-    "SINISTRE": """Tu es {nom}, travaillant chez {agence} dans la zone de {zone}.
+    "SINISTRE": """Tu es {nom}, travaillant chez {agence} ({zone}).
 Ton email : {email} | Ton téléphone : {tel}
 
 Tu reçois une déclaration de SINISTRE. Rédige une réponse rapide et rassurante.
@@ -366,7 +366,7 @@ Bien cordialement,
 Email reçu :
 """,
 
-    "LIVRAISON": """Tu es {nom}, travaillant chez {agence} dans la zone de {zone}.
+    "LIVRAISON": """Tu es {nom}, travaillant chez {agence} ({zone}).
 Ton email : {email} | Ton téléphone : {tel}
 
 Tu reçois un email lié à une LIVRAISON. Rédige une réponse claire.
@@ -383,7 +383,7 @@ Bien cordialement,
 Email reçu :
 """,
 
-    "RETOUR": """Tu es {nom}, travaillant chez {agence} dans la zone de {zone}.
+    "RETOUR": """Tu es {nom}, travaillant chez {agence} ({zone}).
 Ton email : {email} | Ton téléphone : {tel}
 
 Tu reçois une demande de RETOUR produit ou de remboursement. Rédige une réponse facilitante.
@@ -400,7 +400,7 @@ Bien cordialement,
 Email reçu :
 """,
 
-    "TECHNIQUE": """Tu es {nom}, travaillant chez {agence} dans la zone de {zone}.
+    "TECHNIQUE": """Tu es {nom}, travaillant chez {agence} ({zone}).
 Ton email : {email} | Ton téléphone : {tel}
 
 Tu reçois un problème TECHNIQUE. Rédige une réponse d'assistance.

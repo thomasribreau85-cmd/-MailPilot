@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # ============================================================
 # mailpilot.py — Assistant IA de gestion des emails
-# pour un agent immobilier français
+# pour tout type d'entreprise ou professionnel
 #
 # Fonctionnement :
 #   1. Lit les nouveaux emails Gmail non lus
@@ -338,7 +338,7 @@ def rediger_reponse(client_anthropic, email, categorie):
         agence=os.getenv("AGENT_AGENCE", "L'agence"),
         tel=os.getenv("AGENT_TEL", ""),
         email=os.getenv("AGENT_EMAIL", ""),
-        zone=os.getenv("AGENT_ZONE", "la région"),
+        zone=os.getenv("AGENT_ZONE", ""),
     )
 
     # Ajoute les instructions personnalisées du client si définies
@@ -362,7 +362,8 @@ def rediger_reponse(client_anthropic, email, categorie):
         date_retour = os.getenv("AGENT_ABSENCE_DATE", "").strip()
         msg_perso   = os.getenv("AGENT_ABSENCE_MSG", "").strip()
         prompt += "\n\n--- MODE ABSENCE ACTIVÉ ---"
-        prompt += f"\nL'agent est actuellement absent{' jusqu\'au ' + date_retour if date_retour else ''}."
+        retour_str = (" jusqu'au " + date_retour) if date_retour else ""
+        prompt += f"\nL'agent est actuellement absent{retour_str}."
         prompt += "\nRédige une réponse d'absence professionnelle et chaleureuse en informant l'expéditeur de l'absence."
         if msg_perso:
             prompt += f"\nMessage personnalisé à intégrer : {msg_perso}"
