@@ -395,6 +395,10 @@ def auto_restart_agents():
         if provider == "imap" and not b.get("imap_server"):
             marquer_agent_inactif(compte_id, boite_id)
             continue
+        if b.get("paused"):
+            # Boite en pause volontaire — ne pas redémarrer
+            marquer_agent_inactif(compte_id, boite_id)
+            continue
         try:
             _lancer_agent(compte_id, boite_id, c, b, data)
             restarted += 1
@@ -1021,6 +1025,48 @@ def arreter(compte_id, boite_id):
     return jsonify({"ok": True})
 
 
+# ── Pause / Reprise ───────────────────────────────────────────
+
+@app.route("/api/pause/<compte_id>/<boite_id>", methods=["POST"])
+def pause_boite(compte_id, boite_id):
+    """Met en pause un agent : l'arrête et empêche le redémarrage auto."""
+    if not check_access(compte_id):
+        return jsonify({"ok": False}), 403
+    pk = pkey(compte_id, boite_id)
+    p  = processus.pop(pk, None)
+    if p and p.poll() is None:
+        p.terminate()
+        with lock:
+            logs_par_compte.setdefault(pk, []).append("── Mis en pause ──")
+    marquer_agent_inactif(compte_id, boite_id)
+    data = charger_comptes()
+    c    = trouver_compte(data, compte_id)
+    b    = trouver_boite(c, boite_id) if c else None
+    if b:
+        b["paused"] = True
+        sauver_comptes(data)
+    return jsonify({"ok": True})
+
+
+@app.route("/api/resume/<compte_id>/<boite_id>", methods=["POST"])
+def resume_boite(compte_id, boite_id):
+    """Reprend un agent mis en pause et le redémarre."""
+    if not check_access(compte_id):
+        return jsonify({"ok": False}), 403
+    data = charger_comptes()
+    c    = trouver_compte(data, compte_id)
+    b    = trouver_boite(c, boite_id) if c else None
+    if not b:
+        return jsonify({"ok": False}), 404
+    b["paused"] = False
+    sauver_comptes(data)
+    pk = pkey(compte_id, boite_id)
+    if pk not in processus or processus[pk].poll() is not None:
+        _lancer_agent(compte_id, boite_id, c, b, data)
+        marquer_agent_actif(compte_id, boite_id)
+    return jsonify({"ok": True})
+
+
 # ── Statut ────────────────────────────────────────────────────
 
 @app.route("/statut/<compte_id>")
@@ -1045,6 +1091,7 @@ def statut_compte(compte_id):
             "connecte":       b.get("connecte", False),
             "token":          bool(b.get("token")),
             "actif":          actif,
+            "paused":         b.get("paused", False),
             "emails_traites": emails_comptes.get(pk, 0),
             "logs":           logs,
             "oauth":          oauth_statut.get(pk, ""),

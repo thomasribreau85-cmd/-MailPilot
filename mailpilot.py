@@ -133,6 +133,33 @@ def est_blackliste(expediteur: str) -> bool:
         if "." not in entry and local == entry:       return True  # partie locale (noreply, mailer-daemon…)
     return False
 
+# ── Détection de sentiment (mots-clés de mécontentement) ─────
+_MOTS_MECONTENT = [
+    # Français
+    "inacceptable", "scandaleux", "honte", "déçu", "décevant", "inadmissible",
+    "remboursement", "procès", "avocat", "tribunal", "plainte", "arnaque",
+    "escroquerie", "furieux", "en colère", "j'exige", "je exige", "catastrophique",
+    "pas normal", "très mécontent", "très déçu", "insatisfait", "inadmissible",
+    "intolérable", "lamentable", "jamais revenu", "mauvaise expérience",
+    "c'est une honte", "c'est inadmissible", "je vais porter plainte",
+    # Anglais
+    "unacceptable", "disappointed", "refund", "lawsuit", "lawyer", "furious",
+    "angry", "disgusted", "terrible service", "worst", "outrageous", "scam",
+]
+
+def detecter_sentiment(email: dict) -> str:
+    """
+    Détecte si l'email contient des signaux de mécontentement client.
+    Retourne 'mecontent' (2+ mots), 'alerte' (1 mot), ou 'neutre'.
+    Coût zéro — basé uniquement sur des mots-clés.
+    """
+    texte = (email.get("sujet", "") + " " + email.get("corps", "")).lower()
+    score = sum(1 for mot in _MOTS_MECONTENT if mot in texte)
+    if score >= 2: return "mecontent"
+    if score == 1: return "alerte"
+    return "neutre"
+
+
 # --- Modèles Claude à utiliser ---
 MODEL_CLASSIFICATION = "claude-haiku-4-5-20251001"  # Rapide et économique pour classer
 MODEL_REDACTION      = "claude-sonnet-4-6"           # Plus puissant pour rédiger
@@ -284,11 +311,12 @@ def lire_email_complet(service, message_id):
         corps = extraire_corps_email(message["payload"])
 
         return {
-            "id": message_id,
-            "thread_id": message["threadId"],
-            "sujet": sujet,
-            "expediteur": expediteur,
-            "corps": corps[:4000],  # Limite pour économiser les tokens
+            "id":            message_id,
+            "thread_id":     message["threadId"],
+            "internal_date": int(message.get("internalDate", "0")),
+            "sujet":         sujet,
+            "expediteur":    expediteur,
+            "corps":         corps[:4000],  # Limite pour économiser les tokens
         }
 
     except HttpError as e:
@@ -1079,6 +1107,13 @@ def traiter_email(service, client_anthropic, email, label_ids):
         logger.error(f"  ✗ Erreur classification : {e}")
         categorie = "INFO"
 
+    # --- Étape 1a : Détection de sentiment (mots-clés, sans appel API) ---
+    _sentiment = detecter_sentiment(email)
+    if _sentiment == "mecontent":
+        logger.warning(f"  😤 CLIENT MÉCONTENT détecté — traiter en priorité !")
+    elif _sentiment == "alerte":
+        logger.info(f"  ⚠️  Signal mécontentement détecté dans l'email")
+
     # --- Étape 1b : Détection RDV (si agenda activé) ---
     if os.getenv("AGENDA_ACTIF", "1") == "1":
         try:
@@ -1178,7 +1213,7 @@ def ms_headers():
 
 def lire_emails_non_lus_microsoft():
     """Lit les emails non lus via Microsoft Graph API."""
-    url = f"{MS_GRAPH}/me/messages?$filter=isRead eq false&$top=50&$select=id,subject,from,body,receivedDateTime"
+    url = f"{MS_GRAPH}/me/messages?$filter=isRead eq false&$top=50&$select=id,subject,from,body,receivedDateTime,conversationId"
     resp = http_requests.get(url, headers=ms_headers())
     resp.raise_for_status()
     messages = resp.json().get("value", [])
@@ -1189,11 +1224,13 @@ def lire_emails_non_lus_microsoft():
         import re
         corps = re.sub(r'<[^>]+>', ' ', corps)[:3000]
         emails.append({
-            "id":         m["id"],
-            "sujet":      m.get("subject", ""),
-            "expediteur": m.get("from", {}).get("emailAddress", {}).get("address", ""),
-            "corps":      corps.strip(),
-            "message_id": m["id"],
+            "id":              m["id"],
+            "thread_id":       m.get("conversationId", m["id"]),
+            "received_at":     m.get("receivedDateTime", ""),
+            "sujet":           m.get("subject", ""),
+            "expediteur":      m.get("from", {}).get("emailAddress", {}).get("address", ""),
+            "corps":           corps.strip(),
+            "message_id":      m["id"],
         })
     return emails
 
@@ -1642,6 +1679,32 @@ def boucle_principale():
             if not emails:
                 logger.info("  Aucun email non lu.")
             else:
+                # ── Déduplication par thread (Gmail + Microsoft) ────────
+                # Si plusieurs emails non lus appartiennent au même thread,
+                # on ne traite que le plus récent et on marque les autres lus.
+                if mail_provider in ("gmail", "microsoft"):
+                    _threads: dict = {}
+                    for _em in emails:
+                        _tid = _em.get("thread_id", _em["id"])
+                        # Pour Gmail on a internal_date (ms), pour Microsoft received_at (ISO)
+                        _date = _em.get("internal_date") or _em.get("received_at") or ""
+                        if _tid not in _threads or str(_date) > str(_threads[_tid].get("internal_date") or _threads[_tid].get("received_at") or ""):
+                            _threads[_tid] = _em
+                    _keep_ids = {_em["id"] for _em in _threads.values()}
+                    _dupes = [_em for _em in emails if _em["id"] not in _keep_ids]
+                    if _dupes:
+                        logger.info(f"  🔗 {len(_dupes)} email(s) dupliqué(s) dans un thread déjà traité — marqué(s) comme lus")
+                        for _dup in _dupes:
+                            try:
+                                if mail_provider == "gmail":
+                                    marquer_comme_lu(service, _dup["id"])
+                                else:
+                                    marquer_comme_lu_microsoft(_dup["id"])
+                            except Exception as _e:
+                                logger.warning(f"  ✗ Impossible de marquer dupliqué lu : {_e}")
+                    emails = list(_threads.values())
+                # ─────────────────────────────────────────────────────────
+
                 logger.info(f"  {len(emails)} email(s) à traiter.")
                 stats = {"traites": 0, "brouillons": 0, "categories": {}}
 
@@ -1662,6 +1725,9 @@ def boucle_principale():
                                 continue
                             categorie = classifier_email(client_anthropic, em)
                             logger.info(f"  → Catégorie : {categorie}")
+                            _s = detecter_sentiment(em)
+                            if _s == "mecontent": logger.warning(f"  😤 CLIENT MÉCONTENT détecté — traiter en priorité !")
+                            elif _s == "alerte":  logger.info(f"  ⚠️  Signal mécontentement détecté dans l'email")
                             if os.getenv("AGENDA_ACTIF", "1") == "1":
                                 try:
                                     detecter_rdv(client_anthropic, em, categorie)
@@ -1691,6 +1757,9 @@ def boucle_principale():
                                 continue
                             categorie = classifier_email(client_anthropic, em)
                             logger.info(f"  → Catégorie : {categorie}")
+                            _s = detecter_sentiment(em)
+                            if _s == "mecontent": logger.warning(f"  😤 CLIENT MÉCONTENT détecté — traiter en priorité !")
+                            elif _s == "alerte":  logger.info(f"  ⚠️  Signal mécontentement détecté dans l'email")
                             if os.getenv("AGENDA_ACTIF", "1") == "1":
                                 try:
                                     detecter_rdv(client_anthropic, em, categorie)

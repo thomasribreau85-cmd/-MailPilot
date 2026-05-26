@@ -2324,40 +2324,39 @@
     }
 
     // ── Rendu d'une carte boîte ────────────────────────────────
+    function _boiteBtnsHtml(id, actif, paused, connecte, token, provider) {
+      if (actif) {
+        return `<button class="btn btn-stop" onclick="arreter('${id}')">⏹ Arrêter</button>
+                <button class="btn" style="padding:8px 12px;background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.3);color:#fbbf24;border-radius:10px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit" onclick="pauserBoite('${id}')">⏸ Pause</button>`;
+      }
+      if (paused) {
+        return `<button class="btn btn-start" onclick="reprendreBoite('${id}')">▶ Reprendre</button>`;
+      }
+      if (connecte && (provider === 'imap' || token)) {
+        return `<button class="btn btn-start" onclick="demarrer('${id}')">▶ Démarrer</button>`;
+      }
+      if (provider === 'microsoft') return `<button class="btn btn-connect" onclick="connecterMicrosoft('${id}')">🔗 Connecter Outlook</button>`;
+      if (provider === 'gmail')     return `<button class="btn btn-connect" onclick="connecterGmail('${id}')">🔗 Connecter Gmail</button>`;
+      return `<button class="btn btn-start" onclick="demarrer('${id}')">▶ Démarrer</button>`;
+    }
+
+    function _boiteStatusHtml(actif, paused, connecte, token, provider) {
+      if (actif)  return ['🚀 Agent actif — surveillance en cours', 'ok'];
+      if (paused) return ['⏸ En pause — redémarrage auto désactivé', 'warn'];
+      if (connecte && (provider === 'imap' || token)) return ['⏹ Arrêté — cliquez Démarrer pour lancer', ''];
+      const msgs = { gmail:'🔗 Gmail non connecté', microsoft:'🔗 Outlook non connecté', imap:'⚙️ IMAP configuré' };
+      return [msgs[provider] || '⚠️ Non connecté', 'warn'];
+    }
+
     function renderBoiteCard(b) {
-      const { id, email, provider, connecte, token, actif, emails_traites } = b;
+      const { id, email, provider, connecte, token, actif, paused, emails_traites } = b;
       const icon    = PROVIDER_ICONS[provider] || '📬';
       const provLbl = PROVIDER_LABELS[provider] || provider;
       const dotCls  = actif ? 'actif' : '';
       const cardCls = actif ? 'actif' : '';
 
-      // Bouton principal
-      let mainBtn;
-      if (actif) {
-        mainBtn = `<button class="btn btn-stop" onclick="arreter('${id}')">⏹ Arrêter</button>`;
-      } else if (connecte && (provider === 'imap' || token)) {
-        mainBtn = `<button class="btn btn-start" onclick="demarrer('${id}')">▶ Démarrer</button>`;
-      } else if (provider === 'microsoft') {
-        mainBtn = `<button class="btn btn-connect" onclick="connecterMicrosoft('${id}')">🔗 Connecter Outlook</button>`;
-      } else if (provider === 'gmail') {
-        mainBtn = `<button class="btn btn-connect" onclick="connecterGmail('${id}')">🔗 Connecter Gmail</button>`;
-      } else {
-        mainBtn = `<button class="btn btn-start" onclick="demarrer('${id}')">▶ Démarrer</button>`;
-      }
-
-      // Barre de statut
-      let statusTxt, statusCls;
-      if (actif) {
-        statusTxt = '🚀 Agent actif — surveillance en cours';
-        statusCls = 'ok';
-      } else if (connecte && (provider === 'imap' || token)) {
-        statusTxt = '⏸ Arrêté — cliquez Démarrer pour lancer';
-        statusCls = '';
-      } else {
-        const msgs = { gmail: '🔗 Gmail non connecté', microsoft: '🔗 Outlook non connecté', imap: '⚙️ IMAP configuré' };
-        statusTxt = msgs[provider] || '⚠️ Non connecté';
-        statusCls = 'warn';
-      }
+      const mainBtn = _boiteBtnsHtml(id, actif, paused, connecte, token, provider);
+      const [statusTxt, statusCls] = _boiteStatusHtml(actif, paused, connecte, token, provider);
 
       const logsHtml = logsOpen[id] ? 'open' : '';
 
@@ -2408,7 +2407,7 @@
     function updateBoiteCard(id, b) {
       const card = document.getElementById(`card-${id}`);
       if (!card) return;
-      const { actif, connecte, token, provider, emails_traites, logs } = b;
+      const { actif, paused, connecte, token, provider, emails_traites, logs } = b;
 
       // Dot
       document.getElementById(`dot-${id}`).className = 'status-dot' + (actif ? ' actif' : '');
@@ -2417,33 +2416,14 @@
       // Compteur
       document.getElementById(`count-${id}`).textContent = emails_traites || 0;
 
-      // Bouton
-      const zone = document.getElementById(`btn-zone-${id}`);
-      if (actif) {
-        zone.innerHTML = `<button class="btn btn-stop" onclick="arreter('${id}')">⏹ Arrêter</button>`;
-      } else if (connecte && (provider === 'imap' || token)) {
-        zone.innerHTML = `<button class="btn btn-start" onclick="demarrer('${id}')">▶ Démarrer</button>`;
-      } else if (provider === 'microsoft') {
-        zone.innerHTML = `<button class="btn btn-connect" onclick="connecterMicrosoft('${id}')">🔗 Connecter Outlook</button>`;
-      } else if (provider === 'gmail') {
-        zone.innerHTML = `<button class="btn btn-connect" onclick="connecterGmail('${id}')">🔗 Connecter Gmail</button>`;
-      } else {
-        zone.innerHTML = `<button class="btn btn-start" onclick="demarrer('${id}')">▶ Démarrer</button>`;
-      }
+      // Boutons
+      document.getElementById(`btn-zone-${id}`).innerHTML = _boiteBtnsHtml(id, actif, paused, connecte, token, provider);
 
       // Statut bar
       const bar = document.getElementById(`status-${id}`);
-      if (actif) {
-        bar.className = 'status-bar ok';
-        bar.textContent = '🚀 Agent actif — surveillance en cours';
-      } else if (connecte && (provider === 'imap' || token)) {
-        bar.className = 'status-bar';
-        bar.textContent = '⏸ Arrêté — cliquez Démarrer pour lancer';
-      } else {
-        const msgs = { gmail:'🔗 Gmail non connecté', microsoft:'🔗 Outlook non connecté', imap:'⚙️ IMAP configuré' };
-        bar.className = 'status-bar warn';
-        bar.textContent = msgs[provider] || '⚠️ Non connecté';
-      }
+      const [statusTxt, statusCls] = _boiteStatusHtml(actif, paused, connecte, token, provider);
+      bar.className = `status-bar${statusCls ? ' ' + statusCls : ''}`;
+      bar.textContent = statusTxt;
 
       // Logs
       if (logs && logs.length) {
@@ -2502,6 +2482,20 @@
 
     async function arreter(boiteId) {
       await fetch(`/arreter/${COMPTE_ID}/${boiteId}`, { method:'POST' });
+      rafraichir();
+    }
+
+    async function pauserBoite(boiteId) {
+      await fetch(`/api/pause/${COMPTE_ID}/${boiteId}`, { method:'POST' });
+      toast('⏸ Agent mis en pause');
+      rafraichir();
+    }
+
+    async function reprendreBoite(boiteId) {
+      const res = await fetch(`/api/resume/${COMPTE_ID}/${boiteId}`, { method:'POST' });
+      const j   = await res.json();
+      if (j.ok) toast('▶ Agent repris !');
+      else toast('⚠️ Erreur au démarrage');
       rafraichir();
     }
 
@@ -2575,27 +2569,46 @@
 
     function fermerStats() { document.getElementById('overlay-stats').classList.remove('open'); }
 
+    let _statsData = null;  // cache pour les données stats courantes
+    let _statsCatFiltree = null;  // catégorie filtrée (null = toutes)
+    let _statsVue = 'semaine'; // 'semaine' | 'historique'
+
     function afficherStats(data) {
+      _statsData = data;
+      _statsCatFiltree = null;
+      _statsVue = 'semaine';
+      _renderStats();
+    }
+
+    function _renderStats() {
+      const data = _statsData;
+      if (!data) return;
       const sc   = data.semaine_courante || {};
       const hist = data.historique || [];
 
       const traites    = sc.traites    || 0;
       const brouillons = sc.brouillons || 0;
       const semaine    = sc.semaine    || '—';
-      const cats       = sc.categories || {};
+      const catsSem    = sc.categories || {};
 
-      // Dernière semaine disponible en historique (pour calcul de tendance)
-      const prevSem    = hist.length > 0 ? hist[hist.length - 1] : null;
-      const prevTrait  = prevSem ? (prevSem.traites || 0) : null;
-      const prevBrou   = prevSem ? (prevSem.brouillons || 0) : null;
+      // Catégories agrégées sur tout l'historique
+      const catsAgg = {};
+      [...hist, sc].forEach(h => {
+        Object.entries(h.categories || {}).forEach(([c, n]) => {
+          catsAgg[c] = (catsAgg[c] || 0) + n;
+        });
+      });
 
-      // Total toutes semaines
+      // Totaux
       const totalTraites    = hist.reduce((s, h) => s + (h.traites || 0), 0) + traites;
       const totalBrouillons = hist.reduce((s, h) => s + (h.brouillons || 0), 0) + brouillons;
 
-      // Taux de conversion brouillons → envoyés (brouillons générés / emails traités)
-      const tauxConv = traites > 0 ? Math.round(brouillons / traites * 100) : 0;
-      const prevTaux = prevTrait > 0 && prevBrou !== null ? Math.round(prevBrou / prevTrait * 100) : null;
+      // Tendance
+      const prevSem   = hist.length > 0 ? hist[hist.length - 1] : null;
+      const prevTrait = prevSem ? (prevSem.traites || 0) : null;
+      const prevBrou  = prevSem ? (prevSem.brouillons || 0) : null;
+      const tauxConv  = traites > 0 ? Math.round(brouillons / traites * 100) : 0;
+      const prevTaux  = prevTrait > 0 && prevBrou !== null ? Math.round(prevBrou / prevTrait * 100) : null;
 
       function trendHtml(cur, prev) {
         if (prev === null) return `<span class="kpi-trend-flat">Sem. ${semaine}</span>`;
@@ -2605,6 +2618,7 @@
         return `<span class="kpi-trend-flat">= même qu'avant</span>`;
       }
 
+      // KPIs
       let html = `<div class="stats-kpis">
         <div class="kpi-box blue">
           <div class="kpi-label">📧 Cette semaine</div>
@@ -2628,23 +2642,56 @@
         </div>
       </div>`;
 
-      // Graphique multi-semaines (jusqu'à 12 semaines)
-      const semaines = [...hist.slice(-11), { label: `S${semaine} ★`, traites, brouillons }];
-      html += `<div class="stats-section-title">📈 Activité par semaine</div>
+      // Tabs vue
+      html += `<div style="display:flex;gap:8px;margin-bottom:14px">
+        <button onclick="_switchStatsVue('semaine')" id="tab-sem" style="flex:1;padding:7px;border-radius:8px;border:1px solid;font-size:12px;font-weight:600;cursor:pointer;transition:all .15s;font-family:inherit;
+          ${_statsVue==='semaine' ? 'background:rgba(79,110,247,.2);border-color:rgba(79,110,247,.5);color:#93b4f0' : 'background:rgba(255,255,255,.04);border-color:var(--border);color:var(--muted)'}">
+          📅 Cette semaine
+        </button>
+        <button onclick="_switchStatsVue('historique')" id="tab-hist" style="flex:1;padding:7px;border-radius:8px;border:1px solid;font-size:12px;font-weight:600;cursor:pointer;transition:all .15s;font-family:inherit;
+          ${_statsVue==='historique' ? 'background:rgba(79,110,247,.2);border-color:rgba(79,110,247,.5);color:#93b4f0' : 'background:rgba(255,255,255,.04);border-color:var(--border);color:var(--muted)'}">
+          📊 Tout l'historique
+        </button>
+      </div>`;
+
+      // Graphique multi-semaines avec filtre catégorie
+      const semaines = [...hist.slice(-11), { label: `S${semaine} ★`, traites, brouillons, categories: catsSem }];
+      const allCats  = Object.keys(catsAgg).sort((a, b) => catsAgg[b] - catsAgg[a]);
+      const emojis   = { URGENT:'🔴', COMMERCIAL:'🤝', ADMINISTRATIF:'📋', SUPPORT:'❓', INUTILE:'🗑️', DEVIS:'💰', VISITE:'🏠', OFFRE:'✍️', JURIDIQUE:'⚖️', RELANCE:'🔔', RECLAMATION:'😤', PROSPECT:'🔵', COMMANDE:'🛒', FACTURE:'🧾', CONTRAT:'📝', RESILIATION:'🚪', SINISTRE:'🏚️', LIVRAISON:'📦', RETOUR:'↩️', TECHNIQUE:'🔧', INFO:'📌', RENDEZ_VOUS:'📅', SUIVI:'👁️', LOCATION:'🏠', ADMIN:'📋' };
+      const colors   = ['#4f6ef7','#22c55e','#f59e0b','#a78bfa','#ef4444','#06b6d4','#f97316','#ec4899','#84cc16','#8b5cf6'];
+
+      // Filtres catégorie (pills)
+      if (allCats.length > 0) {
+        html += `<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px;align-items:center">
+          <span style="font-size:11px;color:var(--muted);font-weight:600;flex-shrink:0">Filtrer :</span>
+          <button onclick="_filtrerStatsCat(null)" style="padding:3px 9px;border-radius:6px;border:1px solid;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;transition:all .1s;
+            ${!_statsCatFiltree ? 'background:rgba(79,110,247,.2);border-color:rgba(79,110,247,.4);color:#93b4f0' : 'background:rgba(255,255,255,.04);border-color:var(--border);color:var(--muted)'}">
+            Toutes
+          </button>
+          ${allCats.map((cat, i) => `
+          <button onclick="_filtrerStatsCat('${cat}')" style="padding:3px 9px;border-radius:6px;border:1px solid;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;transition:all .1s;
+            ${_statsCatFiltree===cat ? `background:rgba(${_hexToRgb(colors[i%colors.length])},.2);border-color:rgba(${_hexToRgb(colors[i%colors.length])},.5);color:${colors[i%colors.length]}` : 'background:rgba(255,255,255,.04);border-color:var(--border);color:var(--muted)'}">
+            ${emojis[cat]||'•'} ${cat}
+          </button>`).join('')}
+        </div>`;
+      }
+
+      html += `<div class="stats-section-title">📈 Activité par semaine${_statsCatFiltree ? ` — ${_statsCatFiltree}` : ''}</div>
                <div class="chart-wrap"><canvas id="stats-chart"></canvas></div>`;
 
-      // Répartition catégories
-      const catEntries = Object.entries(cats).sort((a, b) => b[1] - a[1]);
+      // Répartition catégories selon la vue
+      const catsVue    = _statsVue === 'historique' ? catsAgg : catsSem;
+      const catEntries = Object.entries(catsVue).sort((a, b) => b[1] - a[1]);
+      const titreVue   = _statsVue === 'historique' ? '📂 Répartition — tout l\'historique' : '📂 Répartition cette semaine';
+
       if (catEntries.length > 0) {
         const totalCat = catEntries.reduce((s, [, n]) => s + n, 0);
         const maxCat   = catEntries[0][1];
-        const emojis   = { URGENT:'🔴', COMMERCIAL:'🤝', ADMINISTRATIF:'📋', SUPPORT:'❓', INUTILE:'🗑️', DEVIS:'💰', VISITE:'🏠', OFFRE:'✍️', JURIDIQUE:'⚖️', RELANCE:'🔔' };
-        const colors   = ['#4f6ef7','#22c55e','#f59e0b','#a78bfa','#ef4444','#06b6d4','#f97316','#ec4899','#84cc16','#8b5cf6'];
-        html += `<div class="stats-section-title">📂 Répartition cette semaine</div><div class="cats-list">`;
+        html += `<div class="stats-section-title">${titreVue}</div><div class="cats-list">`;
         catEntries.forEach(([cat, nb], i) => {
           const pct    = maxCat > 0 ? Math.round(nb / maxCat * 100) : 0;
           const pctTot = totalCat > 0 ? Math.round(nb / totalCat * 100) : 0;
-          const col    = colors[i % colors.length];
+          const col    = colors[allCats.indexOf(cat) % colors.length] || colors[i % colors.length];
           html += `<div class="cat-item">
             <span style="font-size:13px;width:16px;text-align:center">${emojis[cat] || '•'}</span>
             <span style="min-width:110px;font-size:11px;font-weight:600;color:var(--text)">${cat}</span>
@@ -2654,72 +2701,74 @@
         });
         html += `</div>`;
       } else {
-        html += `<div style="text-align:center;color:var(--muted);font-size:13px;padding:16px 0">Aucune catégorie cette semaine</div>`;
+        html += `<div style="text-align:center;color:var(--muted);font-size:13px;padding:16px 0">Aucune donnée</div>`;
       }
 
       document.getElementById('stats-content').innerHTML = html;
 
-      // Rendu Chart.js
+      // Chart.js — données filtrées par catégorie ou total
       const ctx = document.getElementById('stats-chart').getContext('2d');
-      chartInstance = new Chart(ctx, {
-        data: {
-          labels: semaines.map(s => s.label || `S${s.semaine || '?'}`),
-          datasets: [
-            {
-              type: 'bar',
-              label: 'Emails traités',
-              data: semaines.map(s => s.traites || 0),
-              backgroundColor: 'rgba(79,110,247,.75)',
-              borderColor: 'rgba(79,110,247,1)',
-              borderWidth: 1,
-              borderRadius: 5,
-              order: 2
-            },
-            {
-              type: 'bar',
-              label: 'Brouillons',
-              data: semaines.map(s => s.brouillons || 0),
-              backgroundColor: 'rgba(34,197,94,.65)',
-              borderColor: 'rgba(34,197,94,1)',
-              borderWidth: 1,
-              borderRadius: 5,
-              order: 2
-            },
-            {
-              type: 'line',
-              label: 'Tendance',
-              data: semaines.map(s => s.traites || 0),
-              borderColor: 'rgba(167,139,250,.8)',
-              borderWidth: 2,
-              pointBackgroundColor: 'rgba(167,139,250,1)',
-              pointRadius: 3,
-              tension: 0.35,
-              fill: false,
-              order: 1,
-              yAxisID: 'y'
-            }
-          ]
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          interaction: { mode: 'index', intersect: false },
-          plugins: {
-            legend: { labels: { color: '#8898aa', font: { size: 11 }, boxWidth: 12 } },
-            tooltip: {
-              backgroundColor: '#0d1526',
-              titleColor: '#f0f4ff',
-              bodyColor: '#8898aa',
-              borderColor: '#1a2c47',
-              borderWidth: 1,
-            }
+      if (chartInstance) { chartInstance.destroy(); chartInstance = null; }
+      if (_statsCatFiltree) {
+        // Mode catégorie : un seul dataset
+        const catIdx = allCats.indexOf(_statsCatFiltree);
+        const col = colors[catIdx % colors.length] || '#4f6ef7';
+        chartInstance = new Chart(ctx, {
+          type: 'bar',
+          data: {
+            labels: semaines.map(s => s.label || `S${s.semaine||'?'}`),
+            datasets: [{
+              label: _statsCatFiltree,
+              data: semaines.map(s => (s.categories || {})[_statsCatFiltree] || 0),
+              backgroundColor: col.replace('#','rgba(').replace(/(..)(..)(..)/, (m,r,g,b) => `${parseInt(r,16)},${parseInt(g,16)},${parseInt(b,16)}`) + ',.7)',
+              borderColor: col, borderWidth: 1, borderRadius: 5,
+            }]
           },
-          scales: {
-            x: { ticks: { color: '#5a7090', font: { size: 10 } }, grid: { color: 'rgba(255,255,255,.04)' } },
-            y: { ticks: { color: '#5a7090', font: { size: 10 } }, grid: { color: 'rgba(255,255,255,.04)' }, beginAtZero: true }
-          }
+          options: _chartOpts()
+        });
+      } else {
+        chartInstance = new Chart(ctx, {
+          data: {
+            labels: semaines.map(s => s.label || `S${s.semaine||'?'}`),
+            datasets: [
+              { type:'bar',  label:'Emails traités', data: semaines.map(s=>s.traites||0),    backgroundColor:'rgba(79,110,247,.75)',  borderColor:'rgba(79,110,247,1)',  borderWidth:1, borderRadius:5, order:2 },
+              { type:'bar',  label:'Brouillons',     data: semaines.map(s=>s.brouillons||0), backgroundColor:'rgba(34,197,94,.65)',   borderColor:'rgba(34,197,94,1)',   borderWidth:1, borderRadius:5, order:2 },
+              { type:'line', label:'Tendance',        data: semaines.map(s=>s.traites||0),    borderColor:'rgba(167,139,250,.8)', borderWidth:2, pointBackgroundColor:'rgba(167,139,250,1)', pointRadius:3, tension:0.35, fill:false, order:1 }
+            ]
+          },
+          options: _chartOpts()
+        });
+      }
+    }
+
+    function _chartOpts() {
+      return {
+        responsive: true, maintainAspectRatio: false,
+        interaction: { mode:'index', intersect:false },
+        plugins: {
+          legend: { labels: { color:'#8898aa', font:{size:11}, boxWidth:12 } },
+          tooltip: { backgroundColor:'#0d1526', titleColor:'#f0f4ff', bodyColor:'#8898aa', borderColor:'#1a2c47', borderWidth:1 }
+        },
+        scales: {
+          x: { ticks:{color:'#5a7090',font:{size:10}}, grid:{color:'rgba(255,255,255,.04)'} },
+          y: { ticks:{color:'#5a7090',font:{size:10}}, grid:{color:'rgba(255,255,255,.04)'}, beginAtZero:true }
         }
-      });
+      };
+    }
+
+    function _hexToRgb(hex) {
+      const r = parseInt(hex.slice(1,3),16), g = parseInt(hex.slice(3,5),16), b = parseInt(hex.slice(5,7),16);
+      return `${r},${g},${b}`;
+    }
+
+    function _switchStatsVue(vue) {
+      _statsVue = vue;
+      _renderStats();
+    }
+
+    function _filtrerStatsCat(cat) {
+      _statsCatFiltree = cat;
+      _renderStats();
     }
 
     // ── Bilan hebdomadaire ────────────────────────────────────
