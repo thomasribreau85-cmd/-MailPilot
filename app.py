@@ -275,12 +275,6 @@ def _get_blacklist(compte_id):
     bl = get_setting(compte_id, "blacklist_expediteurs", [])
     return bl if isinstance(bl, list) else []
 
-def _get_webhook(compte_id):
-    """Retourne la config webhook du compte."""
-    default = {"actif": False, "url": "", "secret": "", "categories": []}
-    cfg = get_setting(compte_id, "webhook", default)
-    return cfg if isinstance(cfg, dict) else default
-
 def _get_instructions_globales(compte_id):
     """Retourne les instructions personnalisées globales (chaîne vide si aucune)."""
     return get_setting(compte_id, "instructions_globales", "") or ""
@@ -330,10 +324,6 @@ def _lancer_agent(compte_id, boite_id, c, b, data):
         "AGENT_INSTRUCTIONS_GLOBALES": _get_instructions_globales(compte_id),
         "AGENT_CUSTOM_CATEGORIES":     json.dumps(_get_categories_custom(compte_id), ensure_ascii=False),
         "AGENT_BLACKLIST":             "|".join(_get_blacklist(compte_id)),
-        "AGENT_WEBHOOK_URL":          _get_webhook(compte_id).get("url", ""),
-        "AGENT_WEBHOOK_SECRET":       _get_webhook(compte_id).get("secret", ""),
-        "AGENT_WEBHOOK_CATS":         ",".join(_get_webhook(compte_id).get("categories", [])),
-        "AGENT_WEBHOOK_ACTIF":        "1" if _get_webhook(compte_id).get("actif") and _get_webhook(compte_id).get("url") else "0",
         **_nettoyage_env(compte_id),
         "TRANSFERTS_RULES":    "|".join(
             f"{r['categorie']}:{r['to']}"
@@ -1332,88 +1322,6 @@ def sauver_blacklist(compte_id):
         validated.append(entry)
     set_setting(compte_id, "blacklist_expediteurs", validated)
     return jsonify({"ok": True, "blacklist": validated})
-
-# ── Webhook sortant ───────────────────────────────────────────
-
-@app.route("/api/webhook/<compte_id>", methods=["GET"])
-def get_webhook(compte_id):
-    if not check_access(compte_id):
-        return jsonify({"ok": False}), 403
-    cfg = _get_webhook(compte_id)
-    # Ne pas exposer le secret en clair — masquer sauf si vide
-    cfg_safe = dict(cfg)
-    if cfg_safe.get("secret"):
-        cfg_safe["secret_set"] = True
-        cfg_safe["secret"]     = ""   # ne jamais renvoyer le secret au client
-    else:
-        cfg_safe["secret_set"] = False
-    return jsonify({"ok": True, "webhook": cfg_safe})
-
-@app.route("/api/webhook/<compte_id>", methods=["POST"])
-def sauver_webhook(compte_id):
-    if not check_access(compte_id):
-        return jsonify({"ok": False}), 403
-    d   = request.json or {}
-    url = str(d.get("url", "")).strip()[:500]
-    # Valider l'URL basiquement
-    if url and not re.match(r'^https?://', url, re.IGNORECASE):
-        return jsonify({"ok": False, "message": "L'URL doit commencer par http:// ou https://"}), 400
-    cats = [str(c).upper().strip()[:30] for c in d.get("categories", []) if str(c).strip()][:20]
-    # Secret : si le client envoie une chaîne vide et que secret_set=True → garder l'ancien
-    existing = _get_webhook(compte_id)
-    new_secret = str(d.get("secret", "")).strip()[:200]
-    if not new_secret and d.get("secret_set"):
-        new_secret = existing.get("secret", "")  # garder l'ancien
-    cfg = {
-        "actif":      bool(d.get("actif", False)),
-        "url":        url,
-        "secret":     new_secret,
-        "categories": cats,
-    }
-    set_setting(compte_id, "webhook", cfg)
-    cfg_resp = dict(cfg)
-    if cfg_resp.get("secret"):
-        cfg_resp["secret_set"] = True
-        cfg_resp["secret"]     = ""
-    return jsonify({"ok": True, "webhook": cfg_resp})
-
-@app.route("/api/webhook/<compte_id>/test", methods=["POST"])
-@limiter.limit("5 per minute")
-def tester_webhook(compte_id):
-    """Envoie un payload de test à l'URL configurée."""
-    if not check_access(compte_id):
-        return jsonify({"ok": False}), 403
-    cfg = _get_webhook(compte_id)
-    url = cfg.get("url", "")
-    if not url:
-        return jsonify({"ok": False, "message": "Aucune URL configurée"}), 400
-    data = charger_comptes()
-    c    = trouver_compte(data, compte_id)
-    import datetime as _dt
-    payload = {
-        "event":     "test",
-        "timestamp": _dt.datetime.utcnow().isoformat() + "Z",
-        "boite":     c.get("boites", [{}])[0].get("email", "") if c else "",
-        "compte_nom": c.get("nom", "") if c else "",
-        "email": {
-            "sujet":         "Email de test MailPilot",
-            "expediteur":    "test@mailpilot.app",
-            "categorie":     "URGENT",
-            "brouillon_cree": True,
-        }
-    }
-    headers = {"Content-Type": "application/json", "X-MailPilot-Event": "test"}
-    if cfg.get("secret"):
-        headers["X-MailPilot-Secret"] = cfg["secret"]
-    try:
-        resp = http_requests.post(url, json=payload, headers=headers, timeout=8)
-        return jsonify({
-            "ok":          True,
-            "status_code": resp.status_code,
-            "message":     f"HTTP {resp.status_code}",
-        })
-    except Exception as e:
-        return jsonify({"ok": False, "message": str(e)[:200]}), 502
 
 # ── Labels ────────────────────────────────────────────────────
 

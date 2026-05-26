@@ -133,50 +133,6 @@ def est_blackliste(expediteur: str) -> bool:
         if "." not in entry and local == entry:       return True  # partie locale (noreply, mailer-daemon…)
     return False
 
-# ── Webhook sortant ───────────────────────────────────────────
-_WEBHOOK_URL    = os.getenv("AGENT_WEBHOOK_URL",    "").strip()
-_WEBHOOK_SECRET = os.getenv("AGENT_WEBHOOK_SECRET", "").strip()
-_WEBHOOK_ACTIF  = os.getenv("AGENT_WEBHOOK_ACTIF",  "0") == "1"
-_WEBHOOK_CATS   = [c.strip() for c in os.getenv("AGENT_WEBHOOK_CATS", "").split(",") if c.strip()]
-
-
-def envoyer_webhook(email: dict, categorie: str, brouillon_cree: bool):
-    """
-    Envoie un payload JSON à l'URL webhook configurée.
-    Ne plante jamais — silencieux en cas d'erreur.
-    Respecte le filtre par catégorie si configuré.
-    """
-    if not _WEBHOOK_ACTIF or not _WEBHOOK_URL:
-        return
-    if _WEBHOOK_CATS and categorie not in _WEBHOOK_CATS:
-        return
-
-    payload = {
-        "event":     "email_traite",
-        "timestamp": datetime.utcnow().isoformat() + "Z",
-        "boite":     os.getenv("AGENT_EMAIL", ""),
-        "compte_nom": os.getenv("AGENT_NOM", ""),
-        "email": {
-            "sujet":          email.get("sujet", ""),
-            "expediteur":     email.get("expediteur", ""),
-            "categorie":      categorie,
-            "brouillon_cree": brouillon_cree,
-        }
-    }
-    headers = {
-        "Content-Type":    "application/json",
-        "X-MailPilot-Event": "email_traite",
-        "User-Agent":      "MailPilot-Webhook/1.0",
-    }
-    if _WEBHOOK_SECRET:
-        headers["X-MailPilot-Secret"] = _WEBHOOK_SECRET
-
-    try:
-        resp = http_requests.post(_WEBHOOK_URL, json=payload, headers=headers, timeout=6)
-        logger.info(f"  🔗 Webhook → {resp.status_code}")
-    except Exception as e:
-        logger.warning(f"  ⚠️ Webhook échec : {e}")
-
 # --- Modèles Claude à utiliser ---
 MODEL_CLASSIFICATION = "claude-haiku-4-5-20251001"  # Rapide et économique pour classer
 MODEL_REDACTION      = "claude-sonnet-4-6"           # Plus puissant pour rédiger
@@ -1179,9 +1135,6 @@ def traiter_email(service, client_anthropic, email, label_ids):
     except Exception as e:
         logger.error(f"  ✗ Erreur marquage lu : {e}")
 
-    # --- Étape 5 : Webhook sortant ---
-    envoyer_webhook(email, categorie, brouillon_cree)
-
     return {"categorie": categorie, "brouillon_cree": brouillon_cree, "brouillon_texte": texte_reponse}
 
 
@@ -1726,7 +1679,6 @@ def boucle_principale():
                                 texte_ms = rediger_reponse(client_anthropic, em, categorie) or ""
                                 if texte_ms:
                                     brouillon_cree = creer_brouillon_microsoft(em, texte_ms)
-                            envoyer_webhook(em, categorie, brouillon_cree)
                             resultat = {"categorie": categorie, "brouillon_cree": brouillon_cree, "brouillon_texte": texte_ms}
                         else:
                             # --- Pipeline IMAP ---
@@ -1756,7 +1708,6 @@ def boucle_principale():
                                 texte_imap = rediger_reponse(client_anthropic, em, categorie) or ""
                                 if texte_imap:
                                     brouillon_cree = creer_brouillon_imap(imap_conn, em, texte_imap)
-                            envoyer_webhook(em, categorie, brouillon_cree)
                             resultat = {"categorie": categorie, "brouillon_cree": brouillon_cree, "brouillon_texte": texte_imap}
 
                         if resultat:

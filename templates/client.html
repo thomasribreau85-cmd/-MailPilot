@@ -1557,87 +1557,6 @@
       </div>
     </div>
 
-    <!-- Webhook sortant -->
-    <div class="param-card full-width" id="card-webhook" style="border-color:rgba(79,110,247,.2)">
-      <div style="padding:16px 18px;display:flex;align-items:center;gap:16px;cursor:pointer" onclick="toggleWebhookPanel()">
-        <div style="width:38px;height:38px;border-radius:10px;background:rgba(79,110,247,.1);display:flex;align-items:center;justify-content:center;font-size:18px;box-shadow:0 0 0 1px rgba(79,110,247,.2);flex-shrink:0">🔗</div>
-        <div style="flex:1">
-          <div class="param-card-title">Webhook sortant</div>
-          <div class="param-card-sub" id="wh-desc-sub">Envoyer les événements à Zapier, Make, n8n, CRM…</div>
-        </div>
-        <div id="wh-badge" style="display:none;font-size:10px;font-weight:700;padding:3px 8px;border-radius:6px;background:rgba(34,197,94,.12);color:#4ade80;border:1px solid rgba(34,197,94,.2);flex-shrink:0">ON</div>
-        <span id="wh-chevron" style="color:var(--muted);font-size:20px;transition:.2s;flex-shrink:0">›</span>
-      </div>
-      <div id="wh-panel" style="display:none;border-top:1px solid var(--border);padding:18px 20px">
-
-        <p style="font-size:12px;color:var(--muted);margin-bottom:16px;line-height:1.5">
-          À chaque email traité, MailPilot envoie un <strong style="color:var(--text)">POST JSON</strong> à ton URL. Compatible Zapier, Make, n8n, ou n'importe quel endpoint HTTP.
-        </p>
-
-        <!-- Toggle actif -->
-        <div style="display:flex;align-items:center;gap:14px;margin-bottom:18px">
-          <label style="position:relative;width:44px;height:24px;cursor:pointer;flex-shrink:0">
-            <input type="checkbox" id="wh-actif" style="opacity:0;width:0;height:0" onchange="onWhActifChange(this.checked)" />
-            <span id="wh-slider" style="position:absolute;inset:0;border-radius:24px;transition:.2s;background:var(--border)">
-              <span id="wh-knob" style="position:absolute;width:16px;height:16px;border-radius:50%;top:4px;transition:.2s;background:#fff;left:4px"></span>
-            </span>
-          </label>
-          <div>
-            <div style="font-size:13px;font-weight:600" id="wh-actif-label">Désactivé</div>
-            <div style="font-size:11px;color:var(--muted)">Active / désactive l'envoi des webhooks</div>
-          </div>
-        </div>
-
-        <!-- URL -->
-        <div style="margin-bottom:12px">
-          <label class="form-label">URL du webhook</label>
-          <input id="wh-url" type="url" placeholder="https://hooks.zapier.com/hooks/catch/…"
-            class="form-input" style="margin-bottom:0;font-family:monospace;font-size:12px" />
-        </div>
-
-        <!-- Secret -->
-        <div style="margin-bottom:16px">
-          <label class="form-label">Secret (optionnel)</label>
-          <input id="wh-secret" type="password" placeholder="Laisse vide si non requis"
-            class="form-input" style="margin-bottom:0" autocomplete="new-password" />
-          <div id="wh-secret-hint" style="font-size:11px;color:var(--muted);margin-top:4px;display:none">🔒 Un secret est déjà configuré. Laisse vide pour le conserver.</div>
-          <div style="font-size:11px;color:var(--muted);margin-top:4px">Envoyé dans l'en-tête <code style="background:rgba(255,255,255,.06);padding:1px 5px;border-radius:4px">X-MailPilot-Secret</code> pour vérifier l'origine.</div>
-        </div>
-
-        <!-- Filtre catégories -->
-        <div style="margin-bottom:16px">
-          <label class="form-label">Déclencher pour (vide = toutes les catégories)</label>
-          <div id="wh-cats-list" style="display:flex;flex-wrap:wrap;gap:7px;padding:10px;background:rgba(255,255,255,.03);border:1px solid var(--border);border-radius:10px">
-            <!-- généré par JS -->
-          </div>
-        </div>
-
-        <!-- Payload exemple -->
-        <div style="background:rgba(79,110,247,.05);border:1px solid rgba(79,110,247,.15);border-radius:10px;padding:12px 14px;margin-bottom:16px">
-          <div style="font-size:10px;font-weight:700;color:rgba(79,110,247,.6);letter-spacing:.05em;text-transform:uppercase;margin-bottom:8px">Payload JSON envoyé</div>
-          <pre style="font-size:11px;color:#93b4f0;line-height:1.6;margin:0;white-space:pre-wrap">{
-  "event": "email_traite",
-  "timestamp": "2026-05-26T14:32:00Z",
-  "boite": "contact@monagence.com",
-  "compte_nom": "Thomas Dupont",
-  "email": {
-    "sujet": "Demande de visite appartement",
-    "expediteur": "client@gmail.com",
-    "categorie": "VISITE",
-    "brouillon_cree": true
-  }
-}</pre>
-        </div>
-
-        <!-- Boutons -->
-        <div style="display:flex;gap:10px;margin-bottom:10px">
-          <button onclick="sauverWebhook()" style="flex:1;padding:9px;background:linear-gradient(135deg,var(--blue),var(--blue2));border:none;border-radius:9px;color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;box-shadow:0 4px 14px rgba(79,110,247,.25)">💾 Enregistrer</button>
-          <button onclick="testerWebhook()" id="btn-wh-test" style="padding:9px 14px;background:rgba(79,110,247,.08);border:1px solid rgba(79,110,247,.3);border-radius:9px;color:#93b4f0;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;transition:all .15s;white-space:nowrap" onmouseover="this.style.background='rgba(79,110,247,.18)'" onmouseout="this.style.background='rgba(79,110,247,.08)'">🧪 Tester</button>
-        </div>
-        <div id="wh-status" style="font-size:12px;text-align:center;margin-top:4px;display:none"></div>
-      </div>
-    </div>
-
     <!-- Catégories personnalisées -->
     <div class="param-card full-width" id="card-categories" style="border-color:rgba(20,158,96,.2)">
       <div style="padding:16px 18px;display:flex;align-items:center;gap:16px;cursor:pointer" onclick="toggleCategoriesPanel()">
@@ -1875,15 +1794,6 @@
           <div class="drawer-item-sub">Relance si pas de réponse client</div>
         </div>
         <div class="drawer-item-badge purple" id="d-relint-badge" style="display:none">ON</div>
-      </button>
-
-      <button class="drawer-item" onclick="ouvrirSettings('card-webhook','🔗 Webhook sortant')">
-        <div class="drawer-item-icon" style="background:rgba(79,110,247,.1);box-shadow:0 0 0 1px rgba(79,110,247,.2)">🔗</div>
-        <div class="drawer-item-text">
-          <div class="drawer-item-title">Webhook sortant</div>
-          <div class="drawer-item-sub" id="d-wh-sub">Zapier / Make / n8n / CRM…</div>
-        </div>
-        <div class="drawer-item-badge blue" id="d-wh-badge" style="display:none">ON</div>
       </button>
 
       <div class="drawer-divider"></div>
@@ -3285,146 +3195,6 @@
       await sauverInstructions();
     }
 
-    // ── Webhook sortant ───────────────────────────────────────
-    const WH_CATS_DISPONIBLES = [
-      {id:'URGENT',emoji:'🔴'},{id:'DEVIS',emoji:'🟠'},{id:'INFO',emoji:'🟡'},
-      {id:'ADMIN',emoji:'🟣'},{id:'PROSPECT',emoji:'🔵'},{id:'COMMANDE',emoji:'🟢'},
-      {id:'FACTURE',emoji:'🟣'},{id:'RECLAMATION',emoji:'🔴'},{id:'SUIVI',emoji:'🟢'},
-      {id:'RENDEZ_VOUS',emoji:'🔵'},{id:'CONTRAT',emoji:'🔵'},{id:'RESILIATION',emoji:'🔴'},
-      {id:'VISITE',emoji:'🔵'},{id:'OFFRE',emoji:'🟢'},{id:'LOCATION',emoji:'🟢'},
-      {id:'SINISTRE',emoji:'🔴'},{id:'LIVRAISON',emoji:'🟠'},{id:'RETOUR',emoji:'🟡'},
-      {id:'TECHNIQUE',emoji:'🟤'},{id:'INUTILE',emoji:'⚫'},
-    ];
-    let _whSecretSet = false;
-
-    function toggleWebhookPanel() {
-      const panel   = document.getElementById('wh-panel');
-      const chevron = document.getElementById('wh-chevron');
-      const open    = panel.style.display === 'none';
-      panel.style.display = open ? 'block' : 'none';
-      chevron.style.transform = open ? 'rotate(90deg)' : '';
-      if (open) chargerWebhook();
-    }
-
-    async function chargerWebhook() {
-      try {
-        const r = await fetch(`/api/webhook/${COMPTE_ID}`);
-        const j = await r.json();
-        if (!j.ok) return;
-        const wh = j.webhook;
-        _whSecretSet = wh.secret_set || false;
-        // Toggle
-        const chk = document.getElementById('wh-actif');
-        if (chk) chk.checked = wh.actif;
-        onWhActifChange(wh.actif);
-        // URL
-        const urlEl = document.getElementById('wh-url');
-        if (urlEl) urlEl.value = wh.url || '';
-        // Secret hint
-        const hint = document.getElementById('wh-secret-hint');
-        if (hint) hint.style.display = _whSecretSet ? '' : 'none';
-        // Catégories checkboxes
-        renderWhCats(wh.categories || []);
-        majWhBadge(wh.actif, wh.url);
-      } catch(e) {}
-    }
-
-    function renderWhCats(selected) {
-      const el = document.getElementById('wh-cats-list');
-      if (!el) return;
-      el.innerHTML = WH_CATS_DISPONIBLES.map(c => `
-        <label style="display:flex;align-items:center;gap:5px;cursor:pointer;font-size:12px;font-weight:600;padding:4px 9px;border-radius:7px;border:1px solid var(--border);background:rgba(255,255,255,.02);transition:all .1s;user-select:none"
-          onmouseover="this.style.borderColor='rgba(79,110,247,.4)'" onmouseout="this.style.borderColor='var(--border)'">
-          <input type="checkbox" class="wh-cat-chk" value="${c.id}"
-            ${selected.includes(c.id) ? 'checked' : ''}
-            style="accent-color:var(--blue);width:12px;height:12px;cursor:pointer" />
-          ${c.emoji} ${c.id}
-        </label>
-      `).join('');
-    }
-
-    function onWhActifChange(actif) {
-      const slider = document.getElementById('wh-slider');
-      const knob   = document.getElementById('wh-knob');
-      const label  = document.getElementById('wh-actif-label');
-      if (slider) slider.style.background = actif ? 'var(--blue)' : 'var(--border)';
-      if (knob)   knob.style.left = actif ? '24px' : '4px';
-      if (label)  label.textContent = actif ? 'Activé' : 'Désactivé';
-    }
-
-    function majWhBadge(actif, url) {
-      const badge  = document.getElementById('wh-badge');
-      const dBadge = document.getElementById('d-wh-badge');
-      const dSub   = document.getElementById('d-wh-sub');
-      const sub    = document.getElementById('wh-desc-sub');
-      const on = actif && url;
-      if (badge)  badge.style.display  = on ? '' : 'none';
-      if (dBadge) dBadge.style.display = on ? '' : 'none';
-      if (dSub)   dSub.textContent  = on ? `Actif — ${url.replace(/^https?:\/\//, '').slice(0, 30)}…` : 'Zapier / Make / n8n / CRM…';
-      if (sub)    sub.textContent   = on ? `Webhook actif` : 'Envoyer les événements à Zapier, Make, n8n, CRM…';
-    }
-
-    async function sauverWebhook() {
-      const st  = document.getElementById('wh-status');
-      const url = (document.getElementById('wh-url')?.value || '').trim();
-      const actif = document.getElementById('wh-actif')?.checked || false;
-      const secret = (document.getElementById('wh-secret')?.value || '').trim();
-      const cats = [...document.querySelectorAll('.wh-cat-chk:checked')].map(c => c.value);
-      if (actif && !url) { toast('⚠️ Saisis une URL webhook'); return; }
-      try {
-        const r = await fetch(`/api/webhook/${COMPTE_ID}`, {
-          method: 'POST',
-          headers: {'Content-Type': 'application/json'},
-          body: JSON.stringify({ actif, url, secret, secret_set: _whSecretSet, categories: cats }),
-        });
-        const j = await r.json();
-        if (j.ok) {
-          _whSecretSet = j.webhook.secret_set || false;
-          const hint = document.getElementById('wh-secret-hint');
-          if (hint) hint.style.display = _whSecretSet ? '' : 'none';
-          const secEl = document.getElementById('wh-secret');
-          if (secEl) secEl.value = '';
-          majWhBadge(j.webhook.actif, j.webhook.url);
-          st.style.color = 'var(--green)';
-          st.textContent = '✅ Webhook enregistré';
-          st.style.display = 'block';
-          setTimeout(() => st.style.display = 'none', 3000);
-          toast(actif ? '🔗 Webhook actif' : '🔗 Webhook désactivé');
-        } else {
-          toast('⚠️ ' + (j.message || 'Erreur'));
-        }
-      } catch(e) { toast('⚠️ Erreur réseau'); }
-    }
-
-    async function testerWebhook() {
-      const st  = document.getElementById('wh-status');
-      const btn = document.getElementById('btn-wh-test');
-      const url = (document.getElementById('wh-url')?.value || '').trim();
-      if (!url) { toast('⚠️ Saisis une URL d\'abord'); return; }
-      if (btn) { btn.textContent = '⏳ Envoi…'; btn.disabled = true; }
-      try {
-        // Sauvegarder d'abord pour que le backend utilise la bonne URL
-        await sauverWebhook();
-        const r = await fetch(`/api/webhook/${COMPTE_ID}/test`, { method: 'POST' });
-        const j = await r.json();
-        if (j.ok) {
-          st.style.color = 'var(--green)';
-          st.textContent = `✅ Succès — HTTP ${j.status_code}`;
-        } else {
-          st.style.color = 'var(--red)';
-          st.textContent = `❌ Erreur — ${j.message}`;
-        }
-        st.style.display = 'block';
-        setTimeout(() => st.style.display = 'none', 5000);
-      } catch(e) {
-        st.style.color = 'var(--red)';
-        st.textContent = '❌ Erreur réseau';
-        st.style.display = 'block';
-      } finally {
-        if (btn) { btn.textContent = '🧪 Tester'; btn.disabled = false; }
-      }
-    }
-
     // ── Blacklist expéditeurs ─────────────────────────────────
     let _blacklist = [];
 
@@ -4660,7 +4430,6 @@
     chargerInstructions();
     chargerCategories();
     chargerBlacklist();
-    chargerWebhook();
     rafraichir().then(() => {
       chargerStats();
       chargerToutesAbsences();
