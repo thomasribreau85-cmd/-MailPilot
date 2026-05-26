@@ -230,6 +230,25 @@ def _get_signature_text(compte_id):
     return sig.get("texte", "") if sig.get("actif") else ""
 
 
+TEMPLATES_DEFAUT = [
+    {"id": "t1", "categorie": "VISITE",        "titre": "Confirmation de visite",      "texte": "Bonjour,\n\nJe vous confirme notre rendez-vous de visite. Je serai présent(e) à l'heure convenue et reste disponible pour toute question d'ici là.\n\nÀ très bientôt,"},
+    {"id": "t2", "categorie": "DEVIS",         "titre": "Réponse demande de devis",    "texte": "Bonjour,\n\nMerci pour votre demande. Je reviens vers vous très rapidement avec une estimation détaillée correspondant à votre projet.\n\nCordialement,"},
+    {"id": "t3", "categorie": "RELANCE",       "titre": "Relance client",              "texte": "Bonjour,\n\nJe me permets de revenir vers vous suite à notre dernier échange. Avez-vous eu l'occasion d'avancer sur votre projet ? Je reste à votre disposition pour en discuter.\n\nBien cordialement,"},
+    {"id": "t4", "categorie": "URGENT",        "titre": "Prise en charge urgente",     "texte": "Bonjour,\n\nJ'ai bien reçu votre message et je comprends l'urgence de la situation. Je traite votre demande en priorité et vous recontacte dans les plus brefs délais.\n\nCordialement,"},
+    {"id": "t5", "categorie": "COMMERCIAL",    "titre": "Remerciement contact",        "texte": "Bonjour,\n\nMerci pour l'intérêt que vous portez à notre agence. Je serais ravi(e) d'en apprendre davantage sur votre projet immobilier et de vous accompagner.\n\nÀ bientôt,"},
+]
+
+
+def _get_templates(compte_id):
+    """Retourne la liste des templates du compte (ou les défauts)."""
+    return get_setting(compte_id, "templates", TEMPLATES_DEFAUT)
+
+
+def _get_absence(compte_id, boite_id):
+    """Retourne le config absence d'une boîte."""
+    return get_setting(compte_id, f"absence_{boite_id}", {"actif": False, "date_retour": "", "message": ""})
+
+
 def _lancer_agent(compte_id, boite_id, c, b, data):
     """Lance le subprocess mailpilot pour une boite donnée."""
     pk       = pkey(compte_id, boite_id)
@@ -253,6 +272,10 @@ def _lancer_agent(compte_id, boite_id, c, b, data):
         "AGENT_INSTRUCTIONS":  b.get("instructions", ""),
         "AGENDA_ACTIF":        "1" if c.get("agenda_actif", True) else "0",
         "AGENT_SIGNATURE":     _get_signature_text(compte_id),
+        "AGENT_TEMPLATES":     json.dumps(_get_templates(compte_id), ensure_ascii=False),
+        "AGENT_ABSENCE_ACTIF": "1" if _get_absence(compte_id, boite_id).get("actif") else "0",
+        "AGENT_ABSENCE_DATE":  _get_absence(compte_id, boite_id).get("date_retour", ""),
+        "AGENT_ABSENCE_MSG":   _get_absence(compte_id, boite_id).get("message", ""),
         **_nettoyage_env(compte_id),
         "TRANSFERTS_RULES":    "|".join(
             f"{r['categorie']}:{r['to']}"
@@ -1046,6 +1069,56 @@ def sauver_signature(compte_id):
     set_setting(compte_id, "signature", sig)
     return jsonify({"ok": True, **sig})
 
+
+# ── Templates de réponse ──────────────────────────────────────
+
+@app.route("/api/templates/<compte_id>", methods=["GET"])
+def get_templates(compte_id):
+    if not check_access(compte_id):
+        return jsonify({"ok": False}), 403
+    return jsonify({"ok": True, "templates": _get_templates(compte_id)})
+
+@app.route("/api/templates/<compte_id>", methods=["POST"])
+def sauver_templates(compte_id):
+    if not check_access(compte_id):
+        return jsonify({"ok": False}), 403
+    d = request.json or {}
+    templates = []
+    for t in d.get("templates", [])[:20]:   # max 20 templates
+        templates.append({
+            "id":        str(t.get("id", uuid.uuid4()))[:36],
+            "categorie": str(t.get("categorie", "")).upper()[:30],
+            "titre":     str(t.get("titre", "")).strip()[:80],
+            "texte":     str(t.get("texte", "")).strip()[:800],
+        })
+    # Si liste vide → on efface le setting pour retrouver les défauts au prochain GET
+    if templates:
+        set_setting(compte_id, "templates", templates)
+    else:
+        set_setting(compte_id, "templates", None)
+        templates = TEMPLATES_DEFAUT
+    return jsonify({"ok": True, "templates": templates})
+
+# ── Mode absence ──────────────────────────────────────────────
+
+@app.route("/api/absence/<compte_id>/<boite_id>", methods=["GET"])
+def get_absence(compte_id, boite_id):
+    if not check_access(compte_id):
+        return jsonify({"ok": False}), 403
+    return jsonify({"ok": True, **_get_absence(compte_id, boite_id)})
+
+@app.route("/api/absence/<compte_id>/<boite_id>", methods=["POST"])
+def sauver_absence(compte_id, boite_id):
+    if not check_access(compte_id):
+        return jsonify({"ok": False}), 403
+    d = request.json or {}
+    absence = {
+        "actif":       bool(d.get("actif", False)),
+        "date_retour": str(d.get("date_retour", "")).strip()[:20],
+        "message":     str(d.get("message", "")).strip()[:500],
+    }
+    set_setting(compte_id, f"absence_{boite_id}", absence)
+    return jsonify({"ok": True, **absence})
 
 # ── Labels ────────────────────────────────────────────────────
 

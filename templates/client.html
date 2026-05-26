@@ -572,21 +572,72 @@
     .btn-save { background: linear-gradient(135deg, var(--blue), var(--blue2)) !important; box-shadow: 0 4px 14px rgba(79,110,247,.3); }
     .btn-save:disabled { opacity: .4; cursor: not-allowed; }
 
-    /* Stats */
-    .stats-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin-bottom: 20px; }
-    .stat-box { background: #111; border: 1px solid var(--border); border-radius: 10px; padding: 14px; text-align: center; }
-    .stat-box .stat-num   { font-size: 28px; font-weight: 700; display: block; line-height: 1.1; }
-    .stat-box .stat-label { font-size: 11px; color: var(--muted); margin-top: 4px; }
-    .stat-box.blue .stat-num   { color: var(--blue); }
-    .stat-box.green .stat-num  { color: var(--green); }
-    .stat-box.yellow .stat-num { color: var(--yellow); }
-    .chart-wrap { position: relative; height: 180px; margin-bottom: 20px; }
+    /* Stats modal */
+    .stats-kpis { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 18px; }
+    .kpi-box {
+      background: var(--card2); border: 1px solid var(--border);
+      border-radius: 12px; padding: 14px 16px;
+    }
+    .kpi-box .kpi-label { font-size: 10px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin-bottom: 6px; }
+    .kpi-box .kpi-value { font-size: 28px; font-weight: 800; line-height: 1; }
+    .kpi-box .kpi-meta  { font-size: 11px; color: var(--muted); margin-top: 5px; display: flex; align-items: center; gap: 5px; }
+    .kpi-trend-up   { color: var(--green); font-size: 10px; font-weight: 700; }
+    .kpi-trend-down { color: var(--red);   font-size: 10px; font-weight: 700; }
+    .kpi-trend-flat { color: var(--muted); font-size: 10px; }
+    .kpi-box.blue   .kpi-value { color: var(--blue); }
+    .kpi-box.green  .kpi-value { color: var(--green); }
+    .kpi-box.yellow .kpi-value { color: var(--yellow); }
+    .kpi-box.purple .kpi-value { color: #a78bfa; }
+    .stats-section-title { font-size: 11px; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); margin-bottom: 10px; }
+    .chart-wrap { position: relative; height: 190px; margin-bottom: 20px; }
     .cats-list  { display: flex; flex-direction: column; gap: 8px; }
     .cat-item   { display: flex; align-items: center; gap: 10px; font-size: 13px; }
-    .cat-bar-wrap { flex: 1; background: #111; border-radius: 4px; height: 6px; overflow: hidden; }
-    .cat-bar    { height: 100%; background: var(--blue); border-radius: 4px; transition: width .4s; }
-    .cat-count  { font-size: 12px; color: var(--muted); min-width: 30px; text-align: right; }
+    .cat-bar-wrap { flex: 1; background: rgba(255,255,255,.04); border-radius: 4px; height: 7px; overflow: hidden; }
+    .cat-bar    { height: 100%; border-radius: 4px; transition: width .5s ease; }
+    .cat-count  { font-size: 11px; color: var(--muted); min-width: 42px; text-align: right; }
+    /* Legacy stat boxes (still used in stats-bar) */
     .stats-semaine-label { font-size: 11px; color: var(--muted); margin-bottom: 8px; }
+
+    /* ── Templates de réponse ── */
+    .tpl-item {
+      border: 1px solid var(--border); border-radius: 11px;
+      padding: 12px 14px; margin-bottom: 10px;
+      background: #060d1c; transition: border-color .15s;
+    }
+    .tpl-item:focus-within { border-color: rgba(79,110,247,.4); }
+    .tpl-item-head { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+    .tpl-cat-select {
+      background: #0d1526; border: 1px solid var(--border); color: var(--text);
+      border-radius: 7px; padding: 5px 8px; font-size: 12px; font-family: inherit;
+      font-weight: 600; cursor: pointer; flex-shrink: 0;
+    }
+    .tpl-titre-input {
+      flex: 1; background: transparent; border: none; color: var(--text);
+      font-size: 13px; font-weight: 600; font-family: inherit; outline: none;
+      min-width: 0;
+    }
+    .tpl-titre-input::placeholder { color: var(--muted); font-weight: 400; }
+    .tpl-del-btn {
+      background: none; border: none; color: var(--muted); cursor: pointer;
+      font-size: 16px; padding: 2px 4px; border-radius: 5px; transition: color .15s;
+      flex-shrink: 0;
+    }
+    .tpl-del-btn:hover { color: var(--red); }
+    .tpl-texte {
+      width: 100%; background: transparent; border: none; border-top: 1px solid var(--border);
+      color: var(--text); font-size: 12px; font-family: inherit; outline: none;
+      resize: vertical; padding: 8px 0 0; line-height: 1.55; min-height: 60px;
+      box-sizing: border-box;
+    }
+    .tpl-texte::placeholder { color: var(--muted); }
+
+    /* ── Mode absence ── */
+    .absence-badge {
+      display: inline-flex; align-items: center; gap: 5px;
+      background: rgba(245,158,11,.12); border: 1px solid rgba(245,158,11,.3);
+      color: #fbbf24; font-size: 10px; font-weight: 700; padding: 3px 8px;
+      border-radius: 6px; letter-spacing: .03em;
+    }
 
     /* ── Onboarding wizard ── */
     .wizard-overlay {
@@ -1122,6 +1173,31 @@
       </div>
     </div>
 
+    <!-- Modèles de réponse IA -->
+    <div class="param-card full-width" id="card-templates" style="border-color:rgba(34,197,94,.2)">
+      <div style="padding:16px 18px;display:flex;align-items:center;gap:16px;cursor:pointer" onclick="toggleTemplatesPanel()">
+        <div style="width:38px;height:38px;border-radius:10px;background:rgba(34,197,94,.1);display:flex;align-items:center;justify-content:center;font-size:18px;box-shadow:0 0 0 1px rgba(34,197,94,.2);flex-shrink:0">📋</div>
+        <div style="flex:1">
+          <div class="param-card-title">Modèles de réponse IA</div>
+          <div class="param-card-sub" id="tpl-preview-sub">Bases de rédaction par catégorie pour guider l'IA</div>
+        </div>
+        <div id="tpl-badge" style="font-size:10px;font-weight:700;padding:3px 8px;border-radius:6px;background:rgba(34,197,94,.12);color:#4ade80;border:1px solid rgba(34,197,94,.2);flex-shrink:0">— modèles</div>
+        <span id="tpl-chevron" style="color:var(--muted);font-size:20px;transition:.2s;flex-shrink:0">›</span>
+      </div>
+      <div id="tpl-panel" style="display:none;border-top:1px solid var(--border);padding:18px 20px">
+        <div style="font-size:12px;color:var(--muted);margin-bottom:14px;line-height:1.5">
+          💡 Chaque modèle sert de <strong style="color:var(--text)">base de rédaction suggérée</strong> à l'IA selon la catégorie de l'email. L'IA adapte toujours le texte au contexte réel.
+        </div>
+        <div id="tpl-list"></div>
+        <button onclick="ajouterTemplate()" style="width:100%;padding:9px;background:rgba(34,197,94,.08);border:1px dashed rgba(34,197,94,.3);border-radius:9px;color:#4ade80;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;transition:all .15s;margin-top:4px" onmouseover="this.style.background='rgba(34,197,94,.15)'" onmouseout="this.style.background='rgba(34,197,94,.08)'">＋ Ajouter un modèle</button>
+        <div style="display:flex;gap:10px;margin-top:12px">
+          <button onclick="sauverTemplates()" style="flex:1;padding:9px;background:linear-gradient(135deg,var(--blue),var(--blue2));border:none;border-radius:9px;color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">💾 Enregistrer</button>
+          <button onclick="resetTemplates()" style="padding:9px 14px;background:transparent;border:1px solid var(--border);border-radius:9px;color:var(--muted);font-size:12px;cursor:pointer;font-family:inherit">↺ Défauts</button>
+        </div>
+        <div id="tpl-status" style="font-size:12px;color:var(--green);text-align:center;margin-top:8px;display:none"></div>
+      </div>
+    </div>
+
     <!-- Sécurité — Changer mot de passe -->
     <div class="param-card" style="border-color:rgba(99,102,241,.2)">
       <div style="padding:16px 18px;display:flex;align-items:center;gap:16px;cursor:pointer" onclick="togglePwdPanel()">
@@ -1298,12 +1374,48 @@
 
   <!-- Modal Stats -->
   <div class="overlay" id="overlay-stats" onclick="if(event.target===this)fermerStats()">
-    <div class="modal">
+    <div class="modal" style="max-width:500px;max-height:88vh;overflow-y:auto">
       <h2>📊 Statistiques</h2>
       <p class="subtitle" id="stats-subtitle"></p>
       <div id="stats-content">Chargement…</div>
       <div class="modal-btns">
         <button class="btn-cancel" onclick="fermerStats()">Fermer</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Absence -->
+  <div class="overlay" id="overlay-absence" onclick="if(event.target===this)fermerAbsence()">
+    <div class="modal" style="max-width:400px">
+      <h2>🌴 Mode absence</h2>
+      <p class="subtitle" id="absence-subtitle">L'IA répondra automatiquement aux emails entrants avec un message d'absence.</p>
+
+      <!-- Toggle actif -->
+      <div style="display:flex;align-items:center;gap:14px;margin-bottom:20px;padding:14px;background:rgba(245,158,11,.06);border:1px solid rgba(245,158,11,.2);border-radius:11px">
+        <label style="position:relative;width:44px;height:24px;cursor:pointer;flex-shrink:0;">
+          <input type="checkbox" id="absence-toggle" style="opacity:0;width:0;height:0;" onchange="onAbsenceToggle(this.checked)" />
+          <span id="absence-slider" style="position:absolute;inset:0;border-radius:24px;transition:.2s;background:var(--border);">
+            <span id="absence-knob" style="position:absolute;width:16px;height:16px;border-radius:50%;top:4px;transition:.2s;background:#fff;left:4px;"></span>
+          </span>
+        </label>
+        <div>
+          <div style="font-size:13px;font-weight:700" id="absence-toggle-label">Mode absence désactivé</div>
+          <div style="font-size:11px;color:var(--muted)">Active les réponses automatiques d'absence</div>
+        </div>
+      </div>
+
+      <div id="absence-fields">
+        <label class="form-label">Date de retour <span style="color:var(--muted);font-weight:400">(optionnel)</span></label>
+        <input type="date" id="absence-date" class="form-input" style="margin-bottom:16px" />
+
+        <label class="form-label">Message personnalisé <span style="color:var(--muted);font-weight:400">(optionnel)</span></label>
+        <textarea id="absence-msg" rows="4" class="form-input" placeholder="Ex : Je suis en vacances et serai de retour pour vous accompagner dans votre projet immobilier. Pour toute urgence, contactez notre agence au 01 23 45 67 89." style="resize:vertical;font-size:13px;line-height:1.5"></textarea>
+        <div style="font-size:11px;color:var(--muted);margin-top:6px">💡 Si vide, l'IA génère un message d'absence standard à partir de ton profil.</div>
+      </div>
+
+      <div class="modal-btns" style="margin-top:20px">
+        <button class="btn-cancel" onclick="fermerAbsence()">Annuler</button>
+        <button class="btn-save" onclick="sauvegarderAbsence()">Enregistrer</button>
       </div>
     </div>
   </div>
@@ -1604,6 +1716,7 @@
             <button class="action-btn" onclick="ouvrirChatEmail('${id}')">💬 Chat IA</button>
             <button class="action-btn" onclick="ouvrirLabels('${id}')">⚙️ Catégories</button>
             <button class="action-btn" onclick="ouvrirStats('${id}', '${email}')">📊 Stats</button>
+            <button class="action-btn" id="btn-absence-${id}" onclick="ouvrirAbsence('${id}')">🌴 Absence</button>
             <button class="action-btn" onclick="ouvrirBilan('${id}')">⏰ Bilan hebdo</button>
             <button class="action-btn" onclick="ouvrirInstructions('${id}')">✍️ Instructions IA</button>
             <button class="action-btn" onclick="ouvrirTransferts('${id}')">📤 Transferts</button>
@@ -1788,58 +1901,148 @@
     function afficherStats(data) {
       const sc   = data.semaine_courante || {};
       const hist = data.historique || [];
+
       const traites    = sc.traites    || 0;
       const brouillons = sc.brouillons || 0;
       const semaine    = sc.semaine    || '—';
       const cats       = sc.categories || {};
-      const totalTraites    = hist.reduce((s,h) => s + (h.traites||0), 0) + traites;
-      let html = `
-        <div class="stats-grid">
-          <div class="stat-box blue"><span class="stat-num">${traites}</span><div class="stat-label">Cette semaine</div></div>
-          <div class="stat-box green"><span class="stat-num">${brouillons}</span><div class="stat-label">Brouillons créés</div></div>
-          <div class="stat-box yellow"><span class="stat-num">${totalTraites}</span><div class="stat-label">Total emails</div></div>
-        </div>`;
-      const semaines = [...hist, {label:`Sem. ${semaine} ★`, traites, brouillons}];
-      if (semaines.length > 0) {
-        html += `<div class="stats-semaine-label">📈 Emails traités par semaine</div><div class="chart-wrap"><canvas id="stats-chart"></canvas></div>`;
+
+      // Dernière semaine disponible en historique (pour calcul de tendance)
+      const prevSem    = hist.length > 0 ? hist[hist.length - 1] : null;
+      const prevTrait  = prevSem ? (prevSem.traites || 0) : null;
+      const prevBrou   = prevSem ? (prevSem.brouillons || 0) : null;
+
+      // Total toutes semaines
+      const totalTraites    = hist.reduce((s, h) => s + (h.traites || 0), 0) + traites;
+      const totalBrouillons = hist.reduce((s, h) => s + (h.brouillons || 0), 0) + brouillons;
+
+      // Taux de conversion brouillons → envoyés (brouillons générés / emails traités)
+      const tauxConv = traites > 0 ? Math.round(brouillons / traites * 100) : 0;
+      const prevTaux = prevTrait > 0 && prevBrou !== null ? Math.round(prevBrou / prevTrait * 100) : null;
+
+      function trendHtml(cur, prev) {
+        if (prev === null) return `<span class="kpi-trend-flat">Sem. ${semaine}</span>`;
+        const diff = cur - prev;
+        if (diff > 0)  return `<span class="kpi-trend-up">↑ +${diff} vs sem. préc.</span>`;
+        if (diff < 0)  return `<span class="kpi-trend-down">↓ ${diff} vs sem. préc.</span>`;
+        return `<span class="kpi-trend-flat">= même qu'avant</span>`;
       }
-      const catEntries = Object.entries(cats).sort((a,b) => b[1]-a[1]);
+
+      let html = `<div class="stats-kpis">
+        <div class="kpi-box blue">
+          <div class="kpi-label">📧 Cette semaine</div>
+          <div class="kpi-value">${traites}</div>
+          <div class="kpi-meta">${trendHtml(traites, prevTrait)}</div>
+        </div>
+        <div class="kpi-box green">
+          <div class="kpi-label">✏️ Brouillons</div>
+          <div class="kpi-value">${brouillons}</div>
+          <div class="kpi-meta">${trendHtml(brouillons, prevBrou)}</div>
+        </div>
+        <div class="kpi-box purple">
+          <div class="kpi-label">🔄 Taux brouillons</div>
+          <div class="kpi-value">${tauxConv}%</div>
+          <div class="kpi-meta">${trendHtml(tauxConv, prevTaux)}</div>
+        </div>
+        <div class="kpi-box yellow">
+          <div class="kpi-label">🏆 Total historique</div>
+          <div class="kpi-value">${totalTraites}</div>
+          <div class="kpi-meta"><span class="kpi-trend-flat">${totalBrouillons} brouillons au total</span></div>
+        </div>
+      </div>`;
+
+      // Graphique multi-semaines (jusqu'à 12 semaines)
+      const semaines = [...hist.slice(-11), { label: `S${semaine} ★`, traites, brouillons }];
+      html += `<div class="stats-section-title">📈 Activité par semaine</div>
+               <div class="chart-wrap"><canvas id="stats-chart"></canvas></div>`;
+
+      // Répartition catégories
+      const catEntries = Object.entries(cats).sort((a, b) => b[1] - a[1]);
       if (catEntries.length > 0) {
-        const maxCat = catEntries[0][1];
-        const emojis = { URGENT:'🔴',COMMERCIAL:'🤝',ADMINISTRATIF:'📋',SUPPORT:'❓',INUTILE:'🗑️',DEVIS:'💰',VISITE:'🏠',OFFRE:'✍️',JURIDIQUE:'⚖️',RELANCE:'🔔' };
-        html += `<div class="stats-semaine-label">📂 Répartition cette semaine</div><div class="cats-list">`;
-        for (const [cat, nb] of catEntries) {
-          const pct = maxCat > 0 ? Math.round(nb/maxCat*100) : 0;
+        const totalCat = catEntries.reduce((s, [, n]) => s + n, 0);
+        const maxCat   = catEntries[0][1];
+        const emojis   = { URGENT:'🔴', COMMERCIAL:'🤝', ADMINISTRATIF:'📋', SUPPORT:'❓', INUTILE:'🗑️', DEVIS:'💰', VISITE:'🏠', OFFRE:'✍️', JURIDIQUE:'⚖️', RELANCE:'🔔' };
+        const colors   = ['#4f6ef7','#22c55e','#f59e0b','#a78bfa','#ef4444','#06b6d4','#f97316','#ec4899','#84cc16','#8b5cf6'];
+        html += `<div class="stats-section-title">📂 Répartition cette semaine</div><div class="cats-list">`;
+        catEntries.forEach(([cat, nb], i) => {
+          const pct    = maxCat > 0 ? Math.round(nb / maxCat * 100) : 0;
+          const pctTot = totalCat > 0 ? Math.round(nb / totalCat * 100) : 0;
+          const col    = colors[i % colors.length];
           html += `<div class="cat-item">
-            <span style="font-size:14px">${emojis[cat]||'•'}</span>
-            <span style="min-width:120px;font-size:12px">${cat}</span>
-            <div class="cat-bar-wrap"><div class="cat-bar" style="width:${pct}%"></div></div>
-            <span class="cat-count">${nb}</span></div>`;
-        }
-        html += `</div>`;
-      }
-      document.getElementById('stats-content').innerHTML = html;
-      if (semaines.length > 0) {
-        const ctx = document.getElementById('stats-chart').getContext('2d');
-        chartInstance = new Chart(ctx, {
-          type: 'bar',
-          data: {
-            labels: semaines.map(s => s.label),
-            datasets: [
-              { label:'Emails traités', data:semaines.map(s=>s.traites||0), backgroundColor:'#3b82f6', borderRadius:4 },
-              { label:'Brouillons',     data:semaines.map(s=>s.brouillons||0), backgroundColor:'#22c55e', borderRadius:4 },
-            ]
-          },
-          options: {
-            responsive:true, maintainAspectRatio:false,
-            plugins:{ legend:{ labels:{ color:'#888', font:{size:11} } } },
-            scales:{
-              x:{ ticks:{color:'#666',font:{size:10}}, grid:{color:'#1a1a1a'} },
-              y:{ ticks:{color:'#666',font:{size:10}}, grid:{color:'#1a1a1a'}, beginAtZero:true }
-            }
-          }
+            <span style="font-size:13px;width:16px;text-align:center">${emojis[cat] || '•'}</span>
+            <span style="min-width:110px;font-size:11px;font-weight:600;color:var(--text)">${cat}</span>
+            <div class="cat-bar-wrap"><div class="cat-bar" style="width:${pct}%;background:${col}"></div></div>
+            <span class="cat-count">${nb} <span style="color:${col};font-weight:700">${pctTot}%</span></span>
+          </div>`;
         });
+        html += `</div>`;
+      } else {
+        html += `<div style="text-align:center;color:var(--muted);font-size:13px;padding:16px 0">Aucune catégorie cette semaine</div>`;
       }
+
+      document.getElementById('stats-content').innerHTML = html;
+
+      // Rendu Chart.js
+      const ctx = document.getElementById('stats-chart').getContext('2d');
+      chartInstance = new Chart(ctx, {
+        data: {
+          labels: semaines.map(s => s.label || `S${s.semaine || '?'}`),
+          datasets: [
+            {
+              type: 'bar',
+              label: 'Emails traités',
+              data: semaines.map(s => s.traites || 0),
+              backgroundColor: 'rgba(79,110,247,.75)',
+              borderColor: 'rgba(79,110,247,1)',
+              borderWidth: 1,
+              borderRadius: 5,
+              order: 2
+            },
+            {
+              type: 'bar',
+              label: 'Brouillons',
+              data: semaines.map(s => s.brouillons || 0),
+              backgroundColor: 'rgba(34,197,94,.65)',
+              borderColor: 'rgba(34,197,94,1)',
+              borderWidth: 1,
+              borderRadius: 5,
+              order: 2
+            },
+            {
+              type: 'line',
+              label: 'Tendance',
+              data: semaines.map(s => s.traites || 0),
+              borderColor: 'rgba(167,139,250,.8)',
+              borderWidth: 2,
+              pointBackgroundColor: 'rgba(167,139,250,1)',
+              pointRadius: 3,
+              tension: 0.35,
+              fill: false,
+              order: 1,
+              yAxisID: 'y'
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          interaction: { mode: 'index', intersect: false },
+          plugins: {
+            legend: { labels: { color: '#8898aa', font: { size: 11 }, boxWidth: 12 } },
+            tooltip: {
+              backgroundColor: '#0d1526',
+              titleColor: '#f0f4ff',
+              bodyColor: '#8898aa',
+              borderColor: '#1a2c47',
+              borderWidth: 1,
+            }
+          },
+          scales: {
+            x: { ticks: { color: '#5a7090', font: { size: 10 } }, grid: { color: 'rgba(255,255,255,.04)' } },
+            y: { ticks: { color: '#5a7090', font: { size: 10 } }, grid: { color: 'rgba(255,255,255,.04)' }, beginAtZero: true }
+          }
+        }
+      });
     }
 
     // ── Bilan hebdomadaire ────────────────────────────────────
@@ -2106,6 +2309,203 @@
       } catch(e) {
         st.textContent = '❌ Erreur réseau';
         st.style.display = 'inline';
+      }
+    }
+
+    // ── Modèles de réponse ────────────────────────────────────
+    const CATS_TEMPLATES = ['VISITE','DEVIS','RELANCE','URGENT','COMMERCIAL','ADMINISTRATIF','SUPPORT','OFFRE','JURIDIQUE'];
+    let templatesData = [];
+
+    function toggleTemplatesPanel() {
+      const panel   = document.getElementById('tpl-panel');
+      const chevron = document.getElementById('tpl-chevron');
+      const open    = panel.style.display === 'none';
+      panel.style.display = open ? 'block' : 'none';
+      chevron.style.transform = open ? 'rotate(90deg)' : '';
+      if (open && templatesData.length === 0) chargerTemplates();
+    }
+
+    async function chargerTemplates() {
+      try {
+        const r = await fetch(`/api/templates/${COMPTE_ID}`);
+        const j = await r.json();
+        if (j.ok) {
+          templatesData = j.templates || [];
+          renderTemplates();
+          _updateTplBadge();
+        }
+      } catch(e) {}
+    }
+
+    function _updateTplBadge() {
+      document.getElementById('tpl-badge').textContent = `${templatesData.length} modèle${templatesData.length !== 1 ? 's' : ''}`;
+    }
+
+    function renderTemplates() {
+      const list = document.getElementById('tpl-list');
+      if (templatesData.length === 0) {
+        list.innerHTML = `<div style="text-align:center;color:var(--muted);font-size:13px;padding:16px 0">Aucun modèle — cliquez « Ajouter »</div>`;
+        return;
+      }
+      list.innerHTML = templatesData.map((t, i) => `
+        <div class="tpl-item" id="tpl-item-${i}">
+          <div class="tpl-item-head">
+            <select class="tpl-cat-select" data-i="${i}" onchange="templatesData[this.dataset.i].categorie=this.value">
+              ${CATS_TEMPLATES.map(c => `<option value="${c}" ${c === t.categorie ? 'selected' : ''}>${c}</option>`).join('')}
+            </select>
+            <input class="tpl-titre-input" value="${_esc(t.titre)}" placeholder="Titre du modèle…"
+              oninput="templatesData[${i}].titre=this.value" />
+            <button class="tpl-del-btn" onclick="supprimerTemplate(${i})" title="Supprimer">✕</button>
+          </div>
+          <textarea class="tpl-texte" rows="4" placeholder="Texte du modèle…"
+            oninput="templatesData[${i}].texte=this.value">${_esc(t.texte)}</textarea>
+        </div>`).join('');
+    }
+
+    function _esc(s) {
+      return (s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+
+    function ajouterTemplate() {
+      templatesData.push({ id: Date.now().toString(36), categorie: 'VISITE', titre: '', texte: '' });
+      renderTemplates();
+      // Scroll vers le nouveau
+      const items = document.querySelectorAll('.tpl-item');
+      if (items.length) items[items.length-1].scrollIntoView({ behavior:'smooth', block:'nearest' });
+    }
+
+    function supprimerTemplate(i) {
+      templatesData.splice(i, 1);
+      renderTemplates();
+    }
+
+    async function sauverTemplates() {
+      const st = document.getElementById('tpl-status');
+      try {
+        const r = await fetch(`/api/templates/${COMPTE_ID}`, {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({ templates: templatesData }),
+        });
+        const j = await r.json();
+        if (j.ok) {
+          templatesData = j.templates;
+          renderTemplates();
+          _updateTplBadge();
+          st.textContent = '✅ Modèles enregistrés';
+          st.style.display = 'block';
+          setTimeout(() => st.style.display = 'none', 3000);
+        } else {
+          st.textContent = '❌ Erreur';
+          st.style.display = 'block';
+        }
+      } catch(e) {
+        st.textContent = '❌ Erreur réseau';
+        st.style.display = 'block';
+      }
+    }
+
+    async function resetTemplates() {
+      if (!confirm('Remettre les 5 modèles par défaut ? Vos modèles actuels seront remplacés.')) return;
+      // On envoie une liste vide pour trigger les défauts côté serveur
+      // Plus simple : on DELETE en envoyant le flag reset
+      const r = await fetch(`/api/templates/${COMPTE_ID}`, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ templates: [] }),
+      });
+      const j = await r.json();
+      // Recharger depuis l'API (les défauts)
+      await chargerTemplates();
+      toast('↺ Modèles remis par défaut');
+    }
+
+    // ── Mode absence ──────────────────────────────────────────
+    let currentAbsenceBoiteId = null;
+    let absenceState = {};    // cache: boiteId → { actif, date_retour, message }
+
+    async function ouvrirAbsence(boiteId) {
+      currentAbsenceBoiteId = boiteId;
+      const b = boitesState[boiteId] || {};
+      document.getElementById('absence-subtitle').textContent = b.email || '';
+      document.getElementById('overlay-absence').classList.add('open');
+
+      // Charger depuis API
+      try {
+        const r = await fetch(`/api/absence/${COMPTE_ID}/${boiteId}`);
+        const j = await r.json();
+        if (j.ok) {
+          document.getElementById('absence-toggle').checked = !!j.actif;
+          document.getElementById('absence-date').value    = j.date_retour || '';
+          document.getElementById('absence-msg').value     = j.message || '';
+          onAbsenceToggle(!!j.actif);
+          absenceState[boiteId] = j;
+        }
+      } catch(e) {}
+    }
+
+    function fermerAbsence() {
+      document.getElementById('overlay-absence').classList.remove('open');
+    }
+
+    function onAbsenceToggle(actif) {
+      const slider = document.getElementById('absence-slider');
+      const knob   = document.getElementById('absence-knob');
+      const label  = document.getElementById('absence-toggle-label');
+      slider.style.background = actif ? 'var(--yellow)' : 'var(--border)';
+      knob.style.left          = actif ? '24px' : '4px';
+      label.textContent        = actif ? '🌴 Mode absence activé' : 'Mode absence désactivé';
+      label.style.color        = actif ? '#fbbf24' : '';
+    }
+
+    async function sauvegarderAbsence() {
+      const actif       = document.getElementById('absence-toggle').checked;
+      const date_retour = document.getElementById('absence-date').value;
+      const message     = document.getElementById('absence-msg').value.trim();
+      try {
+        const r = await fetch(`/api/absence/${COMPTE_ID}/${currentAbsenceBoiteId}`, {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({ actif, date_retour, message }),
+        });
+        const j = await r.json();
+        if (j.ok) {
+          absenceState[currentAbsenceBoiteId] = j;
+          _updateAbsenceBtn(currentAbsenceBoiteId, actif);
+          fermerAbsence();
+          toast(actif ? '🌴 Mode absence activé' : '✓ Mode absence désactivé');
+        } else {
+          toast('⚠️ Erreur lors de la sauvegarde');
+        }
+      } catch(e) {
+        toast('⚠️ Erreur réseau');
+      }
+    }
+
+    function _updateAbsenceBtn(boiteId, actif) {
+      const btn = document.getElementById(`btn-absence-${boiteId}`);
+      if (!btn) return;
+      if (actif) {
+        btn.style.color      = '#fbbf24';
+        btn.style.background = 'rgba(245,158,11,.1)';
+        btn.title = 'Mode absence actif';
+      } else {
+        btn.style.color      = '';
+        btn.style.background = '';
+        btn.title = '';
+      }
+    }
+
+    async function chargerToutesAbsences() {
+      for (const boiteId of Object.keys(boitesState)) {
+        try {
+          const r = await fetch(`/api/absence/${COMPTE_ID}/${boiteId}`);
+          const j = await r.json();
+          if (j.ok) {
+            absenceState[boiteId] = j;
+            _updateAbsenceBtn(boiteId, !!j.actif);
+          }
+        } catch(e) {}
       }
     }
 
@@ -2744,8 +3144,10 @@
     chargerRelance();
     chargerRappel();
     chargerSignature();
+    chargerTemplates();
     rafraichir().then(() => {
       chargerStats();
+      chargerToutesAbsences();
       // Afficher le wizard si aucune boite connectée et pas déjà fait
       const key = `onboarded_${COMPTE_ID}`;
       if (!localStorage.getItem(key)) {

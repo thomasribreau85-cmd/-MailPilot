@@ -346,6 +346,28 @@ def rediger_reponse(client_anthropic, email, categorie):
     if instructions:
         prompt += f"\n\n--- CONSIGNES PERSONNALISÉES (à respecter impérativement) ---\n{instructions}\n---"
 
+    # Modèle de réponse pour cette catégorie (suggestion, pas copie exacte)
+    templates_raw = os.getenv("AGENT_TEMPLATES", "")
+    if templates_raw:
+        try:
+            templates = json.loads(templates_raw)
+            match = next((t for t in templates if t.get("categorie") == categorie and t.get("texte", "").strip()), None)
+            if match:
+                prompt += f"\n\n--- MODÈLE DE BASE SUGGÉRÉ (adapte-le au contexte de l'email reçu, ne le copie pas mot pour mot) ---\n{match['texte']}\n---"
+        except Exception:
+            pass
+
+    # Mode absence — génère une réponse d'absence automatique
+    if os.getenv("AGENT_ABSENCE_ACTIF", "0") == "1":
+        date_retour = os.getenv("AGENT_ABSENCE_DATE", "").strip()
+        msg_perso   = os.getenv("AGENT_ABSENCE_MSG", "").strip()
+        prompt += "\n\n--- MODE ABSENCE ACTIVÉ ---"
+        prompt += f"\nL'agent est actuellement absent{' jusqu\'au ' + date_retour if date_retour else ''}."
+        prompt += "\nRédige une réponse d'absence professionnelle et chaleureuse en informant l'expéditeur de l'absence."
+        if msg_perso:
+            prompt += f"\nMessage personnalisé à intégrer : {msg_perso}"
+        prompt += "\n---"
+
     # Ajoute la signature si configurée
     signature = os.getenv("AGENT_SIGNATURE", "").strip()
     if signature:
