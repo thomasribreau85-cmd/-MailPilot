@@ -5,6 +5,8 @@
 
 import sys
 import os
+import re
+import logging
 # Autoriser OAuth sur HTTP en développement local
 os.environ.setdefault("OAUTHLIB_INSECURE_TRANSPORT", "1")
 import uuid
@@ -30,6 +32,14 @@ MS_TOKEN_URL = "https://login.microsoftonline.com/common/oauth2/v2.0/token"
 MS_SCOPES    = "https://graph.microsoft.com/Mail.Read https://graph.microsoft.com/Mail.ReadWrite https://graph.microsoft.com/Mail.Send offline_access"
 
 app = Flask(__name__)
+
+# ── Logger de sécurité ────────────────────────────────────────
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [SECURITY] %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
+)
+sec_log = logging.getLogger("mailpilot.security")
 
 # ── Secret key stable ─────────────────────────────────────────
 _sk_file = Path(os.environ.get("DATA_DIR", str(Path(__file__).parent))) / ".secret_key"
@@ -189,7 +199,14 @@ def trouver_boite(compte, boite_id):
 def check_access(compte_id):
     if session.get("admin"):
         return True
-    return session.get("user_id") == compte_id
+    if session.get("user_id") != compte_id:
+        return False
+    # Vérifier que la session correspond à la version du mot de passe
+    data = charger_comptes()
+    c = trouver_compte(data, compte_id)
+    if not c:
+        return False
+    return session.get("pwd_v", 0) == c.get("password_version", 0)
 
 
 def get_login_email(c):
@@ -329,10 +346,24 @@ def auto_restart_agents():
 @app.after_request
 def set_security_headers(resp):
     resp.headers["X-Content-Type-Options"]  = "nosniff"
-    resp.headers["X-Frame-Options"]         = "SAMEORIGIN"
+    resp.headers["X-Frame-Options"]         = "DENY"
     resp.headers["X-XSS-Protection"]        = "1; mode=block"
     resp.headers["Referrer-Policy"]         = "strict-origin-when-cross-origin"
     resp.headers["Permissions-Policy"]      = "geolocation=(), microphone=(), camera=()"
+    # HSTS — force HTTPS en production (Railway)
+    if not os.environ.get("DEV_MODE", "1") == "1":
+        resp.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+    # Content Security Policy
+    csp = (
+        "default-src 'self'; "
+        "script-src 'self' 'unsafe-inline'; "
+        "style-src 'self' 'unsafe-inline'; "
+        "img-src 'self' data:; "
+        "connect-src 'self'; "
+        "font-src 'self'; "
+        "frame-ancestors 'none';"
+    )
+    resp.headers["Content-Security-Policy"] = csp
     return resp
 
 # ── Rate limit error handler ───────────────────────────────────
@@ -349,13 +380,17 @@ def login():
         d     = request.json
         email = d.get("email", "").strip().lower()
         pwd   = d.get("password", "")
+        ip    = request.remote_addr
         data  = charger_comptes()
         for c in data["comptes"]:
             if get_login_email(c).lower() == email and c.get("password_hash"):
                 if check_password_hash(c["password_hash"], pwd):
                     session["user_id"] = c["id"]
-                    session.permanent = True
+                    session["pwd_v"]   = c.get("password_version", 0)
+                    session.permanent  = True
+                    sec_log.info("LOGIN_OK email=%s compte=%s ip=%s", email, c["id"], ip)
                     return jsonify({"ok": True})
+        sec_log.warning("LOGIN_FAIL email=%s ip=%s", email, ip)
         return jsonify({"ok": False, "message": "Email ou mot de passe incorrect"})
     if session.get("admin"):
         return redirect("/admin-dashboard")
@@ -468,15 +503,22 @@ def change_password(compte_id):
     nouveau = d.get("nouveau", "")
     if not ancien or not nouveau:
         return jsonify({"ok": False, "message": "Champs manquants"})
-    if len(nouveau) < 6:
-        return jsonify({"ok": False, "message": "Le nouveau mot de passe doit faire au moins 6 caractères"})
+    if len(nouveau) < 8:
+        return jsonify({"ok": False, "message": "Le nouveau mot de passe doit faire au moins 8 caractères"})
+    if not re.search(r"[0-9]", nouveau):
+        return jsonify({"ok": False, "message": "Le mot de passe doit contenir au moins un chiffre"})
     data = charger_comptes()
     for c in data["comptes"]:
         if c["id"] == compte_id:
             if not c.get("password_hash") or not check_password_hash(c["password_hash"], ancien):
+                sec_log.warning("CHANGE_PWD_FAIL compte=%s ip=%s", compte_id, request.remote_addr)
                 return jsonify({"ok": False, "message": "Ancien mot de passe incorrect"})
-            c["password_hash"] = generate_password_hash(nouveau, method="pbkdf2:sha256")
+            c["password_hash"]     = generate_password_hash(nouveau, method="pbkdf2:sha256")
+            c["password_version"]  = c.get("password_version", 0) + 1
             sauver_comptes(data)
+            # Mettre à jour la session courante avec la nouvelle version
+            session["pwd_v"] = c["password_version"]
+            sec_log.info("CHANGE_PWD_OK compte=%s ip=%s", compte_id, request.remote_addr)
             return jsonify({"ok": True})
     return jsonify({"ok": False, "message": "Compte introuvable"})
 
@@ -488,10 +530,13 @@ def change_password(compte_id):
 def admin_login():
     if request.method == "POST":
         pwd = request.json.get("password", "")
+        ip  = request.remote_addr
         if check_password_hash(ADMIN_PASSWORD_HASH, pwd):
             session["admin"] = True
             session.permanent = True
+            sec_log.info("ADMIN_LOGIN_OK ip=%s", ip)
             return jsonify({"ok": True})
+        sec_log.warning("ADMIN_LOGIN_FAIL ip=%s", ip)
         return jsonify({"ok": False, "message": "Mot de passe incorrect"})
     if session.get("admin"):
         return redirect("/admin-dashboard")
@@ -1377,24 +1422,48 @@ def get_emails_recents(compte_id, boite_id):
             pass
     return jsonify({"ok": True, "emails": []})
 
+def _sanitize_chat_input(text, max_len=600):
+    """Tronque et neutralise les tentatives d'injection de prompt."""
+    if not text:
+        return ""
+    text = text[:max_len]
+    # Bloquer les patterns d'injection courants
+    injection_patterns = [
+        r"ignore (all |the |previous |)instructions",
+        r"disregard (all |the |previous |)instructions",
+        r"you are now",
+        r"new instructions?:",
+        r"system\s*:",
+        r"<\s*/?system\s*>",
+        r"act as (a|an)",
+    ]
+    for pattern in injection_patterns:
+        if re.search(pattern, text, re.IGNORECASE):
+            sec_log.warning("PROMPT_INJECTION compte=%s pattern=%s", "?", pattern)
+            return ""
+    return text
+
+
 @app.route("/api/chat-email/<compte_id>/<boite_id>", methods=["POST"])
+@limiter.limit("30 per hour; 5 per minute", methods=["POST"])
 def chat_email(compte_id, boite_id):
     if not check_access(compte_id):
         return jsonify({"ok": False}), 403
     d = request.json or {}
-    instruction     = d.get("instruction", "").strip()
-    email_sujet     = d.get("email_sujet", "")
-    email_expediteur= d.get("email_expediteur", "")
-    email_corps     = d.get("email_corps", "")
-    brouillon_actuel= d.get("brouillon_actuel", "")
+    instruction      = _sanitize_chat_input(d.get("instruction", "").strip())
+    email_sujet      = d.get("email_sujet", "")[:200]
+    email_expediteur = d.get("email_expediteur", "")[:100]
+    email_corps      = d.get("email_corps", "")[:3000]
+    brouillon_actuel = d.get("brouillon_actuel", "")[:2000]
     if not instruction:
-        return jsonify({"ok": False, "message": "Instruction manquante"}), 400
+        return jsonify({"ok": False, "message": "Instruction manquante ou refusée"}), 400
 
     data = charger_comptes()
     c    = trouver_compte(data, compte_id)
     if not c:
         return jsonify({"ok": False, "message": "Compte introuvable"}), 404
-    api_key = data.get("api_key", "")
+    # Clé API : variable d'environnement Railway en priorité, sinon comptes.json
+    api_key = os.environ.get("ANTHROPIC_API_KEY") or data.get("api_key", "")
     if not api_key:
         return jsonify({"ok": False, "message": "Clé API Anthropic manquante"}), 400
 
