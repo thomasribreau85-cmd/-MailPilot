@@ -258,6 +258,15 @@ LANGUES_VALIDES = {"auto", "fr", "en", "es", "de", "it", "pt", "nl", "ar", "zh"}
 
 TONS_VALIDES = {"formel", "neutre", "detendu"}
 
+CAT_CUSTOM_MAX = 10   # max catégories custom par compte
+CAT_NOM_MAX    = 40   # max longueur du nom
+CAT_DESC_MAX   = 200  # max longueur description
+
+def _get_categories_custom(compte_id):
+    """Retourne la liste des catégories personnalisées du compte ([] si aucune)."""
+    cats = get_setting(compte_id, "categories_custom", [])
+    return cats if isinstance(cats, list) else []
+
 def _get_instructions_globales(compte_id):
     """Retourne les instructions personnalisées globales (chaîne vide si aucune)."""
     return get_setting(compte_id, "instructions_globales", "") or ""
@@ -305,6 +314,7 @@ def _lancer_agent(compte_id, boite_id, c, b, data):
         "AGENT_LANGUE":                _get_langue(compte_id),
         "AGENT_TON":                   _get_ton(compte_id),
         "AGENT_INSTRUCTIONS_GLOBALES": _get_instructions_globales(compte_id),
+        "AGENT_CUSTOM_CATEGORIES":     json.dumps(_get_categories_custom(compte_id), ensure_ascii=False),
         **_nettoyage_env(compte_id),
         "TRANSFERTS_RULES":    "|".join(
             f"{r['categorie']}:{r['to']}"
@@ -1232,6 +1242,47 @@ def sauver_instructions_globales(compte_id):
         return jsonify({"ok": False, "message": "Trop long (max 2000 caractères)"}), 400
     set_setting(compte_id, "instructions_globales", texte)
     return jsonify({"ok": True, "instructions": texte})
+
+# ── Catégories personnalisées ─────────────────────────────────
+
+@app.route("/api/categories-custom/<compte_id>", methods=["GET"])
+def get_categories_custom(compte_id):
+    if not check_access(compte_id):
+        return jsonify({"ok": False}), 403
+    return jsonify({"ok": True, "categories": _get_categories_custom(compte_id)})
+
+@app.route("/api/categories-custom/<compte_id>", methods=["POST"])
+def sauver_categories_custom(compte_id):
+    if not check_access(compte_id):
+        return jsonify({"ok": False}), 403
+    d    = request.json or {}
+    cats = d.get("categories", [])
+    if not isinstance(cats, list):
+        return jsonify({"ok": False, "message": "Format invalide"}), 400
+    validated = []
+    seen_ids  = set()
+    for c in cats[:CAT_CUSTOM_MAX]:
+        nom  = str(c.get("nom", "")).strip()[:CAT_NOM_MAX]
+        desc = str(c.get("description", "")).strip()[:CAT_DESC_MAX]
+        emoji = str(c.get("emoji", "🏷️")).strip()[:4]
+        couleur = str(c.get("couleur", "#4f6ef7"))[:9]
+        if not nom:
+            continue
+        # Construire un ID stable : lettres MAJ + underscore
+        import re as _re
+        cat_id = _re.sub(r"[^A-Z0-9_]", "_", nom.upper().replace(" ", "_"))[:30]
+        if cat_id in seen_ids:
+            cat_id = cat_id + "_2"
+        seen_ids.add(cat_id)
+        validated.append({
+            "id":          cat_id,
+            "nom":         nom,
+            "emoji":       emoji,
+            "description": desc,
+            "couleur":     couleur,
+        })
+    set_setting(compte_id, "categories_custom", validated)
+    return jsonify({"ok": True, "categories": validated})
 
 # ── Labels ────────────────────────────────────────────────────
 

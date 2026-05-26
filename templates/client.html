@@ -1557,6 +1557,63 @@
       </div>
     </div>
 
+    <!-- Catégories personnalisées -->
+    <div class="param-card full-width" id="card-categories" style="border-color:rgba(20,158,96,.2)">
+      <div style="padding:16px 18px;display:flex;align-items:center;gap:16px;cursor:pointer" onclick="toggleCategoriesPanel()">
+        <div style="width:38px;height:38px;border-radius:10px;background:rgba(20,158,96,.1);display:flex;align-items:center;justify-content:center;font-size:18px;box-shadow:0 0 0 1px rgba(20,158,96,.2);flex-shrink:0">🏷️</div>
+        <div style="flex:1">
+          <div class="param-card-title">Catégories personnalisées</div>
+          <div class="param-card-sub" id="cat-desc-sub">Créer vos propres catégories d'emails</div>
+        </div>
+        <div id="cat-badge" style="display:none;font-size:10px;font-weight:700;padding:3px 8px;border-radius:6px;background:rgba(20,158,96,.12);color:#4ade80;border:1px solid rgba(20,158,96,.2);flex-shrink:0">0 cat.</div>
+        <span id="cat-chevron" style="color:var(--muted);font-size:20px;transition:.2s;flex-shrink:0">›</span>
+      </div>
+      <div id="cat-panel" style="display:none;border-top:1px solid var(--border);padding:18px 20px">
+
+        <p style="font-size:12px;color:var(--muted);margin-bottom:14px;line-height:1.5">
+          Ajoute des catégories sur mesure pour ton activité. L'IA les utilisera pour classer et répondre aux emails, <strong style="color:var(--text)">en plus</strong> des catégories standards activées sur tes boîtes.
+        </p>
+
+        <!-- Liste des catégories existantes -->
+        <div id="cat-list" style="display:flex;flex-direction:column;gap:8px;margin-bottom:14px"></div>
+
+        <!-- Formulaire ajout -->
+        <div id="cat-add-form" style="background:rgba(255,255,255,.03);border:1px dashed rgba(20,158,96,.3);border-radius:12px;padding:14px;margin-bottom:14px">
+          <div style="font-size:11px;font-weight:700;color:#4ade80;text-transform:uppercase;letter-spacing:.05em;margin-bottom:12px">Nouvelle catégorie</div>
+          <div style="display:grid;grid-template-columns:60px 1fr;gap:10px;margin-bottom:10px">
+            <div>
+              <label class="form-label">Emoji</label>
+              <input id="cat-new-emoji" type="text" maxlength="2" placeholder="🏷️"
+                style="width:100%;background:#060d1c;border:1px solid #1e2d4a;border-radius:8px;color:var(--text);font-size:20px;padding:8px;outline:none;font-family:inherit;text-align:center"
+                onfocus="this.style.borderColor='var(--blue)'" onblur="this.style.borderColor='#1e2d4a'" />
+            </div>
+            <div>
+              <label class="form-label">Nom de la catégorie</label>
+              <input id="cat-new-nom" type="text" maxlength="40" placeholder="Ex: Partenariat, SAV prioritaire…"
+                class="form-input" style="margin-bottom:0"
+                onkeydown="if(event.key==='Enter') ajouterCategorie()" />
+            </div>
+          </div>
+          <div style="margin-bottom:10px">
+            <label class="form-label">Description (aide l'IA à classer)</label>
+            <input id="cat-new-desc" type="text" maxlength="200"
+              placeholder="Ex: Demandes de partenariat commercial ou collaboration externe"
+              class="form-input" style="margin-bottom:0" />
+          </div>
+          <button onclick="ajouterCategorie()" style="width:100%;padding:9px;background:rgba(20,158,96,.12);border:1px solid rgba(20,158,96,.3);border-radius:9px;color:#4ade80;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;transition:all .15s" onmouseover="this.style.background='rgba(20,158,96,.22)'" onmouseout="this.style.background='rgba(20,158,96,.12)'">＋ Ajouter cette catégorie</button>
+        </div>
+
+        <div style="background:rgba(20,158,96,.05);border:1px solid rgba(20,158,96,.15);border-radius:10px;padding:10px 14px;font-size:12px;color:#86efac;margin-bottom:14px;line-height:1.5">
+          💡 Les catégories personnalisées apparaissent dans le tri Gmail sous "MailPilot - [Nom]". Max 10 catégories.
+        </div>
+
+        <div style="display:flex;gap:10px">
+          <button onclick="sauverCategories()" style="flex:1;padding:9px;background:linear-gradient(135deg,#149e60,#0d7a48);border:none;border-radius:9px;color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;box-shadow:0 4px 14px rgba(20,158,96,.25)">💾 Enregistrer</button>
+        </div>
+        <div id="cat-status" style="font-size:12px;color:var(--green);text-align:center;margin-top:8px;display:none"></div>
+      </div>
+    </div>
+
     <!-- Sécurité — Changer mot de passe -->
     <div class="param-card" id="pwd-panel-parent" style="border-color:rgba(99,102,241,.2)">
       <div style="padding:16px 18px;display:flex;align-items:center;gap:16px;cursor:pointer" onclick="togglePwdPanel()">
@@ -1740,6 +1797,15 @@
           <div class="drawer-item-sub">Ajoutée à chaque brouillon IA</div>
         </div>
         <div class="drawer-item-badge green" id="d-sig-badge" style="display:none">ACTIVE</div>
+      </button>
+
+      <button class="drawer-item" onclick="ouvrirSettings('card-categories','🏷️ Catégories personnalisées')">
+        <div class="drawer-item-icon" style="background:rgba(20,158,96,.1);box-shadow:0 0 0 1px rgba(20,158,96,.2)">🏷️</div>
+        <div class="drawer-item-text">
+          <div class="drawer-item-title">Catégories personnalisées</div>
+          <div class="drawer-item-sub" id="d-cat-sub">Créer vos propres catégories d'emails</div>
+        </div>
+        <div class="drawer-item-badge green" id="d-cat-badge" style="display:none">0 cat.</div>
       </button>
 
       <button class="drawer-item" onclick="ouvrirSettings('panel-module-agenda','🗓️ Module Agenda')">
@@ -3073,6 +3139,119 @@
       await sauverInstructions();
     }
 
+    // ── Catégories personnalisées ─────────────────────────────
+    let _categoriesCustom = [];
+
+    function toggleCategoriesPanel() {
+      const panel   = document.getElementById('cat-panel');
+      const chevron = document.getElementById('cat-chevron');
+      const open    = panel.style.display === 'none';
+      panel.style.display = open ? 'block' : 'none';
+      chevron.style.transform = open ? 'rotate(90deg)' : '';
+      if (open) chargerCategories();
+    }
+
+    async function chargerCategories() {
+      try {
+        const r = await fetch(`/api/categories-custom/${COMPTE_ID}`);
+        const j = await r.json();
+        if (j.ok) {
+          _categoriesCustom = j.categories || [];
+          renderCatList();
+          majCatBadge();
+        }
+      } catch(e) {}
+    }
+
+    function renderCatList() {
+      const el = document.getElementById('cat-list');
+      if (!el) return;
+      if (_categoriesCustom.length === 0) {
+        el.innerHTML = '<div style="font-size:12px;color:var(--muted);text-align:center;padding:12px 0">Aucune catégorie personnalisée pour l\'instant</div>';
+        return;
+      }
+      el.innerHTML = _categoriesCustom.map((cat, i) => `
+        <div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:rgba(255,255,255,.03);border:1px solid rgba(20,158,96,.2);border-radius:10px">
+          <span style="font-size:20px;flex-shrink:0">${escapeHtml(cat.emoji || '🏷️')}</span>
+          <div style="flex:1;min-width:0">
+            <div style="font-size:13px;font-weight:700;color:var(--text)">${escapeHtml(cat.nom)}</div>
+            ${cat.description ? `<div style="font-size:11px;color:var(--muted);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHtml(cat.description)}</div>` : ''}
+          </div>
+          <span style="font-size:9px;font-weight:700;padding:2px 7px;border-radius:5px;background:rgba(20,158,96,.12);color:#4ade80;border:1px solid rgba(20,158,96,.2);flex-shrink:0">${escapeHtml(cat.id)}</span>
+          <button onclick="supprimerCategorie(${i})" style="background:none;border:none;color:var(--muted);font-size:16px;cursor:pointer;padding:2px 6px;border-radius:6px;transition:all .15s;flex-shrink:0" onmouseover="this.style.color='var(--red)'" onmouseout="this.style.color='var(--muted)'">✕</button>
+        </div>
+      `).join('');
+    }
+
+    function supprimerCategorie(i) {
+      _categoriesCustom.splice(i, 1);
+      renderCatList();
+      majCatBadge();
+    }
+
+    function ajouterCategorie() {
+      const nom   = (document.getElementById('cat-new-nom')?.value || '').trim();
+      const emoji = (document.getElementById('cat-new-emoji')?.value || '').trim() || '🏷️';
+      const desc  = (document.getElementById('cat-new-desc')?.value || '').trim();
+      if (!nom) { toast('⚠️ Saisis un nom de catégorie'); return; }
+      if (_categoriesCustom.length >= 10) { toast('⚠️ Maximum 10 catégories'); return; }
+      if (_categoriesCustom.some(c => c.nom.toLowerCase() === nom.toLowerCase())) {
+        toast('⚠️ Cette catégorie existe déjà'); return;
+      }
+      // ID généré côté client (sera validé par le serveur)
+      const id = nom.toUpperCase().replace(/[^A-Z0-9]/g, '_').slice(0, 30);
+      _categoriesCustom.push({ id, nom, emoji, description: desc, couleur: '#4f6ef7' });
+      renderCatList();
+      majCatBadge();
+      // Vider le formulaire
+      const nomEl = document.getElementById('cat-new-nom');
+      const emojiEl = document.getElementById('cat-new-emoji');
+      const descEl = document.getElementById('cat-new-desc');
+      if (nomEl) nomEl.value = '';
+      if (emojiEl) emojiEl.value = '';
+      if (descEl) descEl.value = '';
+      if (nomEl) nomEl.focus();
+    }
+
+    async function sauverCategories() {
+      const st = document.getElementById('cat-status');
+      try {
+        const r = await fetch(`/api/categories-custom/${COMPTE_ID}`, {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({ categories: _categoriesCustom }),
+        });
+        const j = await r.json();
+        if (j.ok) {
+          _categoriesCustom = j.categories;
+          renderCatList();
+          majCatBadge();
+          st.textContent = '✅ Catégories enregistrées';
+          st.style.display = 'block';
+          setTimeout(() => st.style.display = 'none', 3000);
+          toast(`🏷️ ${_categoriesCustom.length} catégorie(s) sauvegardée(s)`);
+        } else {
+          toast('⚠️ ' + (j.message || 'Erreur'));
+        }
+      } catch(e) { toast('⚠️ Erreur réseau'); }
+    }
+
+    function majCatBadge() {
+      const n = _categoriesCustom.length;
+      const badge  = document.getElementById('cat-badge');
+      const dBadge = document.getElementById('d-cat-badge');
+      const dSub   = document.getElementById('d-cat-sub');
+      const sub    = document.getElementById('cat-desc-sub');
+      if (badge)  { badge.style.display = n > 0 ? '' : 'none'; badge.textContent = `${n} cat.`; }
+      if (dBadge) { dBadge.style.display = n > 0 ? '' : 'none'; dBadge.textContent = `${n} cat.`; }
+      if (dSub)   dSub.textContent = n > 0 ? `${n} catégorie(s) créée(s)` : 'Créer vos propres catégories d\'emails';
+      if (sub)    sub.textContent  = n > 0 ? `${n} catégorie(s) active(s)` : 'Créer vos propres catégories d\'emails';
+    }
+
+    function escapeHtml(str) {
+      return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+
     // ── Ton de rédaction ─────────────────────────────────────
     const TON_LABELS = { formel: 'Formel', neutre: 'Neutre', detendu: 'Détendu' };
     const TON_EXEMPLES = {
@@ -4095,6 +4274,7 @@
     chargerLangue();
     chargerTon();
     chargerInstructions();
+    chargerCategories();
     rafraichir().then(() => {
       chargerStats();
       chargerToutesAbsences();

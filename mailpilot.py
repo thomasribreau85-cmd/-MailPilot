@@ -39,7 +39,7 @@ from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 
-from prompts import build_classification_prompt, DRAFTING_PROMPTS, LABELS_DEFAUT, TOUS_LES_LABELS
+from prompts import build_classification_prompt, DRAFTING_PROMPTS, LABEL_DESCRIPTIONS, LABELS_DEFAUT, TOUS_LES_LABELS
 
 # --- Base de données SQLite ---
 import sys as _sys
@@ -82,6 +82,27 @@ if not LABELS_ACTIFS:
 
 # Mapping simplifié pour compatibilité
 LABEL_NOMS = {k: v["nom"] for k, v in TOUS_LES_LABELS.items()}
+
+# ── Catégories personnalisées ─────────────────────────────────
+_custom_cats_raw = os.getenv("AGENT_CUSTOM_CATEGORIES", "").strip()
+if _custom_cats_raw:
+    try:
+        for _cat in json.loads(_custom_cats_raw):
+            _cat_id = _cat.get("id", "").upper()
+            if not _cat_id:
+                continue
+            TOUS_LES_LABELS[_cat_id] = {
+                "nom":     f"MailPilot - {_cat['nom']}",
+                "couleur": {"backgroundColor": _cat.get("couleur", "#4f6ef7"), "textColor": "#ffffff"},
+                "emoji":   _cat.get("emoji", "🏷️"),
+                "description_ui": _cat.get("description", _cat["nom"]),
+            }
+            LABEL_DESCRIPTIONS[_cat_id] = _cat.get("description") or _cat["nom"]
+            LABEL_NOMS[_cat_id]         = f"MailPilot - {_cat['nom']}"
+            if _cat_id not in LABELS_ACTIFS:
+                LABELS_ACTIFS.append(_cat_id)
+    except Exception as _e:
+        logger.warning(f"AGENT_CUSTOM_CATEGORIES invalide : {_e}")
 
 # --- Modèles Claude à utiliser ---
 MODEL_CLASSIFICATION = "claude-haiku-4-5-20251001"  # Rapide et économique pour classer
@@ -329,8 +350,25 @@ def rediger_reponse(client_anthropic, email, categorie):
     # Récupère le prompt pour cette catégorie
     prompt_base = DRAFTING_PROMPTS.get(categorie)
     if not prompt_base:
-        logger.warning(f"Aucun prompt de rédaction pour la catégorie {categorie}")
-        return None
+        # Catégorie personnalisée — prompt générique
+        cat_info = TOUS_LES_LABELS.get(categorie, {})
+        cat_nom  = cat_info.get("nom", categorie).replace("MailPilot - ", "")
+        logger.info(f"  → Prompt générique pour catégorie custom : {categorie}")
+        prompt_base = f"""Tu es {{nom}}, travaillant chez {{agence}} ({{zone}}).
+Ton email : {{email}} | Ton téléphone : {{tel}}
+
+Tu reçois un email classifié « {cat_nom} ». Rédige une réponse professionnelle et adaptée au contexte.
+
+RÈGLES :
+- Réponds directement à la demande ou au sujet de l'email
+- Sois professionnel, clair et concis (maximum 6 lignes)
+- Guide naturellement vers la prochaine étape appropriée
+
+Bien cordialement,
+{{nom}} — {{agence}} — {{tel}}
+
+Email reçu :
+"""
 
     # Injecte les variables de l'agent
     prompt = prompt_base.format(
