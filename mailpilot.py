@@ -346,6 +346,11 @@ def rediger_reponse(client_anthropic, email, categorie):
     if instructions:
         prompt += f"\n\n--- CONSIGNES PERSONNALISÉES (à respecter impérativement) ---\n{instructions}\n---"
 
+    # Ajoute la signature si configurée
+    signature = os.getenv("AGENT_SIGNATURE", "").strip()
+    if signature:
+        prompt += f"\n\n--- SIGNATURE À AJOUTER EN FIN D'EMAIL (obligatoire, mot pour mot) ---\n{signature}\n---"
+
     # Ajoute le contenu de l'email reçu
     contenu_email = f"""SUJET : {email['sujet']}
 EXPÉDITEUR : {email['expediteur']}

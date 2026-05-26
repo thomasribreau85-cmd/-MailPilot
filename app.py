@@ -224,6 +224,12 @@ def capturer_logs(pk, process):
         marquer_agent_inactif(parts[0], parts[1])
 
 
+def _get_signature_text(compte_id):
+    """Retourne la signature si activée, sinon chaîne vide."""
+    sig = get_setting(compte_id, "signature", {"texte": "", "actif": False})
+    return sig.get("texte", "") if sig.get("actif") else ""
+
+
 def _lancer_agent(compte_id, boite_id, c, b, data):
     """Lance le subprocess mailpilot pour une boite donnée."""
     pk       = pkey(compte_id, boite_id)
@@ -246,6 +252,7 @@ def _lancer_agent(compte_id, boite_id, c, b, data):
         "BILAN_HEURE":         str(b.get("bilan_heure", "8")),
         "AGENT_INSTRUCTIONS":  b.get("instructions", ""),
         "AGENDA_ACTIF":        "1" if c.get("agenda_actif", True) else "0",
+        "AGENT_SIGNATURE":     _get_signature_text(compte_id),
         **_nettoyage_env(compte_id),
         "TRANSFERTS_RULES":    "|".join(
             f"{r['categorie']}:{r['to']}"
@@ -1018,6 +1025,28 @@ def sauvegarder_instructions(compte_id, boite_id):
     return jsonify({"ok": True})
 
 
+# ── Signature email ───────────────────────────────────────────
+
+@app.route("/api/signature/<compte_id>", methods=["GET"])
+def get_signature(compte_id):
+    if not check_access(compte_id):
+        return jsonify({"ok": False}), 403
+    sig = get_setting(compte_id, "signature", {"texte": "", "actif": False})
+    return jsonify({"ok": True, **sig})
+
+@app.route("/api/signature/<compte_id>", methods=["POST"])
+def sauver_signature(compte_id):
+    if not check_access(compte_id):
+        return jsonify({"ok": False}), 403
+    d = request.json or {}
+    sig = {
+        "texte": d.get("texte", "").strip()[:1000],
+        "actif": bool(d.get("actif", True)),
+    }
+    set_setting(compte_id, "signature", sig)
+    return jsonify({"ok": True, **sig})
+
+
 # ── Labels ────────────────────────────────────────────────────
 
 @app.route("/labels/<compte_id>/<boite_id>", methods=["GET", "POST"])
@@ -1390,8 +1419,13 @@ def chat_email(compte_id, boite_id):
 
     agent_nom    = c.get("nom", "L'agent")
     agent_agence = c.get("agence", "")
-    agent_tel    = c.get("tel", "")
     agent_zone   = c.get("zone", "")
+    signature    = _get_signature_text(compte_id)
+
+    sig_bloc = f"""
+--- SIGNATURE À CONSERVER EN FIN D'EMAIL (obligatoire, mot pour mot) ---
+{signature}
+---""" if signature else ""
 
     prompt = f"""Tu es l'assistant email de {agent_nom}{(' (' + agent_agence + ')') if agent_agence else ''}, agent immobilier{(' spécialisé ' + agent_zone) if agent_zone else ''}.
 
@@ -1409,7 +1443,7 @@ Voici le brouillon de réponse actuel généré par l'IA :
 ---
 
 INSTRUCTION DE L'AGENT : {instruction}
-
+{sig_bloc}
 Réécris uniquement le corps de la réponse email en appliquant l'instruction ci-dessus. Conserve un ton professionnel et courtois. Réponds directement avec le texte de l'email, sans commentaire ni introduction."""
 
     try:

@@ -1094,6 +1094,34 @@
       </div>
     </div>
 
+    <!-- Signature email -->
+    <div class="param-card full-width" id="card-signature" style="border-color:rgba(79,110,247,.2)">
+      <div style="padding:16px 18px;display:flex;align-items:center;gap:16px;cursor:pointer" onclick="toggleSignaturePanel()">
+        <div style="width:38px;height:38px;border-radius:10px;background:rgba(79,110,247,.1);display:flex;align-items:center;justify-content:center;font-size:18px;box-shadow:0 0 0 1px rgba(79,110,247,.2);flex-shrink:0">✍️</div>
+        <div style="flex:1">
+          <div class="param-card-title">Signature email</div>
+          <div class="param-card-sub" id="sig-preview-sub">Ajoutée automatiquement à chaque brouillon IA</div>
+        </div>
+        <div id="sig-badge" style="display:none;font-size:10px;font-weight:700;padding:3px 8px;border-radius:6px;background:rgba(34,197,94,.12);color:#4ade80;border:1px solid rgba(34,197,94,.2);flex-shrink:0">ACTIVE</div>
+        <span id="sig-chevron" style="color:var(--muted);font-size:20px;transition:.2s;flex-shrink:0">›</span>
+      </div>
+      <div id="sig-panel" style="display:none;border-top:1px solid var(--border);padding:18px 20px">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+          <span style="font-size:12px;color:var(--muted);font-weight:600">Signature active</span>
+          <label style="position:relative;width:36px;height:20px;cursor:pointer">
+            <input type="checkbox" id="sig-actif" style="opacity:0;width:0;height:0" onchange="onSigActifChange()" />
+            <span style="position:absolute;inset:0;background:#1a2c47;border-radius:20px;transition:.2s"></span>
+            <span id="sig-knob" style="position:absolute;left:3px;top:3px;width:14px;height:14px;background:#475569;border-radius:50%;transition:.2s"></span>
+          </label>
+        </div>
+        <label style="display:block;font-size:11px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px">Texte de la signature</label>
+        <textarea id="sig-texte" rows="5" placeholder="Cordialement,&#10;Thomas Ribreau&#10;Agent Immobilier — MailPilot&#10;📞 06 59 51 27 12" style="width:100%;background:#060d1c;border:1px solid #1e2d4a;border-radius:10px;color:var(--text);font-size:13px;padding:10px 14px;outline:none;font-family:inherit;resize:vertical;transition:border-color .15s;box-sizing:border-box" onfocus="this.style.borderColor='var(--blue)'" onblur="this.style.borderColor='#1e2d4a'"></textarea>
+        <div style="font-size:11px;color:var(--muted);margin-top:6px;margin-bottom:14px">💡 Cette signature sera ajoutée à la fin de chaque email généré par l'IA et dans le Chat IA.</div>
+        <button onclick="sauverSignature()" style="padding:9px 20px;background:linear-gradient(135deg,var(--blue),var(--blue2));border:none;border-radius:9px;color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;transition:opacity .15s">💾 Enregistrer la signature</button>
+        <span id="sig-status" style="font-size:12px;margin-left:12px;color:var(--green);display:none"></span>
+      </div>
+    </div>
+
     <!-- Sécurité — Changer mot de passe -->
     <div class="param-card" style="border-color:rgba(99,102,241,.2)">
       <div style="padding:16px 18px;display:flex;align-items:center;gap:16px;cursor:pointer" onclick="togglePwdPanel()">
@@ -2005,6 +2033,82 @@
       btn.disabled = false;
     }
 
+    // ── Signature email ───────────────────────────────────────
+    async function chargerSignature() {
+      try {
+        const r = await fetch(`/api/signature/${COMPTE_ID}`);
+        const j = await r.json();
+        if (!j.ok) return;
+        document.getElementById('sig-texte').value = j.texte || '';
+        const actif = Boolean(j.actif);
+        document.getElementById('sig-actif').checked = actif;
+        _updateSigToggleUI(actif);
+        _updateSigBadge(actif, j.texte);
+      } catch(e) {}
+    }
+
+    function _updateSigToggleUI(actif) {
+      const knob = document.getElementById('sig-knob');
+      const track = knob?.previousElementSibling;
+      if (!knob) return;
+      knob.style.transform = actif ? 'translateX(16px)' : 'translateX(0)';
+      knob.style.background = actif ? '#4ade80' : '#475569';
+      if (track) track.style.background = actif ? 'rgba(34,197,94,.2)' : '#1a2c47';
+    }
+
+    function _updateSigBadge(actif, texte) {
+      const badge = document.getElementById('sig-badge');
+      const sub   = document.getElementById('sig-preview-sub');
+      if (!badge) return;
+      if (actif && texte && texte.trim()) {
+        badge.style.display = 'block';
+        const preview = texte.trim().split('\n')[0].slice(0, 40);
+        if (sub) sub.textContent = preview + (texte.trim().split('\n')[0].length > 40 ? '…' : '');
+      } else {
+        badge.style.display = 'none';
+        if (sub) sub.textContent = 'Ajoutée automatiquement à chaque brouillon IA';
+      }
+    }
+
+    function onSigActifChange() {
+      const actif = document.getElementById('sig-actif').checked;
+      _updateSigToggleUI(actif);
+    }
+
+    function toggleSignaturePanel() {
+      const panel   = document.getElementById('sig-panel');
+      const chevron = document.getElementById('sig-chevron');
+      const open    = panel.style.display === 'none';
+      panel.style.display   = open ? 'block' : 'none';
+      chevron.style.transform = open ? 'rotate(90deg)' : '';
+    }
+
+    async function sauverSignature() {
+      const texte = document.getElementById('sig-texte').value.trim();
+      const actif = document.getElementById('sig-actif').checked;
+      const st = document.getElementById('sig-status');
+      try {
+        const r = await fetch(`/api/signature/${COMPTE_ID}`, {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({ texte, actif }),
+        });
+        const j = await r.json();
+        if (j.ok) {
+          st.textContent = '✅ Signature enregistrée';
+          st.style.display = 'inline';
+          setTimeout(() => st.style.display = 'none', 3000);
+          _updateSigBadge(actif, texte);
+        } else {
+          st.textContent = '❌ Erreur';
+          st.style.display = 'inline';
+        }
+      } catch(e) {
+        st.textContent = '❌ Erreur réseau';
+        st.style.display = 'inline';
+      }
+    }
+
     // ── Sécurité — Changement de mot de passe ────────────────
     function togglePwdPanel() {
       const panel = document.getElementById('pwd-panel');
@@ -2639,6 +2743,7 @@
     chargerConfirmation();
     chargerRelance();
     chargerRappel();
+    chargerSignature();
     rafraichir().then(() => {
       chargerStats();
       // Afficher le wizard si aucune boite connectée et pas déjà fait
