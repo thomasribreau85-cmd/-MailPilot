@@ -346,6 +346,16 @@ def rediger_reponse(client_anthropic, email, categorie):
     if instructions:
         prompt += f"\n\n--- CONSIGNES PERSONNALISÉES (à respecter impérativement) ---\n{instructions}\n---"
 
+    # Ton de rédaction
+    _TON_INSTRUCTIONS = {
+        "formel":   "Adopte un ton professionnel et formel : phrases complètes, vouvoiement, formules de politesse soignées (\"Veuillez agréer…\", \"Je vous prie de…\").",
+        "neutre":   "Adopte un ton professionnel et neutre : clair, direct, poli, sans être ni trop formel ni trop familier.",
+        "detendu":  "Adopte un ton amical et détendu : phrases simples, formules chaleureuses, naturel et accessible tout en restant professionnel.",
+    }
+    ton = os.getenv("AGENT_TON", "neutre")
+    ton_instr = _TON_INSTRUCTIONS.get(ton, _TON_INSTRUCTIONS["neutre"])
+    prompt += f"\n\n--- TON ---\n{ton_instr}\n---"
+
     # Instruction de langue
     _LANGUE_INSTRUCTIONS = {
         "auto": "Détecte la langue de l'email reçu et réponds dans cette même langue.",

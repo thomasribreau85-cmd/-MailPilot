@@ -256,6 +256,13 @@ def _get_relance_intelligente(compte_id):
 
 LANGUES_VALIDES = {"auto", "fr", "en", "es", "de", "it", "pt", "nl", "ar", "zh"}
 
+TONS_VALIDES = {"formel", "neutre", "detendu"}
+
+def _get_ton(compte_id):
+    """Retourne le ton de rédaction configuré ('neutre' par défaut)."""
+    t = get_setting(compte_id, "ton_redaction", "neutre")
+    return t if t in TONS_VALIDES else "neutre"
+
 def _get_langue(compte_id):
     """Retourne la langue de réponse configurée ('auto' par défaut)."""
     l = get_setting(compte_id, "langue_reponse", "auto")
@@ -292,6 +299,7 @@ def _lancer_agent(compte_id, boite_id, c, b, data):
         "RELANCE_INTELLIGENTE_ACTIF":  "1" if _get_relance_intelligente(compte_id).get("actif") else "0",
         "RELANCE_INTELLIGENTE_JOURS":  str(_get_relance_intelligente(compte_id).get("jours", 3)),
         "AGENT_LANGUE":                _get_langue(compte_id),
+        "AGENT_TON":                   _get_ton(compte_id),
         **_nettoyage_env(compte_id),
         "TRANSFERTS_RULES":    "|".join(
             f"{r['categorie']}:{r['to']}"
@@ -1183,6 +1191,24 @@ def sauver_langue(compte_id):
         return jsonify({"ok": False, "message": "Langue non supportée"}), 400
     set_setting(compte_id, "langue_reponse", langue)
     return jsonify({"ok": True, "langue": langue})
+
+# ── Ton de rédaction ──────────────────────────────────────────
+
+@app.route("/api/ton/<compte_id>", methods=["GET"])
+def get_ton(compte_id):
+    if not check_access(compte_id):
+        return jsonify({"ok": False}), 403
+    return jsonify({"ok": True, "ton": _get_ton(compte_id)})
+
+@app.route("/api/ton/<compte_id>", methods=["POST"])
+def sauver_ton(compte_id):
+    if not check_access(compte_id):
+        return jsonify({"ok": False}), 403
+    ton = str((request.json or {}).get("ton", "neutre")).lower().strip()
+    if ton not in TONS_VALIDES:
+        return jsonify({"ok": False, "message": "Ton non supporté"}), 400
+    set_setting(compte_id, "ton_redaction", ton)
+    return jsonify({"ok": True, "ton": ton})
 
 # ── Labels ────────────────────────────────────────────────────
 

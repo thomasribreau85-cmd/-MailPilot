@@ -1365,6 +1365,55 @@
       </div>
     </div>
 
+    <!-- Ton de rédaction -->
+    <div class="param-card full-width" id="card-ton" style="border-color:rgba(251,146,60,.2)">
+      <div style="padding:16px 18px;display:flex;align-items:center;gap:16px;cursor:pointer" onclick="toggleTonPanel()">
+        <div style="width:38px;height:38px;border-radius:10px;background:rgba(251,146,60,.1);display:flex;align-items:center;justify-content:center;font-size:20px;box-shadow:0 0 0 1px rgba(251,146,60,.2);flex-shrink:0">🎨</div>
+        <div style="flex:1">
+          <div class="param-card-title">Ton de rédaction</div>
+          <div class="param-card-sub" id="ton-desc-sub">Style d'écriture des brouillons IA</div>
+        </div>
+        <div id="ton-badge" style="font-size:11px;font-weight:700;padding:3px 9px;border-radius:6px;background:rgba(251,146,60,.1);color:#fb923c;border:1px solid rgba(251,146,60,.2);flex-shrink:0">NEUTRE</div>
+        <span id="ton-chevron" style="color:var(--muted);font-size:20px;transition:.2s;flex-shrink:0">›</span>
+      </div>
+      <div id="ton-panel" style="display:none;border-top:1px solid var(--border);padding:18px 20px">
+        <p style="font-size:12px;color:var(--muted);margin-bottom:18px;line-height:1.5">
+          Choisis comment l'IA rédige les emails. Le ton s'applique à tous les brouillons et au Chat IA.
+        </p>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:18px">
+
+          <button class="ton-btn" data-t="formel" onclick="setTon('formel')" style="padding:16px 8px;border-radius:12px;border:1px solid var(--border);background:var(--card2);cursor:pointer;font-family:inherit;text-align:center;transition:all .15s">
+            <div style="font-size:26px;margin-bottom:6px">🤵</div>
+            <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:4px">Formel</div>
+            <div style="font-size:10px;color:var(--muted);line-height:1.4">Vouvoiement, formules de politesse soignées</div>
+          </button>
+
+          <button class="ton-btn" data-t="neutre" onclick="setTon('neutre')" style="padding:16px 8px;border-radius:12px;border:1px solid var(--border);background:var(--card2);cursor:pointer;font-family:inherit;text-align:center;transition:all .15s">
+            <div style="font-size:26px;margin-bottom:6px">💼</div>
+            <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:4px">Neutre</div>
+            <div style="font-size:10px;color:var(--muted);line-height:1.4">Professionnel et direct, poli sans excès</div>
+          </button>
+
+          <button class="ton-btn" data-t="detendu" onclick="setTon('detendu')" style="padding:16px 8px;border-radius:12px;border:1px solid var(--border);background:var(--card2);cursor:pointer;font-family:inherit;text-align:center;transition:all .15s">
+            <div style="font-size:26px;margin-bottom:6px">😊</div>
+            <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:4px">Détendu</div>
+            <div style="font-size:10px;color:var(--muted);line-height:1.4">Amical et naturel, chaleureux</div>
+          </button>
+
+        </div>
+
+        <!-- Exemple live -->
+        <div id="ton-exemple" style="background:rgba(251,146,60,.05);border:1px solid rgba(251,146,60,.15);border-radius:10px;padding:12px 14px;font-size:12px;color:#fed7aa;line-height:1.6;margin-bottom:16px">
+          <div style="font-size:10px;font-weight:700;color:rgba(251,146,60,.6);letter-spacing:.05em;text-transform:uppercase;margin-bottom:6px">Exemple de formule d'ouverture</div>
+          <div id="ton-exemple-text">Bonjour, merci pour votre message.</div>
+        </div>
+
+        <button onclick="sauverTon()" style="width:100%;padding:9px;background:linear-gradient(135deg,#f97316,#ea580c);border:none;border-radius:9px;color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;box-shadow:0 4px 14px rgba(249,115,22,.25)">💾 Enregistrer</button>
+        <div id="ton-status" style="font-size:12px;color:var(--green);text-align:center;margin-top:8px;display:none"></div>
+      </div>
+    </div>
+
     <!-- Langue des réponses -->
     <div class="param-card full-width" id="card-langue" style="border-color:rgba(6,182,212,.2)">
       <div style="padding:16px 18px;display:flex;align-items:center;gap:16px;cursor:pointer" onclick="toggleLanguePanel()">
@@ -1592,6 +1641,15 @@
 
       <!-- Paramètres IA -->
       <div class="drawer-section">IA & Communication</div>
+
+      <button class="drawer-item" onclick="ouvrirSettings('card-ton','🎨 Ton de rédaction')">
+        <div class="drawer-item-icon" style="background:rgba(251,146,60,.1);box-shadow:0 0 0 1px rgba(251,146,60,.2)">🎨</div>
+        <div class="drawer-item-text">
+          <div class="drawer-item-title">Ton de rédaction</div>
+          <div class="drawer-item-sub" id="d-ton-sub">Neutre</div>
+        </div>
+        <div class="drawer-item-badge" id="d-ton-badge" style="background:rgba(251,146,60,.1);color:#fb923c;border:1px solid rgba(251,146,60,.2)">NEUTRE</div>
+      </button>
 
       <button class="drawer-item" onclick="ouvrirSettings('card-langue','🌍 Langue des réponses')">
         <div class="drawer-item-icon" style="background:rgba(6,182,212,.1);box-shadow:0 0 0 1px rgba(6,182,212,.2)">🌍</div>
@@ -2676,6 +2734,12 @@
         const sub = document.getElementById('langue-desc-sub');
         if (sub) dLangSub.textContent = sub.textContent;
       }
+      // Ton
+      const tonBadge = document.getElementById('ton-badge');
+      const dTon = document.getElementById('d-ton-badge');
+      const dTonSub = document.getElementById('d-ton-sub');
+      if (tonBadge && dTon) dTon.textContent = tonBadge.textContent;
+      if (dTonSub) dTonSub.textContent = (TON_LABELS && TON_LABELS[tonActif]) || 'Neutre';
       // Templates badge
       const tplBdg = document.getElementById('tpl-badge');
       const dTpl = document.getElementById('d-tpl-badge');
@@ -2856,6 +2920,76 @@
       de:'Deutsch', it:'Italiano', pt:'Português', nl:'Nederlands', ar:'العربية', zh:'中文'
     };
     let langueActive = 'auto';
+
+    // ── Ton de rédaction ─────────────────────────────────────
+    const TON_LABELS = { formel: 'Formel', neutre: 'Neutre', detendu: 'Détendu' };
+    const TON_EXEMPLES = {
+      formel:  'Madame, Monsieur, Je vous adresse ce message afin de donner suite à votre demande et vous apporter les informations nécessaires.',
+      neutre:  'Bonjour, merci pour votre message. Je reviens vers vous avec les informations demandées.',
+      detendu: 'Bonjour ! Merci pour votre message, je suis ravi(e) de vous répondre.',
+    };
+    let tonActif = 'neutre';
+
+    function toggleTonPanel() {
+      const panel   = document.getElementById('ton-panel');
+      const chevron = document.getElementById('ton-chevron');
+      const open    = panel.style.display === 'none';
+      panel.style.display = open ? 'block' : 'none';
+      chevron.style.transform = open ? 'rotate(90deg)' : '';
+      if (open) chargerTon();
+    }
+
+    async function chargerTon() {
+      try {
+        const r = await fetch(`/api/ton/${COMPTE_ID}`);
+        const j = await r.json();
+        if (j.ok) setTon(j.ton || 'neutre');
+      } catch(e) {}
+    }
+
+    function setTon(t) {
+      tonActif = t;
+      // Highlight selected card
+      document.querySelectorAll('.ton-btn').forEach(b => {
+        const sel = b.dataset.t === t;
+        b.style.borderColor   = sel ? 'rgba(251,146,60,.6)' : 'var(--border)';
+        b.style.background    = sel ? 'rgba(251,146,60,.1)' : 'var(--card2)';
+        b.style.boxShadow     = sel ? '0 0 0 1px rgba(251,146,60,.15)' : 'none';
+      });
+      // Update badge
+      const lbl = TON_LABELS[t] || 'Neutre';
+      const badge = document.getElementById('ton-badge');
+      if (badge) badge.textContent = lbl.toUpperCase();
+      // Update desc
+      const sub = document.getElementById('ton-desc-sub');
+      if (sub) sub.textContent = `Ton ${lbl.toLowerCase()} — actif`;
+      // Update exemple
+      const ex = document.getElementById('ton-exemple-text');
+      if (ex) ex.textContent = TON_EXEMPLES[t] || '';
+      // Update drawer badge
+      const dBadge = document.getElementById('d-ton-badge');
+      if (dBadge) dBadge.textContent = lbl.toUpperCase();
+      const dSub = document.getElementById('d-ton-sub');
+      if (dSub) dSub.textContent = lbl;
+    }
+
+    async function sauverTon() {
+      const st = document.getElementById('ton-status');
+      try {
+        const r = await fetch(`/api/ton/${COMPTE_ID}`, {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({ ton: tonActif }),
+        });
+        const j = await r.json();
+        if (j.ok) {
+          st.textContent = '✅ Ton enregistré';
+          st.style.display = 'block';
+          setTimeout(() => st.style.display = 'none', 3000);
+          toast(`🎨 Ton : ${TON_LABELS[tonActif]}`);
+        }
+      } catch(e) { toast('⚠️ Erreur réseau'); }
+    }
 
     function toggleLanguePanel() {
       const panel   = document.getElementById('langue-panel');
@@ -3807,6 +3941,7 @@
     chargerSignature();
     chargerTemplates();
     chargerLangue();
+    chargerTon();
     rafraichir().then(() => {
       chargerStats();
       chargerToutesAbsences();
