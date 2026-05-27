@@ -957,9 +957,6 @@
         <button class="top-nav-btn" onclick="document.getElementById('stats-bar').scrollIntoView({behavior:'smooth'})">
           📊 Statistiques
         </button>
-        <button class="top-nav-btn" onclick="document.getElementById('boites-container').scrollIntoView({behavior:'smooth'})">
-          📬 Boîtes mail
-        </button>
         {% if compte.agenda_actif != false %}
         <a class="top-nav-btn" href="/agenda/{{ compte.id }}">
           🗓️ Agenda
@@ -1756,44 +1753,11 @@
 
     <div class="drawer-body">
 
-      <!-- Navigation principale -->
-      <div class="drawer-section">Navigation</div>
-
-      <button class="drawer-item" onclick="fermerDrawer();document.getElementById('stats-bar').scrollIntoView({behavior:'smooth'})">
-        <div class="drawer-item-icon" style="background:rgba(79,110,247,.12);box-shadow:0 0 0 1px rgba(79,110,247,.2)">📊</div>
-        <div class="drawer-item-text">
-          <div class="drawer-item-title">Statistiques</div>
-          <div class="drawer-item-sub">Vue d'ensemble de vos activités</div>
-        </div>
-      </button>
-
-      <button class="drawer-item" onclick="fermerDrawer();document.getElementById('boites-container').scrollIntoView({behavior:'smooth'})">
-        <div class="drawer-item-icon" style="background:rgba(34,197,94,.1);box-shadow:0 0 0 1px rgba(34,197,94,.2)">📬</div>
-        <div class="drawer-item-text">
-          <div class="drawer-item-title">Mes boîtes mail</div>
-          <div class="drawer-item-sub" id="d-boites-sub">— boîtes connectées</div>
-        </div>
-      </button>
-
-      <a class="drawer-item" id="d-lien-agenda" href="/agenda/{{ compte.id }}"
-        {% if compte.agenda_actif == false %}style="display:none"{% endif %}>
-        <div class="drawer-item-icon" style="background:rgba(79,110,247,.14);box-shadow:0 0 0 1px rgba(79,110,247,.25)">🗓️</div>
-        <div class="drawer-item-text">
-          <div class="drawer-item-title">Agenda</div>
-          <div class="drawer-item-sub">Gérer vos rendez-vous</div>
-        </div>
-        <div class="drawer-item-badge blue" id="d-rdv-badge" style="display:none">— RDV</div>
-      </a>
-
-      <a class="drawer-item" href="/emploi-du-temps/{{ compte.id }}">
-        <div class="drawer-item-icon" style="background:rgba(34,197,94,.1);box-shadow:0 0 0 1px rgba(34,197,94,.2)">📅</div>
-        <div class="drawer-item-text">
-          <div class="drawer-item-title">Emploi du temps</div>
-          <div class="drawer-item-sub">Disponibilités pour l'IA</div>
-        </div>
-      </a>
-
-      <div class="drawer-divider"></div>
+      <!-- Liens cachés pour badges JS (pas affichés) -->
+      <a id="d-lien-agenda" href="/agenda/{{ compte.id }}" style="display:none"
+        {% if compte.agenda_actif == false %}data-hidden="true"{% endif %}></a>
+      <span id="d-boites-sub" style="display:none"></span>
+      <span class="drawer-item-badge blue" id="d-rdv-badge" style="display:none"></span>
 
       <!-- Automatisations -->
       <div class="drawer-section">Automatisations</div>
