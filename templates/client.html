@@ -2783,10 +2783,16 @@
       } catch { return iso.slice(0,10); }
     }
 
+    // état filtre historique
+    let _histAllEmails = [];
+    let _histSearch    = '';
+    let _histCatFiltre = null;
+
     async function ouvrirHistorique(boiteId, email) {
       document.getElementById('hist-subtitle').textContent = email || '';
       document.getElementById('hist-content').innerHTML = '<div style="text-align:center;padding:20px;color:var(--muted)">Chargement…</div>';
       document.getElementById('overlay-historique').classList.add('open');
+      _histSearch = ''; _histCatFiltre = null;
 
       const res  = await fetch(`/api/emails-recents/${COMPTE_ID}/${boiteId}`);
       const json = await res.json();
@@ -2801,60 +2807,140 @@
         return;
       }
 
-      const emails = json.emails;
-      let html = `<div style="font-size:11px;color:var(--muted);margin-bottom:12px;font-weight:600">${emails.length} email${emails.length>1?'s':''} traité${emails.length>1?'s':''}</div>`;
-      html += `<div class="hist-list">`;
-
-      emails.forEach((em, i) => {
-        const col   = _CAT_COLORS[em.categorie] || '#4f6ef7';
-        const emoji = _CAT_EMOJI[em.categorie] || '•';
-        const catBg = col + '22';
-        const hasBrouillon = em.brouillon && em.brouillon.trim().length > 0;
-        const brouillonEscape = em.brouillon ? em.brouillon.replace(/</g,'&lt;').replace(/>/g,'&gt;') : '';
-
-        html += `<div class="hist-item">
-          <div class="hist-header" onclick="_toggleHist(${i})">
-            <span class="hist-cat" style="background:${catBg};color:${col}">${emoji} ${em.categorie}</span>
-            <div class="hist-meta">
-              <div class="hist-sujet">${em.sujet || '(sans sujet)'}</div>
-              <div class="hist-from">De : ${em.expediteur || '—'}</div>
-            </div>
-            <span class="hist-date">${_formatDate(em.traite_at)}</span>
-            <span class="hist-chevron" id="hist-chev-${i}">›</span>
-          </div>
-          <div class="hist-body" id="hist-body-${i}">
-            ${hasBrouillon
-              ? `<div style="font-size:11px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">
-                  ✏️ Brouillon IA${em.brouillon_modifie ? ' <span style="color:#f59e0b">(modifié)</span>' : ''}
-                 </div>
-                 <div class="hist-brouillon">${brouillonEscape}</div>
-                 <button class="hist-copy-btn" onclick="_copierBrouillon(${i})">📋 Copier le brouillon</button>`
-              : `<div class="hist-no-brouillon">Aucun brouillon généré pour cet email.</div>`
-            }
-          </div>
-        </div>`;
-      });
-      html += `</div>`;
-
-      document.getElementById('hist-content').innerHTML = html;
-      // Stocker les brouillons pour la copie
-      window._histEmails = emails;
+      _histAllEmails = json.emails;
+      _renderHistorique();
     }
 
-    function _toggleHist(i) {
-      const body = document.getElementById(`hist-body-${i}`);
-      const chev = document.getElementById(`hist-chev-${i}`);
+    function _histSetSearch(val) {
+      _histSearch = val.toLowerCase();
+      _renderHistorique();
+    }
+
+    function _histSetCat(cat) {
+      _histCatFiltre = (_histCatFiltre === cat) ? null : cat; // toggle
+      _renderHistorique();
+    }
+
+    function _renderHistorique() {
+      // Filtrage
+      const filtered = _histAllEmails.filter(em => {
+        const matchCat    = !_histCatFiltre || em.categorie === _histCatFiltre;
+        const searchText  = (em.sujet + ' ' + em.expediteur).toLowerCase();
+        const matchSearch = !_histSearch || searchText.includes(_histSearch);
+        return matchCat && matchSearch;
+      });
+
+      // Catégories présentes (pour les pills)
+      const catsPresentes = [...new Set(_histAllEmails.map(e => e.categorie))].sort();
+
+      let html = '';
+
+      // Barre de recherche
+      html += `<div style="position:relative;margin-bottom:10px">
+        <input id="hist-search-input" type="text" placeholder="🔍 Rechercher sujet, expéditeur…"
+          value="${_histSearch.replace(/"/g,'&quot;')}"
+          oninput="_histSetSearch(this.value)"
+          style="width:100%;box-sizing:border-box;padding:9px 12px 9px 14px;
+            background:rgba(255,255,255,.04);border:1px solid var(--border);
+            border-radius:10px;color:var(--text);font-size:13px;font-family:inherit;outline:none;
+            transition:border-color .15s"
+          onfocus="this.style.borderColor='rgba(79,110,247,.5)'"
+          onblur="this.style.borderColor='var(--border)'" />
+        ${_histSearch ? `<button onclick="_histSetSearch('');document.getElementById('hist-search-input').value=''"
+          style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;
+            color:var(--muted);cursor:pointer;font-size:16px;padding:0;line-height:1">✕</button>` : ''}
+      </div>`;
+
+      // Pills catégories
+      if (catsPresentes.length > 1) {
+        html += `<div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:12px">`;
+        catsPresentes.forEach(cat => {
+          const col    = _CAT_COLORS[cat] || '#4f6ef7';
+          const emoji  = _CAT_EMOJI[cat] || '•';
+          const active = _histCatFiltre === cat;
+          const count  = _histAllEmails.filter(e => e.categorie === cat).length;
+          html += `<button onclick="_histSetCat('${cat}')"
+            style="padding:3px 9px;border-radius:6px;border:1px solid;font-size:11px;font-weight:700;
+              cursor:pointer;font-family:inherit;transition:all .1s;display:flex;align-items:center;gap:4px;
+              ${active
+                ? `background:${col}22;border-color:${col}88;color:${col}`
+                : 'background:rgba(255,255,255,.04);border-color:var(--border);color:var(--muted)'}">
+            ${emoji} ${cat} <span style="opacity:.6">${count}</span>
+          </button>`;
+        });
+        html += `</div>`;
+      }
+
+      // Compteur résultats
+      html += `<div style="font-size:11px;color:var(--muted);margin-bottom:10px;font-weight:600">
+        ${filtered.length} email${filtered.length>1?'s':''}${_histCatFiltre||_histSearch ? ' (filtré)' : ' traité'}${filtered.length>1?'s':''}
+      </div>`;
+
+      // Liste
+      if (filtered.length === 0) {
+        html += `<div style="text-align:center;padding:24px 0;color:var(--muted);font-size:13px">
+          Aucun email ne correspond à votre recherche.
+        </div>`;
+      } else {
+        html += `<div class="hist-list">`;
+        filtered.forEach((em, i) => {
+          const col   = _CAT_COLORS[em.categorie] || '#4f6ef7';
+          const emoji = _CAT_EMOJI[em.categorie] || '•';
+          const catBg = col + '22';
+          const hasBrouillon = em.brouillon && em.brouillon.trim().length > 0;
+          const brouillonEscape = em.brouillon
+            ? em.brouillon.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+            : '';
+          const uid = `hf-${i}`;
+
+          html += `<div class="hist-item">
+            <div class="hist-header" onclick="_toggleHistItem('${uid}')">
+              <span class="hist-cat" style="background:${catBg};color:${col}">${emoji} ${em.categorie}</span>
+              <div class="hist-meta">
+                <div class="hist-sujet">${em.sujet || '(sans sujet)'}</div>
+                <div class="hist-from">De : ${em.expediteur || '—'}</div>
+              </div>
+              <span class="hist-date">${_formatDate(em.traite_at)}</span>
+              <span class="hist-chevron" id="chev-${uid}">›</span>
+            </div>
+            <div class="hist-body" id="body-${uid}">
+              ${hasBrouillon
+                ? `<div style="font-size:11px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">
+                    ✏️ Brouillon IA${em.brouillon_modifie ? ' <span style="color:#f59e0b">(modifié)</span>' : ''}
+                   </div>
+                   <div class="hist-brouillon">${brouillonEscape}</div>
+                   <button class="hist-copy-btn" onclick="_copierTexte(${JSON.stringify(em.brouillon).replace(/'/g,"\\'")})">📋 Copier</button>`
+                : `<div class="hist-no-brouillon">Aucun brouillon généré pour cet email.</div>`
+              }
+            </div>
+          </div>`;
+        });
+        html += `</div>`;
+      }
+
+      document.getElementById('hist-content').innerHTML = html;
+      // Remettre le focus sur la recherche si elle était active
+      if (_histSearch) {
+        const inp = document.getElementById('hist-search-input');
+        if (inp) { inp.focus(); inp.setSelectionRange(inp.value.length, inp.value.length); }
+      }
+    }
+
+    function _toggleHistItem(uid) {
+      const body = document.getElementById(`body-${uid}`);
+      const chev = document.getElementById(`chev-${uid}`);
       const open = body.classList.toggle('open');
       chev.style.transform = open ? 'rotate(90deg)' : '';
     }
 
-    function _copierBrouillon(i) {
-      const em = window._histEmails?.[i];
-      if (!em || !em.brouillon) return;
-      navigator.clipboard.writeText(em.brouillon).then(() => toast('📋 Brouillon copié !')).catch(() => {});
+    function _copierTexte(texte) {
+      navigator.clipboard.writeText(texte).then(() => toast('📋 Brouillon copié !')).catch(() => {});
     }
 
-    function fermerHistorique() { document.getElementById('overlay-historique').classList.remove('open'); }
+    function fermerHistorique() {
+      document.getElementById('overlay-historique').classList.remove('open');
+      _histSearch = ''; _histCatFiltre = null;
+    }
 
     let _statsData = null;  // cache pour les données stats courantes
     let _statsCatFiltree = null;  // catégorie filtrée (null = toutes)
