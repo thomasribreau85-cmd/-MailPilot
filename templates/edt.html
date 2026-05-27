@@ -252,9 +252,6 @@
     <h2 id="modal-titre-h">➕ Nouveau créneau</h2>
     <input type="hidden" id="edit-id" />
 
-    <label class="form-label">Titre</label>
-    <input type="text" id="f-titre" class="form-input" placeholder="Ex : Travail, Réunion équipe…" maxlength="60" />
-
     <label class="form-label">Type</label>
     <select id="f-type" class="form-input" onchange="onTypeChange(this.value)">
       <option value="travail">🔵 Travail — disponible pour RDV</option>
@@ -262,6 +259,10 @@
       <option value="personnel">🟣 Personnel — occupé</option>
       <option value="indisponible">⚫ Indisponible</option>
     </select>
+
+    <label class="form-label">Description <span style="font-weight:400;color:var(--muted)">(optionnel)</span></label>
+    <input type="text" id="f-titre" class="form-input" placeholder="Ex : Réunion équipe, Cours anglais, Dev backend…" maxlength="60" />
+    <div style="font-size:11px;color:var(--muted);margin-top:-8px;margin-bottom:4px">Affiché sur la grille — laissez vide pour utiliser le type</div>
 
     <label class="form-label">Jours</label>
     <div class="days-grid" id="f-jours">
@@ -424,7 +425,7 @@ async function charger() {
 // ── Modal ────────────────────────────────────────────────────
 function _resetModal() {
   document.getElementById('edit-id').value = '';
-  document.getElementById('f-titre').value = 'Travail';
+  document.getElementById('f-titre').value = '';
   document.getElementById('f-type').value  = 'travail';
   document.getElementById('f-debut').value = '09:00';
   document.getElementById('f-fin').value   = '18:00';
@@ -455,7 +456,9 @@ function ouvrirEdition(id) {
   _resetModal();
   document.getElementById('modal-titre-h').textContent = '✏️ Modifier le créneau';
   document.getElementById('edit-id').value = id;
-  document.getElementById('f-titre').value = c.titre;
+  // Afficher la description custom (vide si c'était le nom par défaut du type)
+  const defaut = TYPE_DEF[c.type] || c.type;
+  document.getElementById('f-titre').value = (c.titre === defaut) ? '' : c.titre;
   document.getElementById('f-type').value  = c.type;
   document.getElementById('f-debut').value = c.debut;
   document.getElementById('f-fin').value   = c.fin;
@@ -473,22 +476,19 @@ function fermerModal() {
 function toggleJ(el) { el.classList.toggle('sel'); }
 
 function onTypeChange(type) {
-  const t = document.getElementById('f-titre');
-  const defaults = Object.values(TYPE_DEF);
-  if (!t.value.trim() || defaults.includes(t.value.trim())) {
-    t.value = TYPE_DEF[type] || '';
-  }
+  // Ne pas auto-remplir — la description est libre
 }
 
 function validerBlock() {
-  const titre = document.getElementById('f-titre').value.trim();
-  const type  = document.getElementById('f-type').value;
-  const debut = document.getElementById('f-debut').value;
-  const fin   = document.getElementById('f-fin').value;
-  const jours = [...document.querySelectorAll('#f-jours .day-btn.sel')].map(b => Number(b.dataset.j));
+  const desc   = document.getElementById('f-titre').value.trim();
+  const type   = document.getElementById('f-type').value;
+  const debut  = document.getElementById('f-debut').value;
+  const fin    = document.getElementById('f-fin').value;
+  const jours  = [...document.querySelectorAll('#f-jours .day-btn.sel')].map(b => Number(b.dataset.j));
   const editId = document.getElementById('edit-id').value;
+  // Si description vide → utiliser le nom du type
+  const titre  = desc || TYPE_DEF[type] || type;
 
-  if (!titre)                   { toast('⚠️ Titre requis'); return; }
   if (!debut || !fin)           { toast('⚠️ Horaires requis'); return; }
   if (debut >= fin)             { toast('⚠️ L\'heure de fin doit être après le début'); return; }
   if (!jours.length)            { toast('⚠️ Sélectionne au moins un jour'); return; }
