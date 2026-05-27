@@ -3,15 +3,44 @@
   "short_name": "MailPilot",
   "description": "Gérez votre boîte mail avec l'IA",
   "start_url": "/dashboard",
+  "scope": "/",
   "display": "standalone",
-  "background_color": "#0a0f1e",
+  "orientation": "portrait",
+  "background_color": "#060b18",
   "theme_color": "#4f6ef7",
+  "lang": "fr",
+  "categories": ["productivity", "business"],
   "icons": [
     {
       "src": "/static/icon.svg",
       "sizes": "any",
       "type": "image/svg+xml",
-      "purpose": "any maskable"
+      "purpose": "any"
+    },
+    {
+      "src": "/static/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
     }
-  ]
+  ],
+  "shortcuts": [
+    {
+      "name": "Agenda",
+      "short_name": "Agenda",
+      "description": "Ouvrir l'agenda",
+      "url": "/agenda/",
+      "icons": [{ "src": "/static/icon.svg", "sizes": "any" }]
+    },
+    {
+      "name": "Dashboard",
+      "short_name": "Dashboard",
+      "description": "Retour au tableau de bord",
+      "url": "/dashboard",
+      "icons": [{ "src": "/static/icon.svg", "sizes": "any" }]
+    }
+  ],
+  "screenshots": [],
+  "related_applications": [],
+  "prefer_related_applications": false
 }

@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MailPilot</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: #060b18;
+      color: #f0f4ff;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+    }
+    .logo {
+      width: 96px; height: 96px;
+      background: linear-gradient(135deg, #4f6ef7, #7c4ff8);
+      border-radius: 24px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 48px;
+      margin-bottom: 24px;
+      box-shadow: 0 8px 32px rgba(79,110,247,.4);
+    }
+    h1 { font-size: 28px; font-weight: 700; margin-bottom: 8px; }
+    p { font-size: 15px; color: #5a7090; }
+    .spinner {
+      margin-top: 40px;
+      width: 32px; height: 32px;
+      border: 3px solid #1a2c47;
+      border-top-color: #4f6ef7;
+      border-radius: 50%;
+      animation: spin .8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+  <div class="logo">✉️</div>
+  <h1>MailPilot</h1>
+  <p>Chargement…</p>
+  <div class="spinner"></div>
+  <script>
+    // Fallback si le server.url Capacitor ne fonctionne pas
+    setTimeout(() => {
+      window.location.href = 'https://mailpilot-production-981d.up.railway.app';
+    }, 3000);
+  </script>
+</body>
+</html>

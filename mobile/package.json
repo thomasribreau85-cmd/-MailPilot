@@ -1,0 +1,28 @@
+{
+  "name": "mailpilot-mobile",
+  "version": "1.0.0",
+  "description": "MailPilot — App mobile iOS & Android",
+  "private": true,
+  "scripts": {
+    "build": "echo 'No build step needed — app loads from Railway'",
+    "sync": "npx cap sync",
+    "open:ios": "npx cap open ios",
+    "open:android": "npx cap open android",
+    "icons": "npx @capacitor/assets generate"
+  },
+  "dependencies": {
+    "@capacitor/android": "^6.0.0",
+    "@capacitor/app": "^6.0.0",
+    "@capacitor/core": "^6.0.0",
+    "@capacitor/haptics": "^6.0.0",
+    "@capacitor/ios": "^6.0.0",
+    "@capacitor/keyboard": "^6.0.0",
+    "@capacitor/push-notifications": "^6.0.0",
+    "@capacitor/splash-screen": "^6.0.0",
+    "@capacitor/status-bar": "^6.0.0"
+  },
+  "devDependencies": {
+    "@capacitor/assets": "^3.0.5",
+    "@capacitor/cli": "^6.0.0"
+  }
+}
