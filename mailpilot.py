@@ -1104,6 +1104,14 @@ EXPÉDITEUR : {email['expediteur']}
 CORPS : {email['corps'][:1000]}
 {horaires_bloc}"""
 
+    today = datetime.now().strftime("%Y-%m-%d")
+    # Extraire l'email expéditeur brut (entre < >) si dispo
+    exp_raw = email.get("expediteur", "")
+    import re as _re
+    m = _re.search(r"<([^>]+)>", exp_raw)
+    exp_email = m.group(1) if m else exp_raw.strip()
+
+    data = {}
     try:
         rep = client_anthropic.messages.create(
             model=MODEL_CLASSIFICATION,
@@ -1117,33 +1125,39 @@ CORPS : {email['corps'][:1000]}
             if raw.startswith("json"):
                 raw = raw[4:]
         data = json.loads(raw.strip())
+        logger.info(f"  📋 Réponse IA détection RDV : rdv={data.get('rdv')} titre={data.get('titre','')}")
+    except Exception as e:
+        logger.error(f"  ✗ Erreur appel IA détection RDV : {e}")
+        # Si l'IA échoue mais que l'email est déjà classifié comme RDV → créer quand même
+        data = {"rdv": True}
 
-        if not data.get("rdv"):
-            return
+    # Si l'IA dit non-RDV ET la catégorie n'est pas une catégorie forte → ignorer
+    # Mais si catégorie est RENDEZ_VOUS ou VISITE → on force la création même sans confirmation IA
+    force_creation = categorie in {"RENDEZ_VOUS", "VISITE"}
+    if not data.get("rdv") and not force_creation:
+        logger.info(f"  ⏭ IA n'a pas détecté de RDV (rdv:false) et catégorie non prioritaire")
+        return
 
-        # Créer le RDV dans SQLite
-        today = datetime.now().strftime("%Y-%m-%d")
+    try:
         rdv = {
             "id":           str(uuid.uuid4())[:8],
-            "titre":        data.get("titre", f"RDV - {email['expediteur'][:30]}"),
+            "titre":        data.get("titre") or f"RDV — {exp_raw[:40]}",
             "client_nom":   data.get("client_nom", ""),
-            "client_email": data.get("client_email", email.get("expediteur_email", "")),
+            "client_email": data.get("client_email") or exp_email,
             "adresse":      data.get("adresse", ""),
             "date":         data.get("date") or today,
             "heure_debut":  data.get("heure_debut", "09:00"),
             "heure_fin":    data.get("heure_fin", "10:00"),
             "type":         data.get("type", "visite"),
             "statut":       "attente",
-            "notes":        data.get("notes", f"Détecté automatiquement depuis email : {email['sujet']}"),
+            "notes":        data.get("notes") or f"Détecté depuis email : {email.get('sujet','(sans sujet)')}",
             "boite_id":     "",
             "created_at":   datetime.now().isoformat(),
         }
         db_module.creer_rdv_db(compte_part, rdv)
-
-        logger.info(f"  📅 RDV détecté et ajouté à l'agenda : {rdv['titre']} ({rdv['date']} {rdv['heure_debut']})")
-
+        logger.info(f"  📅 RDV créé dans l'agenda : {rdv['titre']} ({rdv['date']} {rdv['heure_debut']})")
     except Exception as e:
-        logger.error(f"  ✗ Erreur détection RDV : {e}")
+        logger.error(f"  ✗ Erreur création RDV en DB : {e}")
 
 
 def traiter_email(service, client_anthropic, email, label_ids):
