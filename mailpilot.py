@@ -1048,7 +1048,9 @@ def detecter_rdv(client_anthropic, email, categorie):
     """
     CATEGORIES_RDV = {"VISITE", "RENDEZ_VOUS", "DEVIS", "URGENT", "PROSPECT"}
     if categorie not in CATEGORIES_RDV:
+        logger.info(f"  ⏭ Pas de détection RDV pour catégorie '{categorie}' (hors périmètre)")
         return
+    logger.info(f"  📅 Analyse RDV en cours pour email : {email.get('sujet','')[:50]}")
 
     compte_id   = os.getenv("COMPTE_ID", "default")
     compte_part = compte_id.split("_")[0] if "_" in compte_id else compte_id
@@ -1181,6 +1183,7 @@ def traiter_email(service, client_anthropic, email, label_ids):
         logger.info(f"  ⚠️  Signal mécontentement détecté dans l'email")
 
     # --- Étape 1b : Détection RDV → crée une entrée "attente" dans l'agenda ---
+    logger.info(f"  🔍 Vérification RDV pour catégorie : {categorie}")
     try:
         detecter_rdv(client_anthropic, email, categorie)
     except Exception as e:
