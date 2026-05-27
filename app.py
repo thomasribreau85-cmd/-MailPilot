@@ -1612,6 +1612,35 @@ def _get_edt(compte_id):
         edt["creneaux_ponctuels"] = []
     return edt
 
+def _ajouter_rdv_dans_edt(compte_id, rdv):
+    """Ajoute un RDV confirmé comme créneau ponctuel dans l'emploi du temps."""
+    if not rdv.get("date") or not rdv.get("heure_debut"):
+        return
+    edt = _get_edt(compte_id)
+    rdv_edt_id = f"rdv-{rdv['id']}"
+    # Éviter les doublons
+    if any(c.get("id") == rdv_edt_id for c in edt["creneaux_ponctuels"]):
+        return
+    edt["creneaux_ponctuels"].append({
+        "id":    rdv_edt_id,
+        "titre": f"📋 {rdv.get('titre', 'RDV Client')}",
+        "type":  "rdv_client",
+        "date":  rdv["date"],
+        "debut": rdv["heure_debut"],
+        "fin":   rdv.get("heure_fin", "10:00"),
+        "rdv_id": rdv["id"],
+    })
+    set_setting(compte_id, "emploi_du_temps", edt)
+
+def _retirer_rdv_de_edt(compte_id, rdv_id):
+    """Retire le créneau EDT lié à un RDV (suppression ou refus)."""
+    edt = _get_edt(compte_id)
+    rdv_edt_id = f"rdv-{rdv_id}"
+    avant = len(edt["creneaux_ponctuels"])
+    edt["creneaux_ponctuels"] = [c for c in edt["creneaux_ponctuels"] if c.get("id") != rdv_edt_id]
+    if len(edt["creneaux_ponctuels"]) < avant:
+        set_setting(compte_id, "emploi_du_temps", edt)
+
 @app.route("/emploi-du-temps/<compte_id>")
 def emploi_du_temps(compte_id):
     if not check_access(compte_id):
@@ -1790,9 +1819,11 @@ def creer_rdv(compte_id):
         "created_at":  __import__("datetime").datetime.now().isoformat(),
     }
     db_module.creer_rdv_db(compte_id, rdv)
-    # Envoi de confirmation si RDV confirmé d'emblée
-    if rdv["statut"] == "confirme" and rdv.get("client_email"):
-        threading.Thread(target=_tenter_confirmation, args=(compte_id, rdv), daemon=True).start()
+    # Si créé directement confirmé → ajouter dans EDT + envoyer email
+    if rdv["statut"] == "confirme":
+        _ajouter_rdv_dans_edt(compte_id, rdv)
+        if rdv.get("client_email"):
+            threading.Thread(target=_tenter_confirmation, args=(compte_id, rdv), daemon=True).start()
     return jsonify({"ok": True, "rdv": rdv})
 
 @app.route("/api/rdv/<compte_id>/<rdv_id>", methods=["PUT"])
@@ -1812,12 +1843,16 @@ def modifier_rdv(compte_id, rdv_id):
     rdv = db_module.modifier_rdv_db(compte_id, rdv_id, updates)
     if not rdv:
         return jsonify({"ok": False, "message": "RDV introuvable"}), 404
-    # Si le RDV vient d'être confirmé → envoyer l'email de confirmation au client
+    # Si le RDV vient d'être confirmé → envoyer email + ajouter dans EDT
     email_confirme = False
-    if (statut_avant != "confirme" and rdv.get("statut") == "confirme"
-            and rdv.get("client_email") and not rdv.get("confirmation_envoyee_at")):
-        threading.Thread(target=_tenter_confirmation, args=(compte_id, rdv), daemon=True).start()
-        email_confirme = bool(rdv.get("client_email"))
+    if statut_avant != "confirme" and rdv.get("statut") == "confirme":
+        _ajouter_rdv_dans_edt(compte_id, rdv)
+        if rdv.get("client_email") and not rdv.get("confirmation_envoyee_at"):
+            threading.Thread(target=_tenter_confirmation, args=(compte_id, rdv), daemon=True).start()
+            email_confirme = True
+    # Si le RDV était confirmé et est maintenant annulé/attente → retirer de l'EDT
+    if statut_avant == "confirme" and rdv.get("statut") in ("annule", "attente"):
+        _retirer_rdv_de_edt(compte_id, rdv_id)
     return jsonify({"ok": True, "rdv": rdv, "email_confirmation": email_confirme})
 
 @app.route("/api/rdv/<compte_id>/<rdv_id>", methods=["DELETE"])
@@ -1825,6 +1860,7 @@ def supprimer_rdv(compte_id, rdv_id):
     if not check_access(compte_id):
         return jsonify({"ok": False}), 403
     db_module.supprimer_rdv_db(compte_id, rdv_id)
+    _retirer_rdv_de_edt(compte_id, rdv_id)
     return jsonify({"ok": True})
 
 

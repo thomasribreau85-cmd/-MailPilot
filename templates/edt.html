@@ -223,6 +223,7 @@
     <div class="legend-item"><div class="legend-dot" style="background:#f59e0b"></div>Réunion — occupé</div>
     <div class="legend-item"><div class="legend-dot" style="background:#a78bfa"></div>Personnel — occupé</div>
     <div class="legend-item"><div class="legend-dot" style="background:#6b7280"></div>Indisponible</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#22c55e"></div>RDV Client confirmé</div>
   </div>
 
   <div class="grid-outer">
@@ -288,9 +289,9 @@ const HOUR_END    = 22;
 const PX_PER_HOUR = 52;
 const TOTAL_H     = (HOUR_END - HOUR_START) * PX_PER_HOUR;
 
-const TYPE_COLORS = { travail:'#4f6ef7', reunion:'#f59e0b', personnel:'#a78bfa', indisponible:'#6b7280' };
-const TYPE_BG     = { travail:'rgba(79,110,247,.2)', reunion:'rgba(245,158,11,.2)', personnel:'rgba(167,139,250,.2)', indisponible:'rgba(107,114,128,.2)' };
-const TYPE_DEF    = { travail:'Travail', reunion:'Réunion', personnel:'Personnel', indisponible:'Indisponible' };
+const TYPE_COLORS = { travail:'#4f6ef7', reunion:'#f59e0b', personnel:'#a78bfa', indisponible:'#6b7280', rdv_client:'#22c55e' };
+const TYPE_BG     = { travail:'rgba(79,110,247,.2)', reunion:'rgba(245,158,11,.2)', personnel:'rgba(167,139,250,.2)', indisponible:'rgba(107,114,128,.2)', rdv_client:'rgba(34,197,94,.2)' };
+const TYPE_DEF    = { travail:'Travail', reunion:'Réunion', personnel:'Personnel', indisponible:'Indisponible', rdv_client:'RDV Client' };
 
 let creneaux  = [];   // [{id, titre, type, date:"YYYY-MM-DD", debut, fin}]
 let weekOffset = 0;
@@ -425,7 +426,12 @@ function _renderBloc(c, j) {
   el.className = 'block';
   el.style.cssText = `top:${top}px;height:${h}px;background:${TYPE_BG[c.type]||TYPE_BG.travail};border-left-color:${TYPE_COLORS[c.type]||TYPE_COLORS.travail};color:${TYPE_COLORS[c.type]||TYPE_COLORS.travail};`;
   el.innerHTML = `<div class="block-title">${esc(c.titre)}</div>${h>28?`<div class="block-time">${minToStr(timeToMin(c.debut))} – ${minToStr(timeToMin(c.fin))}</div>`:''}`;
-  el.addEventListener('click', (e) => { e.stopPropagation(); ouvrirEdition(c.id); });
+  if (c.type === 'rdv_client') {
+    el.title = 'RDV Client confirmé — cliquer pour voir l\'agenda';
+    el.addEventListener('click', (e) => { e.stopPropagation(); window.location = `/agenda/${COMPTE_ID}`; });
+  } else {
+    el.addEventListener('click', (e) => { e.stopPropagation(); ouvrirEdition(c.id); });
+  }
   body.appendChild(el);
 }
 
