@@ -196,6 +196,48 @@
       z-index: 999; opacity: 0; transition: all .3s; pointer-events: none; white-space: nowrap;
     }
     .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+    /* ── Jour actuel ── */
+    .day-col.today .day-header {
+      color: #93b4f0; background: rgba(79,110,247,.10);
+    }
+    .day-col.today .day-body {
+      background: rgba(79,110,247,.025);
+    }
+    .day-col.today .day-header::after {
+      content: ''; display: block; width: 4px; height: 4px; border-radius: 50%;
+      background: #4f6ef7; margin: 2px auto 0;
+    }
+    /* Ligne heure actuelle */
+    .now-line {
+      position: absolute; left: 0; right: 0; height: 2px;
+      background: rgba(239,68,68,.85); z-index: 4; pointer-events: none;
+    }
+    .now-dot {
+      position: absolute; left: -4px; top: -4px;
+      width: 10px; height: 10px; border-radius: 50%;
+      background: #ef4444; box-shadow: 0 0 6px rgba(239,68,68,.6);
+    }
+    /* Tooltip hover */
+    #time-tooltip {
+      position: fixed; z-index: 100; pointer-events: none;
+      background: rgba(13,21,38,.95); border: 1px solid var(--border);
+      border-radius: 7px; padding: 4px 9px; font-size: 11px; font-weight: 700;
+      color: var(--text); opacity: 0; transition: opacity .1s; white-space: nowrap;
+    }
+    /* Résumé hebdomadaire */
+    .summary-bar {
+      display: flex; flex-wrap: wrap; gap: 10px; margin-top: 14px;
+      padding: 14px 18px; background: var(--card); border: 1px solid var(--border);
+      border-radius: 14px;
+    }
+    .summary-item {
+      display: flex; align-items: center; gap: 7px;
+      font-size: 12px; font-weight: 600;
+    }
+    .summary-dot { width: 10px; height: 10px; border-radius: 3px; flex-shrink: 0; }
+    .summary-val { color: var(--text); }
+    .summary-lbl { color: var(--muted); }
   </style>
 </head>
 <body>
@@ -244,7 +286,15 @@
 
     </div>
   </div>
+
+  <!-- Résumé hebdomadaire -->
+  <div class="summary-bar" id="summary-bar">
+    <span style="font-size:11px;font-weight:700;color:var(--muted);align-self:center">Résumé :</span>
+    <span style="font-size:12px;color:var(--muted)" id="summary-content">Aucun créneau</span>
+  </div>
 </div>
+
+<div id="time-tooltip"></div>
 
 <!-- Modal ajout / édition -->
 <div class="overlay" id="overlay-modal" onclick="if(event.target===this)fermerModal()">
@@ -310,9 +360,26 @@ const TYPE_DEF = { travail:'Travail', reunion:'Réunion', personnel:'Personnel',
 
 let creneaux = [];
 
+// ── Jour actuel (0=Lun … 6=Dim) ──────────────────────────────
+function _todayIdx() {
+  const d = new Date().getDay(); // 0=Sun
+  return d === 0 ? 6 : d - 1;
+}
+function _weekDates() {
+  const today = new Date();
+  const dow = today.getDay();
+  const monday = new Date(today);
+  monday.setDate(today.getDate() - (dow === 0 ? 6 : dow - 1));
+  return Array.from({length:7}, (_,i) => { const d=new Date(monday); d.setDate(monday.getDate()+i); return d.getDate(); });
+}
+
 // ── Build grille ─────────────────────────────────────────────
 function buildGrid() {
-  // Axe heures (entières seulement, une tick = PX_PER_HOUR)
+  const todayI = _todayIdx();
+  const dates  = _weekDates();
+  const tip    = document.getElementById('time-tooltip');
+
+  // Axe heures
   const axis = document.getElementById('time-axis');
   for (let h = HOUR_START; h <= HOUR_END; h++) {
     const t = document.createElement('div');
@@ -326,11 +393,11 @@ function buildGrid() {
   const wrap = document.getElementById('days-wrap');
   for (let j = 0; j < 7; j++) {
     const col = document.createElement('div');
-    col.className = 'day-col';
+    col.className = 'day-col' + (j === todayI ? ' today' : '');
 
     const hdr = document.createElement('div');
     hdr.className = 'day-header' + (j >= 5 ? ' weekend' : '');
-    hdr.textContent = JOURS_NOM[j];
+    hdr.innerHTML = `<span>${JOURS_NOM[j]}</span><span style="font-size:10px;opacity:.6;margin-left:3px">${dates[j]}</span>`;
     col.appendChild(hdr);
 
     const body = document.createElement('div');
@@ -354,7 +421,7 @@ function buildGrid() {
       }
     }
 
-    // Zone cliquable
+    // Zone cliquable + tooltip
     const zone = document.createElement('div');
     zone.className = 'click-zone';
     zone.addEventListener('click', (e) => {
@@ -365,11 +432,66 @@ function buildGrid() {
       const mins  = frac < 0.5 ? 0 : 30;
       ouvrirModal(j, hours, mins);
     });
+    zone.addEventListener('mousemove', (e) => {
+      const rect  = body.getBoundingClientRect();
+      const relY  = e.clientY - rect.top;
+      const totalMin = Math.floor(relY / PX_PER_HOUR * 60) + HOUR_START * 60;
+      const h = Math.floor(totalMin / 60), m = totalMin % 60;
+      tip.textContent = `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`;
+      tip.style.left  = (e.clientX + 14) + 'px';
+      tip.style.top   = (e.clientY - 10) + 'px';
+      tip.style.opacity = '1';
+    });
+    zone.addEventListener('mouseleave', () => { tip.style.opacity = '0'; });
     body.appendChild(zone);
 
     col.appendChild(body);
     wrap.appendChild(col);
   }
+}
+
+// ── Ligne heure actuelle ──────────────────────────────────────
+function renderNow() {
+  document.querySelectorAll('.now-line').forEach(el => el.remove());
+  const now   = new Date();
+  const todayI= _todayIdx();
+  const totalMin = now.getHours() * 60 + now.getMinutes();
+  if (totalMin < HOUR_START * 60 || totalMin > HOUR_END * 60) return;
+  const top  = (totalMin - HOUR_START * 60) / 60 * PX_PER_HOUR;
+  const body = document.getElementById(`body-${todayI}`);
+  if (!body) return;
+  const line = document.createElement('div');
+  line.className = 'now-line';
+  line.style.top = top + 'px';
+  const dot = document.createElement('div');
+  dot.className = 'now-dot';
+  line.appendChild(dot);
+  body.appendChild(line);
+}
+
+// ── Résumé hebdomadaire ───────────────────────────────────────
+function renderSummary() {
+  const totals = {};
+  creneaux.forEach(c => {
+    const min  = timeToMin(c.fin) - timeToMin(c.debut);
+    const days = (c.jours || []).length;
+    totals[c.type] = (totals[c.type] || 0) + min * days;
+  });
+  const el = document.getElementById('summary-content');
+  const entries = Object.entries(totals);
+  if (!entries.length) { el.innerHTML = '<span style="color:var(--muted)">Aucun créneau</span>'; return; }
+  el.innerHTML = entries
+    .sort((a,b) => b[1]-a[1])
+    .map(([type, min]) => {
+      const h   = Math.floor(min/60), m = min%60;
+      const col = TYPE_COLORS[type] || '#4f6ef7';
+      const lbl = TYPE_DEF[type] || type;
+      return `<span class="summary-item">
+        <span class="summary-dot" style="background:${col}"></span>
+        <span class="summary-val">${h}h${m?m+'min':''}</span>
+        <span class="summary-lbl">${lbl}</span>
+      </span>`;
+    }).join('');
 }
 
 function minToStr(m) {
@@ -420,6 +542,7 @@ async function charger() {
     const j = await r.json();
     if (j.ok) { creneaux = j.edt.creneaux || []; renderBlocks(); }
   } catch(e) {}
+  return true;
 }
 
 // ── Modal ────────────────────────────────────────────────────
@@ -501,6 +624,7 @@ function validerBlock() {
     creneaux.push({ id: Math.random().toString(36).slice(2, 10), ...bloc });
   }
   renderBlocks();
+  renderSummary();
   fermerModal();
 }
 
@@ -508,6 +632,7 @@ function supprimerBlock() {
   const id = document.getElementById('edit-id').value;
   creneaux = creneaux.filter(c => c.id !== id);
   renderBlocks();
+  renderSummary();
   fermerModal();
 }
 
@@ -566,8 +691,16 @@ function esc(s) {
 
 // ── Boot ─────────────────────────────────────────────────────
 buildGrid();
-// Charger après un court délai pour que le DOM soit peint
-requestAnimationFrame(() => charger());
+renderNow();
+setInterval(renderNow, 60000); // mise à jour chaque minute
+
+requestAnimationFrame(() => charger().then(() => renderSummary()));
+
+// Ctrl+S → sauvegarder, Échap → fermer modal
+document.addEventListener('keydown', e => {
+  if ((e.ctrlKey || e.metaKey) && e.key === 's') { e.preventDefault(); sauver(); }
+  if (e.key === 'Escape') fermerModal();
+});
 </script>
 </body>
 </html>
