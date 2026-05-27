@@ -1596,7 +1596,10 @@ def sauver_horaires(compte_id):
 # ── Emploi du temps ───────────────────────────────────────────
 
 def _get_edt(compte_id):
-    return get_setting(compte_id, "emploi_du_temps", {"creneaux": []})
+    edt = get_setting(compte_id, "emploi_du_temps", {"creneaux": [], "creneaux_ponctuels": []})
+    if "creneaux_ponctuels" not in edt:
+        edt["creneaux_ponctuels"] = []
+    return edt
 
 @app.route("/emploi-du-temps/<compte_id>")
 def emploi_du_temps(compte_id):
@@ -1619,21 +1622,43 @@ def sauver_edt(compte_id):
     if not check_access(compte_id):
         return jsonify({"ok": False}), 403
     d = request.json or {}
-    creneaux = d.get("creneaux", [])
+    TYPES_VALIDES = ("travail","reunion","personnel","indisponible")
+
+    # Blocs récurrents
+    creneaux  = d.get("creneaux", [])
     validated = []
     for c in creneaux:
         if not isinstance(c, dict): continue
         validated.append({
-            "id":      str(c.get("id", ""))[:40] or str(uuid.uuid4())[:8],
-            "titre":   str(c.get("titre", ""))[:60],
-            "type":    str(c.get("type", "travail")) if str(c.get("type","")) in ("travail","reunion","personnel","indisponible") else "travail",
-            "couleur": str(c.get("couleur", "#4f6ef7"))[:20],
-            "jours":   [int(j) for j in c.get("jours", []) if isinstance(j, int) and 0 <= j <= 6],
-            "debut":   str(c.get("debut", "09:00"))[:5],
-            "fin":     str(c.get("fin",   "18:00"))[:5],
+            "id":    str(c.get("id",""))[:40] or str(uuid.uuid4())[:8],
+            "titre": str(c.get("titre",""))[:60],
+            "type":  str(c.get("type","travail")) if str(c.get("type","")) in TYPES_VALIDES else "travail",
+            "jours": [int(j) for j in c.get("jours",[]) if isinstance(j,int) and 0<=j<=6],
+            "debut": str(c.get("debut","09:00"))[:5],
+            "fin":   str(c.get("fin","18:00"))[:5],
         })
-    set_setting(compte_id, "emploi_du_temps", {"creneaux": validated})
-    return jsonify({"ok": True, "creneaux": validated})
+
+    # Blocs ponctuels (date spécifique)
+    ponctuels     = d.get("creneaux_ponctuels", [])
+    val_ponctuels = []
+    for c in ponctuels:
+        if not isinstance(c, dict): continue
+        date_str = str(c.get("date",""))[:10]
+        if not date_str: continue
+        val_ponctuels.append({
+            "id":    str(c.get("id",""))[:40] or str(uuid.uuid4())[:8],
+            "titre": str(c.get("titre",""))[:60],
+            "type":  str(c.get("type","travail")) if str(c.get("type","")) in TYPES_VALIDES else "travail",
+            "date":  date_str,
+            "debut": str(c.get("debut","09:00"))[:5],
+            "fin":   str(c.get("fin","18:00"))[:5],
+        })
+
+    set_setting(compte_id, "emploi_du_temps", {
+        "creneaux": validated,
+        "creneaux_ponctuels": val_ponctuels,
+    })
+    return jsonify({"ok": True, "creneaux": validated, "creneaux_ponctuels": val_ponctuels})
 
 @app.route("/api/edt/<compte_id>/import-ics", methods=["POST"])
 def import_ics(compte_id):
