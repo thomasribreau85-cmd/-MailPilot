@@ -1906,6 +1906,7 @@ def proposer_creneaux_client(compte_id, rdv_id):
         label = f"{_fmt(slot['date'])} de {slot['heure_debut']} à {slot['heure_fin']}"
         lignes.append(f"  ✅ {label}\n     {url}")
 
+    url_libre = f"{base_url}/rdv/proposer/{compte_id}/{rdv_id}"
     sujet = f"Choisissez votre créneau — {rdv.get('titre','Rendez-vous')}"
     corps = f"""Bonjour {nom_client},
 
@@ -1914,7 +1915,11 @@ Cliquez simplement sur le lien du créneau de votre choix pour le confirmer auto
 
 {chr(10).join(lignes)}
 
-Votre rendez-vous sera immédiatement enregistré et vous recevrez une confirmation.
+Aucune de ces dates ne vous convient ?
+Proposez votre propre date et heure ici :
+  👉 {url_libre}
+
+Votre rendez-vous sera enregistré et nous vous confirmerons rapidement.
 
 Cordialement,
 {agent_nom}"""
@@ -1947,6 +1952,120 @@ def _envoyer_email_creneaux(compte_id, dest, sujet, corps):
         print(f"✅ Email créneaux envoyé → {dest}")
     except Exception as e:
         print(f"❌ Erreur envoi créneaux → {dest}: {e}")
+
+
+@app.route("/rdv/proposer/<compte_id>/<rdv_id>", methods=["GET", "POST"])
+def client_proposer_date(compte_id, rdv_id):
+    """Page publique : le client propose sa propre date/heure."""
+    from datetime import datetime as _dt
+    rdvs = charger_agenda(compte_id)
+    rdv  = next((r for r in rdvs if r["id"] == rdv_id), None)
+    if not rdv:
+        return render_template_string("""<!DOCTYPE html><html lang="fr"><head><meta charset="utf-8">
+        <title>Introuvable</title><style>body{background:#060b18;color:#f0f4ff;font-family:sans-serif;
+        display:flex;align-items:center;justify-content:center;height:100vh}</style></head>
+        <body><div style="text-align:center"><h2>Rendez-vous introuvable</h2></div></body></html>"""), 404
+
+    data_c = charger_comptes()
+    c = trouver_compte(data_c, compte_id)
+    agent_nom = c.get("nom", "") if c else ""
+
+    if request.method == "POST":
+        date_prop  = request.form.get("date", "").strip()
+        heure_prop = request.form.get("heure", "09:00").strip()
+        notes_prop = request.form.get("notes", "").strip()
+        try:
+            _dt.strptime(date_prop, "%Y-%m-%d")
+        except ValueError:
+            return "Date invalide", 400
+        # Calculer heure_fin (+ 1h)
+        h, m  = map(int, heure_prop.split(":"))
+        fin_m = h * 60 + m + 60
+        heure_fin = f"{fin_m//60:02d}:{fin_m%60:02d}"
+        # Mettre à jour le RDV avec la date proposée — reste "attente" pour validation
+        note_ajout = f"Date proposée par le client : {date_prop} à {heure_prop}"
+        if notes_prop:
+            note_ajout += f" — Message : {notes_prop}"
+        notes_actuelles = rdv.get("notes", "")
+        db_module.modifier_rdv_db(compte_id, rdv_id, {
+            "date":        date_prop,
+            "heure_debut": heure_prop,
+            "heure_fin":   heure_fin,
+            "statut":      "attente",
+            "notes":       f"{note_ajout}\n{notes_actuelles}".strip(),
+        })
+        return render_template_string("""<!DOCTYPE html><html lang="fr"><head><meta charset="utf-8">
+        <meta name="viewport" content="width=device-width,initial-scale=1"><title>Demande envoyée</title>
+        <style>*{box-sizing:border-box;margin:0;padding:0}
+        body{background:#060b18;color:#f0f4ff;font-family:-apple-system,BlinkMacSystemFont,"Inter",sans-serif;
+        display:flex;align-items:center;justify-content:center;min-height:100vh;padding:20px}
+        .card{background:#0d1526;border:1px solid #1a2c47;border-radius:20px;padding:40px 48px;
+        text-align:center;max-width:460px;width:100%}
+        .icon{font-size:52px;margin-bottom:16px}.title{font-size:22px;font-weight:800;color:#4f6ef7;margin-bottom:8px}
+        .sub{color:#5a7090;font-size:14px;line-height:1.6}
+        </style></head><body><div class="card">
+        <div class="icon">📅</div>
+        <div class="title">Demande reçue !</div>
+        <p class="sub">Votre demande de rendez-vous le <strong>{{ date }}</strong> à <strong>{{ heure }}</strong>
+        a bien été enregistrée.<br><br>Nous la vérifierons et vous confirmerons rapidement.</p>
+        </div></body></html>""", date=date_prop, heure=heure_prop)
+
+    # GET — afficher le formulaire
+    titre = rdv.get("titre", "Rendez-vous")
+    return render_template_string("""<!DOCTYPE html><html lang="fr"><head><meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1"><title>Proposer une date</title>
+    <style>*{box-sizing:border-box;margin:0;padding:0}
+    body{background:#060b18;color:#f0f4ff;font-family:-apple-system,BlinkMacSystemFont,"Inter",sans-serif;
+    display:flex;align-items:center;justify-content:center;min-height:100vh;padding:20px}
+    .card{background:#0d1526;border:1px solid #1a2c47;border-radius:20px;padding:36px 40px;
+    max-width:440px;width:100%}
+    .logo{display:flex;align-items:center;gap:10px;margin-bottom:24px}
+    .logo-icon{width:36px;height:36px;background:linear-gradient(135deg,#4f6ef7,#7c4ff8);
+    border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:16px}
+    .logo-name{font-size:17px;font-weight:800;background:linear-gradient(90deg,#fff 40%,#4f6ef7);
+    -webkit-background-clip:text;-webkit-text-fill-color:transparent}
+    h2{font-size:20px;font-weight:700;margin-bottom:6px}
+    .sub{color:#5a7090;font-size:13px;margin-bottom:24px}
+    label{display:block;font-size:12px;font-weight:600;color:#5a7090;margin-bottom:5px;text-transform:uppercase;letter-spacing:.04em}
+    input,textarea{width:100%;background:#111d35;border:1px solid #1a2c47;border-radius:10px;
+    padding:10px 14px;color:#f0f4ff;font-size:14px;font-family:inherit;outline:none;transition:border .15s}
+    input:focus,textarea:focus{border-color:#4f6ef7}
+    .row{display:flex;gap:12px}
+    .row>div{flex:1}
+    .form-group{margin-bottom:16px}
+    textarea{resize:vertical;min-height:70px}
+    button{width:100%;margin-top:8px;padding:13px;background:linear-gradient(135deg,#4f6ef7,#7c4ff8);
+    border:none;border-radius:12px;color:#fff;font-size:15px;font-weight:700;cursor:pointer;
+    font-family:inherit;transition:opacity .15s}
+    button:hover{opacity:.9}
+    .rdv-titre{background:#111d35;border-radius:10px;padding:10px 14px;margin-bottom:20px;
+    font-size:14px;font-weight:600;color:#93b4f0}
+    </style></head><body><div class="card">
+    <div class="logo">
+      <div class="logo-icon">✈️</div>
+      <div class="logo-name">MailPilot</div>
+    </div>
+    <h2>Proposer une date</h2>
+    <p class="sub">Aucun créneau ne vous convient ? Entrez votre disponibilité.</p>
+    <div class="rdv-titre">📋 {{ titre }}{% if agent_nom %} · {{ agent_nom }}{% endif %}</div>
+    <form method="POST">
+      <div class="row">
+        <div class="form-group">
+          <label>Date souhaitée *</label>
+          <input type="date" name="date" required min="{{ today }}">
+        </div>
+        <div class="form-group">
+          <label>Heure *</label>
+          <input type="time" name="heure" value="09:00" required>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Message (optionnel)</label>
+        <textarea name="notes" placeholder="Précisions, préférences..."></textarea>
+      </div>
+      <button type="submit">Envoyer ma demande →</button>
+    </form>
+    </div></body></html>""", titre=titre, agent_nom=agent_nom, today=_dt.now().strftime("%Y-%m-%d"))
 
 
 @app.route("/rdv/choisir/<compte_id>/<rdv_id>/<token>")
