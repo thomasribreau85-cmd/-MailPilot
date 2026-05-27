@@ -20,7 +20,7 @@ from urllib.parse import urlencode
 
 import anthropic as anthropic_sdk
 import requests as http_requests
-from flask import Flask, render_template, request, jsonify, redirect, session
+from flask import Flask, render_template, render_template_string, request, jsonify, redirect, session
 from werkzeug.security import generate_password_hash, check_password_hash
 from google_auth_oauthlib.flow import InstalledAppFlow, Flow
 from google.auth.transport.requests import Request
@@ -1862,6 +1862,143 @@ def supprimer_rdv(compte_id, rdv_id):
     db_module.supprimer_rdv_db(compte_id, rdv_id)
     _retirer_rdv_de_edt(compte_id, rdv_id)
     return jsonify({"ok": True})
+
+
+@app.route("/api/rdv/<compte_id>/<rdv_id>/proposer-creneaux", methods=["POST"])
+def proposer_creneaux_client(compte_id, rdv_id):
+    """Envoie un email au client avec des liens pour choisir son créneau."""
+    import secrets as _secrets
+    from datetime import datetime as _dt
+    if not check_access(compte_id):
+        return jsonify({"ok": False}), 403
+    rdvs = charger_agenda(compte_id)
+    rdv  = next((r for r in rdvs if r["id"] == rdv_id), None)
+    if not rdv or not rdv.get("client_email"):
+        return jsonify({"ok": False, "message": "RDV ou email client introuvable"}), 404
+    d     = request.json or {}
+    slots = d.get("slots", [])
+    if not slots:
+        return jsonify({"ok": False, "message": "Aucun créneau fourni"}), 400
+
+    # Générer un token unique par créneau
+    slots_tokens = {}
+    for slot in slots:
+        tok = _secrets.token_urlsafe(14)
+        slots_tokens[tok] = slot
+    set_setting(compte_id, f"rdv_slots_{rdv_id}", slots_tokens)
+
+    # Construire l'email
+    base_url = request.host_url.rstrip('/')
+    data_c   = charger_comptes()
+    c        = trouver_compte(data_c, compte_id)
+    agent_nom = c.get("nom", "L'équipe") if c else "L'équipe"
+    nom_client = rdv.get("client_nom", "Madame/Monsieur")
+
+    def _fmt(ds):
+        jours = ["lundi","mardi","mercredi","jeudi","vendredi","samedi","dimanche"]
+        mois  = ["janvier","février","mars","avril","mai","juin","juillet","août","septembre","octobre","novembre","décembre"]
+        dd = _dt.strptime(ds, "%Y-%m-%d")
+        return f"{jours[dd.weekday()]} {dd.day} {mois[dd.month-1]} {dd.year}"
+
+    lignes = []
+    for tok, slot in slots_tokens.items():
+        url   = f"{base_url}/rdv/choisir/{compte_id}/{rdv_id}/{tok}"
+        label = f"{_fmt(slot['date'])} de {slot['heure_debut']} à {slot['heure_fin']}"
+        lignes.append(f"  ✅ {label}\n     {url}")
+
+    sujet = f"Choisissez votre créneau — {rdv.get('titre','Rendez-vous')}"
+    corps = f"""Bonjour {nom_client},
+
+Suite à votre demande concernant « {rdv.get('titre','votre rendez-vous')} », voici nos disponibilités.
+Cliquez simplement sur le lien du créneau de votre choix pour le confirmer automatiquement :
+
+{chr(10).join(lignes)}
+
+Votre rendez-vous sera immédiatement enregistré et vous recevrez une confirmation.
+
+Cordialement,
+{agent_nom}"""
+
+    threading.Thread(
+        target=_envoyer_email_creneaux,
+        args=(compte_id, rdv["client_email"], sujet, corps),
+        daemon=True
+    ).start()
+    return jsonify({"ok": True, "nb_creneaux": len(slots_tokens)})
+
+
+def _envoyer_email_creneaux(compte_id, dest, sujet, corps):
+    try:
+        data_c = charger_comptes()
+        c = trouver_compte(data_c, compte_id)
+        if not c: return
+        boite = None
+        for b in c.get("boites", []):
+            p = b.get("provider","gmail")
+            if p == "gmail"     and b.get("connecte") and b.get("token"):    boite = b; break
+            if p == "microsoft" and b.get("token"):                           boite = b; break
+            if p == "imap"      and b.get("imap_server") and b.get("imap_password"): boite = b; break
+        if not boite: return
+        exp = boite.get("email","")
+        p   = boite.get("provider","gmail")
+        if p == "gmail":     _envoyer_relance_gmail(boite["token"], exp, dest, sujet, corps)
+        elif p == "microsoft": _envoyer_relance_microsoft(boite["token"], exp, dest, sujet, corps)
+        elif p == "imap":    _envoyer_relance_smtp(boite.get("smtp_server",""), boite.get("smtp_port","465"), boite.get("imap_password",""), exp, dest, sujet, corps)
+        print(f"✅ Email créneaux envoyé → {dest}")
+    except Exception as e:
+        print(f"❌ Erreur envoi créneaux → {dest}: {e}")
+
+
+@app.route("/rdv/choisir/<compte_id>/<rdv_id>/<token>")
+def client_choisir_creneau(compte_id, rdv_id, token):
+    """Page publique : le client clique un lien pour choisir son créneau."""
+    from datetime import datetime as _dt
+    slots_tokens = get_setting(compte_id, f"rdv_slots_{rdv_id}")
+    if not slots_tokens or token not in slots_tokens:
+        return render_template_string("""<!DOCTYPE html><html lang="fr"><head><meta charset="utf-8">
+        <title>Lien expiré</title><style>*{box-sizing:border-box;margin:0;padding:0}
+        body{background:#060b18;color:#f0f4ff;font-family:sans-serif;display:flex;align-items:center;
+        justify-content:center;height:100vh}</style></head>
+        <body><div style="text-align:center"><div style="font-size:48px">⚠️</div>
+        <h2 style="margin:12px 0">Lien expiré</h2>
+        <p style="color:#5a7090">Ce lien n'est plus disponible.<br>Contactez-nous directement.</p>
+        </div></body></html>"""), 400
+
+    slot = slots_tokens[token]
+    rdv  = db_module.modifier_rdv_db(compte_id, rdv_id, {
+        "date": slot["date"], "heure_debut": slot["heure_debut"],
+        "heure_fin": slot["heure_fin"], "statut": "confirme",
+    })
+    if rdv:
+        _ajouter_rdv_dans_edt(compte_id, rdv)
+        threading.Thread(target=_tenter_confirmation, args=(compte_id, rdv), daemon=True).start()
+    set_setting(compte_id, f"rdv_slots_{rdv_id}", None)
+
+    def _fmt(ds):
+        jours = ["lundi","mardi","mercredi","jeudi","vendredi","samedi","dimanche"]
+        mois  = ["janvier","février","mars","avril","mai","juin","juillet","août","septembre","octobre","novembre","décembre"]
+        dd = _dt.strptime(ds, "%Y-%m-%d")
+        return f"{jours[dd.weekday()]} {dd.day} {mois[dd.month-1]} {dd.year}"
+
+    titre = rdv.get("titre","Rendez-vous") if rdv else "Rendez-vous"
+    label = f"{_fmt(slot['date'])} de {slot['heure_debut']} à {slot['heure_fin']}"
+    return render_template_string("""<!DOCTYPE html><html lang="fr"><head><meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1"><title>RDV Confirmé</title>
+    <style>*{box-sizing:border-box;margin:0;padding:0}
+    body{background:#060b18;color:#f0f4ff;font-family:-apple-system,BlinkMacSystemFont,"Inter",sans-serif;
+    display:flex;align-items:center;justify-content:center;min-height:100vh;padding:20px}
+    .card{background:#0d1526;border:1px solid #1a2c47;border-radius:20px;padding:40px 48px;
+    text-align:center;max-width:460px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.4)}
+    .icon{font-size:56px;margin-bottom:16px}.title{font-size:24px;font-weight:800;color:#22c55e;margin-bottom:8px}
+    .sub{color:#5a7090;font-size:15px;margin-bottom:28px}
+    .detail{background:#111d35;border-radius:12px;padding:16px 20px}
+    .dt{font-size:17px;font-weight:700;margin-bottom:4px}.dd{color:#4f6ef7;font-size:15px;font-weight:600}
+    </style></head><body><div class="card">
+    <div class="icon">✅</div>
+    <div class="title">Rendez-vous confirmé !</div>
+    <p class="sub">Votre rendez-vous est enregistré.<br>Vous recevrez un email de confirmation.</p>
+    <div class="detail"><div class="dt">{{ titre }}</div><div class="dd">{{ label }}</div></div>
+    </div></body></html>""", titre=titre, label=label)
 
 
 @app.route("/api/test-rdv/<compte_id>", methods=["POST"])

@@ -1289,6 +1289,7 @@
         </div>
         <div class="mini-rdv-actions" onclick="event.stopPropagation()">
           ${type === 'attente' ? `<button class="mini-btn ok" onclick="confirmer('${r.id}')">✓ Confirmer</button>` : ''}
+          ${type === 'attente' && r.client_email ? `<button class="mini-btn alt" onclick="proposerCreneaux('${r.id}')" title="Envoyer des créneaux au client pour qu'il choisisse">📅 Proposer</button>` : ''}
           ${type === 'conflit' ? `<button class="mini-btn alt" onclick="afficherAlternatives('${r.id}', event)">🔄</button>` : ''}
           <button class="mini-btn ko" onclick="refuser('${r.id}')">✕</button>
         </div>
@@ -1571,6 +1572,70 @@
       if (!str) return '';
       const d = new Date(str + 'T12:00:00');
       return d.toLocaleDateString('fr-FR', {weekday:'short', day:'numeric', month:'short'});
+    }
+
+    // ── Proposer créneaux au client ──────────────────────────
+    async function proposerCreneaux(id) {
+      const rdv = rdvs.find(r => r.id === id);
+      if (!rdv) return;
+
+      // Calculer 3 créneaux libres sur les 7 prochains jours
+      const today = new Date();
+      const todayStr = today.toISOString().slice(0,10);
+      const slots = [];
+      for (let offset = 1; offset <= 14 && slots.length < 3; offset++) {
+        const d = new Date(today);
+        d.setDate(today.getDate() + offset);
+        const dateStr = d.toISOString().slice(0,10);
+        // Exclure weekends (sam=6, dim=0) sauf si déjà des RDVs ce jour
+        if (d.getDay() === 0 || d.getDay() === 6) continue;
+        // Créneaux occupés ce jour (RDVs + EDT non-rdv_client)
+        const occupes = [
+          ...rdvs.filter(r => r.date === dateStr && r.statut === 'confirme')
+            .map(r => ({ debut: heureEnMin(r.heure_debut), fin: heureEnMin(r.heure_fin) })),
+          ...getEdtBlocsForDate(dateStr).filter(c => c.type !== 'rdv_client')
+            .map(c => ({ debut: heureEnMin(c.debut), fin: heureEnMin(c.fin) }))
+        ].sort((a,b) => a.debut - b.debut);
+
+        const duree = 60; // 1h par défaut
+        const DEBUT = 9*60, FIN = 18*60;
+        let cursor = DEBUT;
+        for (const occ of occupes) {
+          if (cursor + duree <= occ.debut) {
+            slots.push({ date: dateStr, heure_debut: minEnHeure(cursor), heure_fin: minEnHeure(cursor+duree) });
+            if (slots.length >= 3) break;
+          }
+          cursor = Math.max(cursor, occ.fin);
+        }
+        if (slots.length < 3 && cursor + duree <= FIN) {
+          slots.push({ date: dateStr, heure_debut: minEnHeure(cursor), heure_fin: minEnHeure(cursor+duree) });
+        }
+      }
+
+      if (!slots.length) { toast('⚠️ Aucun créneau libre trouvé sur les 14 prochains jours'); return; }
+
+      // Afficher les créneaux proposés à l'utilisateur pour validation
+      const MOIS_FR = ['janv','févr','mars','avr','mai','juin','juil','août','sept','oct','nov','déc'];
+      const JOURS_FR = ['dim','lun','mar','mer','jeu','ven','sam'];
+      const labels = slots.map(s => {
+        const dd = new Date(s.date+'T12:00:00');
+        return `${JOURS_FR[dd.getDay()]} ${dd.getDate()} ${MOIS_FR[dd.getMonth()]} — ${s.heure_debut} à ${s.heure_fin}`;
+      });
+
+      const msg = `Envoyer ces créneaux à ${rdv.client_email} ?\n\n${labels.map((l,i)=>`${i+1}. ${l}`).join('\n')}\n\nLe client recevra un email avec des liens pour choisir.`;
+      if (!confirm(msg)) return;
+
+      const res = await fetch(`/api/rdv/${COMPTE_ID}/${id}/proposer-creneaux`, {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ slots })
+      });
+      const j = await res.json();
+      if (j.ok) {
+        toast(`📅 ${j.nb_creneaux} créneau${j.nb_creneaux>1?'x':''} envoyé${j.nb_creneaux>1?'s':''} à ${rdv.client_email}`, 4000);
+      } else {
+        toast('⚠️ ' + (j.message || 'Erreur envoi créneaux'));
+      }
     }
 
     // ── Créneaux alternatifs ─────────────────────────────────
