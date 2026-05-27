@@ -445,6 +445,14 @@ def supprimer_rdv_db(compte_id, rdv_id):
     _conn().execute("DELETE FROM agenda WHERE id=? AND compte_id=?", (rdv_id, compte_id))
     _conn().commit()
 
+def rdv_doublon_existe(compte_id, client_email, date, heure_debut):
+    """Vérifie si un RDV avec le même client/date/heure existe déjà (évite les doublons IA)."""
+    row = _conn().execute(
+        "SELECT id FROM agenda WHERE compte_id=? AND client_email=? AND date=? AND heure_debut=?",
+        (compte_id, client_email, date, heure_debut)
+    ).fetchone()
+    return row is not None
+
 
 # ══════════════════════════════════════════════════════════════
 # STATS  (mailpilot.py subprocess + app.py)

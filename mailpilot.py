@@ -1162,6 +1162,10 @@ CORPS : {email['corps'][:1000]}
             "boite_id":     "",
             "created_at":   datetime.now().isoformat(),
         }
+        # Vérifier doublon avant création
+        if db_module.rdv_doublon_existe(compte_part, rdv["client_email"], rdv["date"], rdv["heure_debut"]):
+            logger.info(f"  ⏭ RDV doublon ignoré : {rdv['titre']} ({rdv['date']} {rdv['heure_debut']}) — déjà dans l'agenda")
+            return
         db_module.creer_rdv_db(compte_part, rdv)
         logger.info(f"  📅 RDV créé dans l'agenda : {rdv['titre']} ({rdv['date']} {rdv['heure_debut']})")
     except Exception as e:
