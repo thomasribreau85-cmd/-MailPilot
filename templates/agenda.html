@@ -43,9 +43,7 @@
       position: absolute; width: 1px; top: 0; bottom: 0;
       background: linear-gradient(to bottom, transparent 0%, rgba(79,110,247,.25) 30%, rgba(124,79,248,.20) 70%, transparent 100%);
     }
-    .deco-dots {
-      position: absolute; opacity: .12;
-    }
+    .deco-dots { position: absolute; opacity: .12; }
 
     /* Page wrapper */
     .page-wrap { position: relative; z-index: 1; max-width: 1000px; margin: 0 auto; padding: 28px 20px 0; }
@@ -82,7 +80,7 @@
     /* Toolbar */
     .toolbar {
       display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
-      margin-bottom: 24px;
+      margin-bottom: 16px;
     }
     .toolbar h2 { font-size: 22px; font-weight: 800; flex: 1; letter-spacing: -.3px; }
     .btn-icon {
@@ -110,6 +108,39 @@
       cursor: pointer; font-family: inherit; transition: all .15s; border-radius: 8px;
     }
     .toggle-btn.active { background: rgba(79,110,247,.18); color: var(--blue); }
+
+    /* Search + filter bar */
+    .search-bar {
+      display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+      margin-bottom: 20px;
+    }
+    .search-input-wrap {
+      flex: 1; min-width: 200px; position: relative;
+    }
+    .search-icon {
+      position: absolute; left: 12px; top: 50%; transform: translateY(-50%);
+      color: var(--muted); font-size: 14px; pointer-events: none;
+    }
+    .search-input {
+      width: 100%; background: var(--card); border: 1px solid var(--border);
+      border-radius: 10px; color: var(--text); font-size: 13px;
+      padding: 9px 14px 9px 34px; outline: none; font-family: inherit;
+      transition: border-color .15s, box-shadow .15s;
+    }
+    .search-input:focus { border-color: var(--blue); box-shadow: 0 0 0 3px rgba(79,110,247,.10); }
+    .search-input::placeholder { color: var(--muted); }
+    .filter-pills { display: flex; gap: 6px; flex-wrap: wrap; }
+    .pill {
+      padding: 6px 13px; border-radius: 20px; border: 1px solid var(--border);
+      background: var(--card); color: var(--muted); font-size: 11px; font-weight: 700;
+      cursor: pointer; transition: all .15s; white-space: nowrap;
+    }
+    .pill:hover { border-color: rgba(79,110,247,.4); color: var(--text); }
+    .pill.active { border-color: rgba(79,110,247,.6); background: rgba(79,110,247,.15); color: var(--blue); }
+    .pill.p-visite.active  { border-color: rgba(79,110,247,.6); background: rgba(79,110,247,.15); color: #93b4f0; }
+    .pill.p-reunion.active { border-color: rgba(124,79,248,.6); background: rgba(124,79,248,.15); color: #c4a8ff; }
+    .pill.p-appel.active   { border-color: rgba(34,197,94,.5);  background: rgba(34,197,94,.12); color: #86efac; }
+    .pill.p-autre.active   { border-color: rgba(100,116,139,.5);background: rgba(100,116,139,.15);color: #94a3b8; }
 
     /* Sections en attente / conflits */
     .alerts-row {
@@ -169,8 +200,7 @@
     .creneau-btn:hover { background: rgba(79,110,247,.25); border-color: var(--blue); color: #fff; }
     .creneau-vide { font-size: 12px; color: var(--muted); }
 
-    /* Vue liste */
-    #vue-liste { }
+    /* ── Vue liste ── */
     .liste-section-title {
       font-size: 12px; font-weight: 700; color: var(--muted);
       text-transform: uppercase; letter-spacing: .06em;
@@ -180,9 +210,12 @@
       background: var(--card); border: 1px solid var(--border);
       border-radius: var(--radius); padding: 16px 20px; margin-bottom: 10px;
       display: flex; align-items: center; gap: 16px; cursor: pointer;
-      transition: all .18s;
+      transition: all .18s; border-left-width: 3px;
     }
     .rdv-card:hover { border-color: rgba(79,110,247,.35); transform: translateX(3px); background: rgba(13,21,38,.95); }
+    .rdv-card.statut-confirme { border-left-color: var(--green); }
+    .rdv-card.statut-attente  { border-left-color: var(--yellow); }
+    .rdv-card.statut-conflit  { border-left-color: var(--red); }
     .rdv-date-col { text-align: center; min-width: 52px; }
     .rdv-day  { font-size: 24px; font-weight: 800; line-height: 1; color: var(--blue); }
     .rdv-mon  { font-size: 11px; color: var(--muted); text-transform: uppercase; }
@@ -196,7 +229,7 @@
       font-size: 11px; font-weight: 700; padding: 3px 10px;
       border-radius: 20px; white-space: nowrap;
     }
-    .rdv-actions { display: flex; gap: 8px; }
+    .rdv-actions { display: flex; gap: 8px; align-items: center; }
     .rdv-btn {
       font-size: 12px; padding: 6px 12px; border-radius: 8px; border: 1px solid var(--border);
       cursor: pointer; font-weight: 600; font-family: inherit; background: transparent;
@@ -204,18 +237,30 @@
     }
     .rdv-btn:hover { border-color: var(--blue); color: var(--blue); }
     .rdv-btn.danger:hover { border-color: var(--red); color: var(--red); }
-
-    /* Vue semaine */
-    #vue-semaine { display: none; }
-    .semaine-nav {
-      display: flex; align-items: center; gap: 14px; margin-bottom: 16px;
+    .rdv-btn.confirm {
+      background: rgba(34,197,94,.1); border-color: rgba(34,197,94,.3); color: var(--green);
     }
-    .semaine-nav button {
+    .rdv-btn.confirm:hover { background: rgba(34,197,94,.25); }
+
+    /* ── Vue semaine ── */
+    #vue-semaine { display: none; }
+    .nav-header {
+      display: flex; align-items: center; gap: 8px; margin-bottom: 16px;
+    }
+    .nav-header button {
       background: var(--card); border: 1px solid var(--border); border-radius: 8px;
       padding: 7px 12px; color: var(--muted); cursor: pointer; font-size: 16px; transition: all .15s;
     }
-    .semaine-nav button:hover { color: var(--text); border-color: #2a3d6a; }
-    .semaine-nav h3 { font-size: 16px; font-weight: 700; flex: 1; text-align: center; }
+    .nav-header button:hover { color: var(--text); border-color: #2a3d6a; }
+    .nav-header h3 { font-size: 16px; font-weight: 700; flex: 1; text-align: center; }
+    .today-btn {
+      padding: 6px 12px; font-size: 11px; font-weight: 700;
+      background: rgba(79,110,247,.1); border: 1px solid rgba(79,110,247,.3);
+      border-radius: 8px; color: var(--blue); cursor: pointer; font-family: inherit;
+      transition: all .15s; white-space: nowrap;
+    }
+    .today-btn:hover { background: rgba(79,110,247,.2); }
+
     .semaine-grid {
       display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px;
     }
@@ -223,17 +268,22 @@
     .semaine-col-header {
       text-align: center; padding: 10px 4px; background: var(--card);
       border: 1px solid var(--border); border-radius: 10px 10px 0 0;
-      border-bottom: none;
+      border-bottom: none; cursor: pointer; transition: background .15s;
     }
+    .semaine-col-header:hover { background: rgba(79,110,247,.08); }
     .semaine-col-header .jour-nom { font-size: 11px; color: var(--muted); font-weight: 600; text-transform: uppercase; }
     .semaine-col-header .jour-num {
       font-size: 20px; font-weight: 800; margin-top: 2px; line-height: 1;
     }
+    .semaine-col-header.today { background: rgba(79,110,247,.12); border-color: rgba(79,110,247,.3); }
     .semaine-col-header.today .jour-num { color: var(--blue); }
+    .semaine-col-header.today .jour-nom { color: var(--blue); }
     .semaine-col-body {
       background: var(--card); border: 1px solid var(--border);
       border-radius: 0 0 10px 10px; padding: 6px; min-height: 260px;
+      cursor: pointer; transition: background .15s;
     }
+    .semaine-col-body:hover { background: rgba(79,110,247,.04); }
     .semaine-rdv {
       border-radius: 7px; padding: 6px 8px; margin-bottom: 6px;
       font-size: 11px; font-weight: 600; cursor: pointer; transition: all .15s;
@@ -241,6 +291,41 @@
     }
     .semaine-rdv:hover { transform: scale(1.02); }
     .semaine-empty { color: var(--muted); font-size: 11px; text-align: center; padding: 20px 0; }
+
+    /* ── Vue mois ── */
+    #vue-mois { display: none; }
+    .mois-grid {
+      display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px;
+    }
+    .mois-day-header {
+      text-align: center; padding: 8px 4px; font-size: 11px; font-weight: 700;
+      color: var(--muted); text-transform: uppercase; letter-spacing: .04em;
+    }
+    .mois-cell {
+      min-height: 90px; background: var(--card); border: 1px solid var(--border);
+      border-radius: 10px; padding: 8px; cursor: pointer; transition: all .15s;
+      display: flex; flex-direction: column; gap: 3px;
+    }
+    .mois-cell:hover { border-color: rgba(79,110,247,.35); background: rgba(79,110,247,.04); }
+    .mois-cell.today { border-color: rgba(79,110,247,.5); background: rgba(79,110,247,.07); }
+    .mois-cell.other-month { opacity: .35; }
+    .mois-cell-num {
+      font-size: 13px; font-weight: 800; line-height: 1;
+      color: var(--text);
+    }
+    .mois-cell.today .mois-cell-num {
+      background: var(--blue); color: #fff; width: 24px; height: 24px;
+      border-radius: 50%; display: flex; align-items: center; justify-content: center;
+      font-size: 12px;
+    }
+    .mois-rdv {
+      border-radius: 5px; padding: 3px 7px; font-size: 10px; font-weight: 600;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+      cursor: pointer; transition: all .12s;
+    }
+    .mois-rdv:hover { opacity: .85; transform: scale(1.02); }
+    .mois-more { font-size: 10px; color: var(--muted); padding: 2px 4px; cursor: pointer; }
+    .mois-more:hover { color: var(--blue); }
 
     /* Types couleurs */
     .type-visite      { background: rgba(79,110,247,.2); color: #93b4f0; }
@@ -296,6 +381,13 @@
       cursor: pointer; font-family: inherit;
       box-shadow: 0 4px 14px rgba(79,110,247,.3);
     }
+    .modal-shortcut {
+      font-size: 11px; color: var(--muted); text-align: center; margin-top: 12px;
+    }
+    .modal-shortcut kbd {
+      background: rgba(255,255,255,.06); border: 1px solid var(--border);
+      border-radius: 4px; padding: 1px 6px; font-family: inherit; font-size: 10px;
+    }
 
     /* Toast */
     #toast {
@@ -321,7 +413,7 @@
       .nav-link { padding: 6px 10px; font-size: 11px; }
       .nav-link.logout { display: none; }
       .page-wrap { padding: 0 14px; }
-      .toolbar { gap: 8px; margin-bottom: 18px; }
+      .toolbar { gap: 8px; margin-bottom: 12px; }
       .toolbar h2 { font-size: 18px; }
       .btn-icon { padding: 7px 10px; font-size: 11px; }
       .btn-primary { padding: 8px 14px; font-size: 12px; }
@@ -332,9 +424,11 @@
       .rdv-titre { font-size: 14px; }
       .rdv-actions { display: none; }
       .semaine-grid { grid-template-columns: repeat(4, 1fr); }
+      .mois-cell { min-height: 60px; padding: 5px; }
     }
     @media (max-width: 420px) {
       .semaine-grid { grid-template-columns: repeat(2, 1fr); }
+      .mois-cell { min-height: 50px; }
     }
 
     /* Horaires modal */
@@ -408,6 +502,15 @@
       .stat-card { padding: 12px 14px; gap: 10px; }
       .stat-val { font-size: 22px; }
     }
+
+    /* Kbd hint */
+    .kbd-hint {
+      font-size: 11px; color: var(--muted); margin-bottom: 12px; text-align: right;
+    }
+    .kbd-hint kbd {
+      background: rgba(255,255,255,.06); border: 1px solid var(--border);
+      border-radius: 4px; padding: 1px 6px; font-family: inherit;
+    }
   </style>
 </head>
 <body>
@@ -451,19 +554,35 @@
   <div class="toolbar">
     <h2>🗓️ Agenda</h2>
     <div class="toggle-view">
-      <button class="toggle-btn active" id="btn-liste" onclick="setVue('liste')">☰ Liste</button>
-      <button class="toggle-btn" id="btn-semaine" onclick="setVue('semaine')">⊞ Semaine</button>
+      <button class="toggle-btn active" id="btn-liste"   onclick="setVue('liste')">☰ Liste</button>
+      <button class="toggle-btn"        id="btn-semaine" onclick="setVue('semaine')">⊞ Semaine</button>
+      <button class="toggle-btn"        id="btn-mois"    onclick="setVue('mois')">📅 Mois</button>
     </div>
     <button class="btn-icon" onclick="ouvrirHoraires()">⚙️ Horaires</button>
-    <button class="btn-icon" onclick="document.getElementById('import-ics').click()">📥 Importer .ics</button>
+    <button class="btn-icon" onclick="document.getElementById('import-ics').click()">📥 .ics</button>
     <input type="file" id="import-ics" accept=".ics" style="display:none" onchange="importerICS(this)" />
-    <button class="btn-icon" onclick="exporterICS()">📤 Exporter .ics</button>
+    <button class="btn-icon" onclick="exporterICS()">📤 .ics</button>
     <button class="btn-primary" onclick="ouvrirModal()">+ Nouveau RDV</button>
   </div>
 
+  <!-- Search + filter bar -->
+  <div class="search-bar">
+    <div class="search-input-wrap">
+      <span class="search-icon">🔍</span>
+      <input class="search-input" id="search-input" placeholder="Rechercher un RDV, client, lieu…" oninput="onSearch()" />
+    </div>
+    <div class="filter-pills">
+      <button class="pill active" id="pill-tous"    onclick="setFiltreType('tous')">Tous</button>
+      <button class="pill p-visite"  id="pill-visite"  onclick="setFiltreType('visite')">🏠 Visite</button>
+      <button class="pill p-reunion" id="pill-reunion" onclick="setFiltreType('reunion')">💼 Réunion</button>
+      <button class="pill p-appel"   id="pill-appel"   onclick="setFiltreType('appel')">📞 Appel</button>
+      <button class="pill p-autre"   id="pill-autre"   onclick="setFiltreType('autre')">📌 Autre</button>
+    </div>
+  </div>
+
   <!-- Résultat import -->
-  <div id="import-result" style="display:none; max-width:1000px; margin: 0 auto 16px;">
-    <div style="background:rgba(34,197,94,.08); border:1px solid rgba(34,197,94,.2); border-radius:12px; padding:12px 18px; font-size:13px; color:#86efac;" id="import-msg"></div>
+  <div id="import-result" style="display:none; margin-bottom:16px">
+    <div style="border-radius:12px; padding:12px 18px; font-size:13px;" id="import-msg"></div>
   </div>
 
   <!-- Stats bar -->
@@ -528,12 +647,24 @@
 
   <!-- Vue semaine -->
   <div id="vue-semaine">
-    <div class="semaine-nav">
-      <button onclick="semainePrecedente()">‹</button>
+    <div class="nav-header">
+      <button onclick="naviguer(-1)">‹</button>
+      <button class="today-btn" onclick="allerAujourdhui()">Aujourd'hui</button>
       <h3 id="semaine-titre"></h3>
-      <button onclick="semaineSuivante()">›</button>
+      <button onclick="naviguer(1)">›</button>
     </div>
     <div class="semaine-grid" id="semaine-grid"></div>
+  </div>
+
+  <!-- Vue mois -->
+  <div id="vue-mois">
+    <div class="nav-header">
+      <button onclick="naviguerMois(-1)">‹</button>
+      <button class="today-btn" onclick="allerAujourdhui()">Aujourd'hui</button>
+      <h3 id="mois-titre"></h3>
+      <button onclick="naviguerMois(1)">›</button>
+    </div>
+    <div class="mois-grid" id="mois-grid"></div>
   </div>
 
   <!-- Modal nouveau/edit RDV -->
@@ -595,6 +726,7 @@
         <button class="btn-cancel" onclick="fermerModal()">Annuler</button>
         <button class="btn-save" onclick="sauvegarderRdv()">Sauvegarder</button>
       </div>
+      <div class="modal-shortcut"><kbd>Ctrl</kbd>+<kbd>S</kbd> pour sauvegarder · <kbd>Esc</kbd> pour fermer</div>
     </div>
   </div>
 
@@ -622,9 +754,13 @@
     let rdvs = [];
     let vue   = 'liste';
     let semaineOffset = 0;
+    let moisOffset    = 0;
     let editId = null;
+    let searchQ = '';
+    let filtreType = 'tous';
 
-    const MOIS = ['Jan','Fév','Mar','Avr','Mai','Jun','Jul','Aoû','Sep','Oct','Nov','Déc'];
+    const MOIS_LONG  = ['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'];
+    const MOIS_COURT = ['Jan','Fév','Mar','Avr','Mai','Jun','Jul','Aoû','Sep','Oct','Nov','Déc'];
     const JOURS_COURTS = ['Lun','Mar','Mer','Jeu','Ven','Sam','Dim'];
     const JOURS_LONGS  = ['Lundi','Mardi','Mercredi','Jeudi','Vendredi','Samedi','Dimanche'];
     const TYPE_LABELS  = { visite:'🏠 Visite', reunion:'💼 Réunion', appel:'📞 Appel', autre:'📌 Autre' };
@@ -633,6 +769,30 @@
       const el = document.getElementById('toast');
       el.textContent = msg; el.classList.add('show');
       setTimeout(() => el.classList.remove('show'), d);
+    }
+
+    // ── Filtre / Recherche ───────────────────────────────────
+    function onSearch() {
+      searchQ = document.getElementById('search-input').value.toLowerCase().trim();
+      rendreTout();
+    }
+
+    function setFiltreType(type) {
+      filtreType = type;
+      document.querySelectorAll('.filter-pills .pill').forEach(p => p.classList.remove('active'));
+      document.getElementById('pill-' + type)?.classList.add('active');
+      rendreTout();
+    }
+
+    function rdvsFiltres() {
+      return rdvs.filter(r => {
+        if (filtreType !== 'tous' && r.type !== filtreType) return false;
+        if (searchQ) {
+          const hay = [r.titre, r.client_nom, r.adresse, r.notes].join(' ').toLowerCase();
+          if (!hay.includes(searchQ)) return false;
+        }
+        return true;
+      });
     }
 
     // ── Chargement ───────────────────────────────────────────
@@ -646,21 +806,21 @@
     function rendreTout() {
       rendreStats();
       rendreAlertes();
-      if (vue === 'liste') rendreListe();
-      else rendreSemaine();
+      if (vue === 'liste')    rendreListe();
+      else if (vue === 'semaine') rendreSemaine();
+      else rendreMois();
     }
 
     function rendreStats() {
       const today = new Date().toISOString().slice(0, 10);
-      // Début et fin de la semaine courante (lundi–dimanche)
       const now = new Date();
-      const dow = now.getDay() === 0 ? 6 : now.getDay() - 1; // 0=lundi
+      const dow = now.getDay() === 0 ? 6 : now.getDay() - 1;
       const lundi = new Date(now); lundi.setDate(now.getDate() - dow);
       const dimanche = new Date(lundi); dimanche.setDate(lundi.getDate() + 6);
       const lundiStr = lundi.toISOString().slice(0, 10);
       const dimancheStr = dimanche.toISOString().slice(0, 10);
 
-      const actifs = rdvs.filter(r => r.statut !== 'annule');
+      const actifs    = rdvs.filter(r => r.statut !== 'annule');
       const confirmes = rdvs.filter(r => r.statut === 'confirme');
       const attente   = rdvs.filter(r => r.statut === 'attente');
       const semaine   = actifs.filter(r => r.date >= lundiStr && r.date <= dimancheStr);
@@ -671,7 +831,7 @@
       document.getElementById('stat-semaine').textContent   = semaine.length;
     }
 
-    // ── Détection automatique des conflits horaires ──────────
+    // ── Conflits ─────────────────────────────────────────────
     function detecterConflits() {
       const actifs = rdvs.filter(r => r.statut === 'confirme' || r.statut === 'attente');
       const ids = new Set();
@@ -679,9 +839,7 @@
         for (let j = i + 1; j < actifs.length; j++) {
           const a = actifs[i], b = actifs[j];
           if (a.date !== b.date) continue;
-          // Au moins un des deux doit être confirmé pour déclencher un conflit
           if (a.statut !== 'confirme' && b.statut !== 'confirme') continue;
-          // Chevauchement si début A < fin B ET début B < fin A
           if (a.heure_debut < b.heure_fin && b.heure_debut < a.heure_fin) {
             ids.add(a.id); ids.add(b.id);
           }
@@ -727,42 +885,44 @@
     // ── Vue liste ────────────────────────────────────────────
     function rendreListe() {
       const today = new Date().toISOString().slice(0,10);
-      const tries = [...rdvs]
-        .filter(r => r.statut === 'confirme')
+      const source = rdvsFiltres();
+      const tries = [...source]
+        .filter(r => r.statut === 'confirme' || r.statut === 'attente')
         .sort((a,b) => (a.date+a.heure_debut).localeCompare(b.date+b.heure_debut));
 
       const passes  = tries.filter(r => r.date < today);
       const avenir  = tries.filter(r => r.date >= today);
 
-      if (!tries.length && !rdvs.filter(r=>r.statut!=='confirme').length) {
-        document.getElementById('liste-content').innerHTML = `
-          <div class="empty-state">
-            <div class="big">🗓️</div>
-            <p>Aucun rendez-vous confirmé.<br>Clique sur "+ Nouveau RDV" pour commencer.</p>
-          </div>`;
+      if (!tries.length) {
+        document.getElementById('liste-content').innerHTML = searchQ || filtreType !== 'tous'
+          ? `<div class="empty-state"><div class="big">🔍</div><p>Aucun résultat pour cette recherche.</p></div>`
+          : `<div class="empty-state"><div class="big">🗓️</div><p>Aucun rendez-vous.<br>Clique sur "+ Nouveau RDV" pour commencer.</p></div>`;
         return;
       }
 
       let html = '';
       if (avenir.length) {
-        html += `<div class="liste-section-title">📅 À venir</div>`;
+        html += `<div class="liste-section-title">📅 À venir (${avenir.length})</div>`;
         html += avenir.map(rdvCard).join('');
       }
       if (passes.length) {
-        html += `<div class="liste-section-title" style="margin-top:28px">🕐 Passés</div>`;
+        html += `<div class="liste-section-title" style="margin-top:28px">🕐 Passés (${passes.length})</div>`;
         html += passes.map(r => rdvCard(r, true)).join('');
       }
 
-      document.getElementById('liste-content').innerHTML = html || '<div class="empty-state"><div class="big">🗓️</div><p>Aucun RDV confirmé.</p></div>';
+      document.getElementById('liste-content').innerHTML = html;
     }
 
     function rdvCard(r, passe=false) {
       const d   = new Date(r.date + 'T12:00:00');
       const day = d.getDate();
-      const mon = MOIS[d.getMonth()];
+      const mon = MOIS_COURT[d.getMonth()];
       const typeClass = `type-badge-${r.type}`;
+      const statutClass = `statut-${r.statut}`;
+      const confirmBtn = r.statut === 'attente'
+        ? `<button class="rdv-btn confirm" onclick="event.stopPropagation();confirmer('${r.id}')">✓</button>` : '';
       return `
-        <div class="rdv-card" onclick="ouvrirEdit('${r.id}')" style="${passe?'opacity:.55':''}">
+        <div class="rdv-card ${statutClass}" onclick="ouvrirEdit('${r.id}')" style="${passe?'opacity:.55':''}">
           <div class="rdv-date-col">
             <div class="rdv-day">${day}</div>
             <div class="rdv-mon">${mon}</div>
@@ -775,6 +935,7 @@
           </div>
           <div class="rdv-type-badge ${typeClass}">${TYPE_LABELS[r.type]||r.type}</div>
           <div class="rdv-actions" onclick="event.stopPropagation()">
+            ${confirmBtn}
             <button class="rdv-btn" onclick="ouvrirEdit('${r.id}')">✏️</button>
             <button class="rdv-btn danger" onclick="supprimerRdv('${r.id}')">🗑</button>
           </div>
@@ -798,45 +959,134 @@
       document.getElementById('semaine-titre').textContent = `${debut} – ${fin}`;
 
       const todayStr = today.toISOString().slice(0,10);
+      const source   = rdvsFiltres();
 
       document.getElementById('semaine-grid').innerHTML = jours.map((d,i) => {
         const dateStr = d.toISOString().slice(0,10);
         const isToday = dateStr === todayStr;
-        const rdvJour = rdvs
-          .filter(r => r.date === dateStr && r.statut === 'confirme')
+        const rdvJour = source
+          .filter(r => r.date === dateStr && (r.statut === 'confirme' || r.statut === 'attente'))
           .sort((a,b) => a.heure_debut.localeCompare(b.heure_debut));
 
         return `
           <div class="semaine-col">
-            <div class="semaine-col-header ${isToday?'today':''}">
+            <div class="semaine-col-header ${isToday?'today':''}" onclick="ouvrirModal('${dateStr}')">
               <div class="jour-nom">${JOURS_COURTS[i]}</div>
               <div class="jour-num">${d.getDate()}</div>
             </div>
-            <div class="semaine-col-body">
+            <div class="semaine-col-body" onclick="ouvrirModal('${dateStr}')">
               ${rdvJour.length
                 ? rdvJour.map(r => `
-                    <div class="semaine-rdv type-${r.type}" onclick="ouvrirEdit('${r.id}')">
+                    <div class="semaine-rdv type-${r.type}" onclick="event.stopPropagation();ouvrirEdit('${r.id}')">
                       <div>${r.heure_debut}</div>
-                      <div>${r.titre}</div>
+                      <div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${r.titre}</div>
                     </div>`).join('')
-                : `<div class="semaine-empty">—</div>`
+                : `<div class="semaine-empty">+</div>`
               }
             </div>
           </div>`;
       }).join('');
     }
 
-    function semainePrecedente() { semaineOffset--; rendreSemaine(); }
-    function semaineSuivante()   { semaineOffset++; rendreSemaine(); }
+    function naviguer(delta) {
+      semaineOffset += delta;
+      rendreSemaine();
+    }
+
+    // ── Vue mois ─────────────────────────────────────────────
+    function rendreMois() {
+      const today = new Date();
+      const ref   = new Date(today.getFullYear(), today.getMonth() + moisOffset, 1);
+      const annee = ref.getFullYear();
+      const mois  = ref.getMonth();
+
+      document.getElementById('mois-titre').textContent = `${MOIS_LONG[mois]} ${annee}`;
+
+      const todayStr   = today.toISOString().slice(0,10);
+      const source     = rdvsFiltres();
+
+      // Cellules du calendrier (lundi en premier)
+      const premierJour = new Date(annee, mois, 1);
+      const dernierJour = new Date(annee, mois + 1, 0);
+      // Décalage pour que lundi = 0
+      const startDow = (premierJour.getDay() + 6) % 7;
+
+      let html = '';
+      // En-têtes
+      html += JOURS_COURTS.map(j => `<div class="mois-day-header">${j}</div>`).join('');
+
+      // Cellules vides avant le 1er
+      for (let i = 0; i < startDow; i++) {
+        const d = new Date(annee, mois, 1 - startDow + i);
+        const dateStr = d.toISOString().slice(0,10);
+        html += celluleMois(d, dateStr, source, todayStr, true);
+      }
+
+      // Jours du mois
+      for (let day = 1; day <= dernierJour.getDate(); day++) {
+        const d = new Date(annee, mois, day);
+        const dateStr = d.toISOString().slice(0,10);
+        html += celluleMois(d, dateStr, source, todayStr, false);
+      }
+
+      // Compléter la dernière semaine
+      const totalCells = startDow + dernierJour.getDate();
+      const remaining  = totalCells % 7 === 0 ? 0 : 7 - (totalCells % 7);
+      for (let i = 1; i <= remaining; i++) {
+        const d = new Date(annee, mois + 1, i);
+        const dateStr = d.toISOString().slice(0,10);
+        html += celluleMois(d, dateStr, source, todayStr, true);
+      }
+
+      document.getElementById('mois-grid').innerHTML = html;
+    }
+
+    function celluleMois(d, dateStr, source, todayStr, otherMonth) {
+      const rdvJour = source
+        .filter(r => r.date === dateStr && (r.statut === 'confirme' || r.statut === 'attente'))
+        .sort((a,b) => a.heure_debut.localeCompare(b.heure_debut));
+
+      const maxVisible = 2;
+      const visible = rdvJour.slice(0, maxVisible);
+      const more    = rdvJour.length - maxVisible;
+
+      const numEl = todayStr === dateStr
+        ? `<div class="mois-cell-num" style="display:flex">${d.getDate()}</div>`
+        : `<div class="mois-cell-num">${d.getDate()}</div>`;
+
+      const rdvEls = visible.map(r =>
+        `<div class="mois-rdv type-${r.type}" onclick="event.stopPropagation();ouvrirEdit('${r.id}')" title="${r.titre} · ${r.heure_debut}">${r.heure_debut} ${r.titre}</div>`
+      ).join('');
+
+      const moreEl = more > 0 ? `<div class="mois-more">+${more} autre${more>1?'s':''}</div>` : '';
+
+      return `<div class="mois-cell ${todayStr===dateStr?'today':''} ${otherMonth?'other-month':''}" onclick="ouvrirModal('${dateStr}')">
+        ${numEl}${rdvEls}${moreEl}
+      </div>`;
+    }
+
+    function naviguerMois(delta) {
+      moisOffset += delta;
+      rendreMois();
+    }
+
+    function allerAujourdhui() {
+      semaineOffset = 0;
+      moisOffset    = 0;
+      if (vue === 'semaine') rendreSemaine();
+      else rendreMois();
+    }
 
     // ── Toggle vue ───────────────────────────────────────────
     function setVue(v) {
       vue = v;
       document.getElementById('vue-liste').style.display    = v==='liste'    ? 'block' : 'none';
       document.getElementById('vue-semaine').style.display  = v==='semaine'  ? 'block' : 'none';
-      document.getElementById('btn-liste').classList.toggle('active', v==='liste');
-      document.getElementById('btn-semaine').classList.toggle('active', v==='semaine');
-      if (v==='semaine') rendreSemaine();
+      document.getElementById('vue-mois').style.display     = v==='mois'     ? 'block' : 'none';
+      ['liste','semaine','mois'].forEach(x =>
+        document.getElementById('btn-'+x).classList.toggle('active', x===v)
+      );
+      rendreTout();
     }
 
     // ── Modal RDV ────────────────────────────────────────────
@@ -855,6 +1105,7 @@
       document.getElementById('rdv-fin').value     = '10:00';
       document.getElementById('rdv-notes').value   = '';
       document.getElementById('overlay-rdv').classList.add('open');
+      setTimeout(() => document.getElementById('rdv-titre').focus(), 80);
     }
 
     function ouvrirEdit(id) {
@@ -874,6 +1125,7 @@
       document.getElementById('rdv-fin').value     = r.heure_fin;
       document.getElementById('rdv-notes').value   = r.notes || '';
       document.getElementById('overlay-rdv').classList.add('open');
+      setTimeout(() => document.getElementById('rdv-titre').focus(), 80);
     }
 
     function fermerModal() { document.getElementById('overlay-rdv').classList.remove('open'); }
@@ -941,16 +1193,12 @@
     function trouverCreneauxLibres(rdv) {
       const duree = heureEnMin(rdv.heure_fin) - heureEnMin(rdv.heure_debut);
       const DEBUT = 8 * 60, FIN = 19 * 60;
-
-      // Tous les RDVs confirmés ce jour-là sauf le RDV en conflit
       const occupes = rdvs
         .filter(r => r.date === rdv.date && r.id !== rdv.id && r.statut === 'confirme')
         .map(r => ({ debut: heureEnMin(r.heure_debut), fin: heureEnMin(r.heure_fin) }))
         .sort((a,b) => a.debut - b.debut);
-
       const libres = [];
       let cursor = DEBUT;
-
       for (const occ of occupes) {
         if (cursor + duree <= occ.debut) {
           libres.push({ debut: cursor, fin: cursor + duree });
@@ -958,9 +1206,8 @@
         }
         cursor = Math.max(cursor, occ.fin);
       }
-      if (libres.length < 3 && cursor + duree <= FIN) {
+      if (libres.length < 3 && cursor + duree <= FIN)
         libres.push({ debut: cursor, fin: cursor + duree });
-      }
       return libres.slice(0, 3);
     }
 
@@ -969,11 +1216,9 @@
       const box = document.getElementById('alt-' + id);
       if (!box) return;
       if (box.style.display !== 'none') { box.style.display = 'none'; return; }
-
       const rdv = rdvs.find(r => r.id === id);
       if (!rdv) return;
       const slots = trouverCreneauxLibres(rdv);
-
       if (!slots.length) {
         box.innerHTML = `<div class="creneaux-titre">🔄 Créneaux alternatifs</div><div class="creneau-vide">Aucun créneau libre ce jour-là (8h–19h)</div>`;
       } else {
@@ -1098,12 +1343,10 @@
     }
 
     function parserICS(texte) {
-      // Unfold lines (RFC 5545 : continuation lines start with space/tab)
       texte = texte.replace(/\r\n[ \t]/g, '').replace(/\n[ \t]/g, '');
       const lignes = texte.split(/\r?\n/);
       const events = [];
       let ev = null;
-
       for (const ligne of lignes) {
         if (ligne === 'BEGIN:VEVENT') { ev = {}; continue; }
         if (ligne === 'END:VEVENT' && ev) {
@@ -1126,29 +1369,23 @@
         const dtstart = ev['DTSTART'] || ev['DTSTART;TZID'] || '';
         const dtend   = ev['DTEND']   || ev['DTEND;TZID']   || '';
         if (!dtstart) return null;
-
         const parseDate = str => {
-          // Formats : 20260526T090000Z ou 20260526T090000 ou 20260526
           const s = str.replace('Z','');
           const date = s.slice(0,4)+'-'+s.slice(4,6)+'-'+s.slice(6,8);
           const heure = s.length >= 13 ? s.slice(9,11)+':'+s.slice(11,13) : '09:00';
           return { date, heure };
         };
-
         const debut = parseDate(dtstart);
         const fin   = dtend ? parseDate(dtend) : null;
-
-        // Deviner le type
         const titre = (ev['SUMMARY'] || 'RDV importé').trim();
         const tl = titre.toLowerCase();
         let type = 'autre';
-        if (tl.includes('visite') || tl.includes('démonstration') || tl.includes('demo') || tl.includes('démo')) type = 'visite';
+        if (tl.includes('visite') || tl.includes('demo') || tl.includes('démo')) type = 'visite';
         else if (tl.includes('réunion') || tl.includes('reunion') || tl.includes('meeting')) type = 'reunion';
-        else if (tl.includes('appel') || tl.includes('call') || tl.includes('téléphone') || tl.includes('tel ')) type = 'appel';
-
+        else if (tl.includes('appel') || tl.includes('call') || tl.includes('téléphone')) type = 'appel';
         return {
-          titre:        titre,
-          type:         type,
+          titre,
+          type,
           statut:       'confirme',
           date:         debut.date,
           heure_debut:  debut.heure,
@@ -1171,23 +1408,12 @@
     function exporterICS() {
       const confirmes = rdvs.filter(r => r.statut === 'confirme');
       if (!confirmes.length) { toast('⚠️ Aucun RDV confirmé à exporter'); return; }
-
       const esc = s => (s || '').replace(/\\/g,'\\\\').replace(/;/g,'\\;').replace(/,/g,'\\,').replace(/\n/g,'\\n');
-
-      const formatDT = (date, heure) => {
-        // date: "2026-05-26", heure: "09:00" → 20260526T090000
-        return date.replace(/-/g,'') + 'T' + heure.replace(':','') + '00';
-      };
-
+      const formatDT = (date, heure) => date.replace(/-/g,'') + 'T' + heure.replace(':','') + '00';
       const lignes = [
-        'BEGIN:VCALENDAR',
-        'VERSION:2.0',
-        'PRODID:-//MailPilot//FR',
-        'CALSCALE:GREGORIAN',
-        'METHOD:PUBLISH',
-        'X-WR-CALNAME:MailPilot Agenda',
+        'BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//MailPilot//FR',
+        'CALSCALE:GREGORIAN','METHOD:PUBLISH','X-WR-CALNAME:MailPilot Agenda',
       ];
-
       for (const r of confirmes) {
         lignes.push(
           'BEGIN:VEVENT',
@@ -1196,24 +1422,40 @@
           `DTSTART:${formatDT(r.date, r.heure_debut)}`,
           `DTEND:${formatDT(r.date, r.heure_fin)}`,
           `SUMMARY:${esc(r.titre)}`,
-          r.adresse      ? `LOCATION:${esc(r.adresse)}`            : '',
-          r.client_email ? `ATTENDEE:mailto:${r.client_email}`     : '',
-          r.notes        ? `DESCRIPTION:${esc(r.notes)}`           : '',
+          r.adresse      ? `LOCATION:${esc(r.adresse)}`        : '',
+          r.client_email ? `ATTENDEE:mailto:${r.client_email}` : '',
+          r.notes        ? `DESCRIPTION:${esc(r.notes)}`       : '',
           'END:VEVENT',
         ).filter(Boolean);
       }
-
       lignes.push('END:VCALENDAR');
-
       const blob = new Blob([lignes.join('\r\n')], { type: 'text/calendar;charset=utf-8' });
       const url  = URL.createObjectURL(blob);
       const a    = document.createElement('a');
-      a.href     = url;
-      a.download = `mailpilot-agenda.ics`;
-      a.click();
+      a.href = url; a.download = 'mailpilot-agenda.ics'; a.click();
       URL.revokeObjectURL(url);
       toast(`✅ ${confirmes.length} RDV exporté(s)`);
     }
+
+    // ── Raccourcis clavier ───────────────────────────────────
+    document.addEventListener('keydown', e => {
+      const modalOpen = document.getElementById('overlay-rdv').classList.contains('open');
+      const anyModal  = document.querySelector('.overlay.open');
+
+      if (e.key === 'Escape' && anyModal) {
+        anyModal.classList.remove('open');
+        return;
+      }
+      if (modalOpen && (e.ctrlKey || e.metaKey) && e.key === 's') {
+        e.preventDefault();
+        sauvegarderRdv();
+        return;
+      }
+      // N = Nouveau RDV (seulement si pas en train de taper)
+      if (!modalOpen && e.key === 'n' && !['INPUT','TEXTAREA','SELECT'].includes(document.activeElement.tagName)) {
+        ouvrirModal();
+      }
+    });
 
     // ── Init ─────────────────────────────────────────────────
     charger();
