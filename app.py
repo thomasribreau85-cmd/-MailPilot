@@ -1843,6 +1843,59 @@ def supprimer_rdv(compte_id, rdv_id):
     return jsonify({"ok": True})
 
 
+@app.route("/api/test-rdv/<compte_id>", methods=["POST"])
+def test_rdv_detection(compte_id):
+    """Endpoint de test : simule la réception d'un email et tente la détection RDV."""
+    if not check_access(compte_id):
+        return jsonify({"ok": False}), 403
+
+    import anthropic as _anthropic
+    from mailpilot import detecter_rdv as _detecter_rdv
+
+    d = request.json or {}
+    sujet   = d.get("sujet", "Demande de visite")
+    corps   = d.get("corps", "Bonjour, je voudrais visiter votre bien. Disponible jeudi à 10h.")
+    expediteur = d.get("expediteur", "test@example.com")
+    categorie  = d.get("categorie", "RENDEZ_VOUS")
+
+    email_factice = {
+        "id": "test-" + str(uuid.uuid4())[:8],
+        "sujet": sujet,
+        "corps": corps,
+        "expediteur": expediteur,
+        "expediteur_email": expediteur,
+        "date": "",
+    }
+
+    # Compter les RDVs avant
+    rdvs_avant = charger_agenda(compte_id)
+    nb_avant   = len(rdvs_avant)
+
+    try:
+        data = charger_comptes()
+        c    = trouver_compte(data, compte_id)
+        api_key = data.get("api_key") or os.environ.get("ANTHROPIC_API_KEY", "")
+        client  = _anthropic.Anthropic(api_key=api_key)
+
+        # Forcer le COMPTE_ID pour que detecter_rdv écrive au bon endroit
+        os.environ["COMPTE_ID"] = compte_id
+
+        _detecter_rdv(client, email_factice, categorie)
+
+        rdvs_apres = charger_agenda(compte_id)
+        nb_apres   = len(rdvs_apres)
+
+        if nb_apres > nb_avant:
+            nouveau = rdvs_apres[-1]
+            return jsonify({"ok": True, "rdv_cree": True, "rdv": nouveau,
+                            "message": f"✅ RDV détecté et créé : {nouveau['titre']}"})
+        else:
+            return jsonify({"ok": True, "rdv_cree": False,
+                            "message": "⚠️ L'IA n'a pas détecté de RDV dans cet email (rdv:false)"})
+    except Exception as e:
+        return jsonify({"ok": False, "rdv_cree": False, "message": f"Erreur : {e}"}), 500
+
+
 # ══════════════════════════════════════════════════════════════
 # CHAT IA EMAIL — Emails récents + rafraîchissement brouillon
 # ══════════════════════════════════════════════════════════════
