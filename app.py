@@ -1824,11 +1824,13 @@ def modifier_rdv(compte_id, rdv_id):
                 if k in d:
                     rdv[k] = d[k]
             sauver_agenda(compte_id, rdvs)
-            # Si le RDV vient d'être confirmé et pas encore de confirmation envoyée
+            # Si le RDV vient d'être confirmé → envoyer l'email de confirmation au client
+            email_confirme = False
             if (statut_avant != "confirme" and rdv.get("statut") == "confirme"
                     and rdv.get("client_email") and not rdv.get("confirmation_envoyee_at")):
                 threading.Thread(target=_tenter_confirmation, args=(compte_id, rdv), daemon=True).start()
-            return jsonify({"ok": True, "rdv": rdv})
+                email_confirme = bool(rdv.get("client_email"))
+            return jsonify({"ok": True, "rdv": rdv, "email_confirmation": email_confirme})
     return jsonify({"ok": False, "message": "RDV introuvable"}), 404
 
 @app.route("/api/rdv/<compte_id>/<rdv_id>", methods=["DELETE"])
@@ -1983,7 +1985,7 @@ Nous vous attendons avec plaisir. En cas d'empêchement, merci de nous prévenir
 
 def charger_confirmation_settings(compte_id):
     return get_setting(compte_id, "confirmation", {
-        "actif": False, "sujet_template": "", "corps_template": "", "nb_envoyes": 0,
+        "actif": True, "sujet_template": "", "corps_template": "", "nb_envoyes": 0,
     })
 
 def sauver_confirmation_settings_file(compte_id, settings):

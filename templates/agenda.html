@@ -1406,11 +1406,20 @@
     }
 
     async function confirmer(id) {
-      await fetch(`/api/rdv/${COMPTE_ID}/${id}`, {
+      const res = await fetch(`/api/rdv/${COMPTE_ID}/${id}`, {
         method:'PUT', headers:{'Content-Type':'application/json'},
         body: JSON.stringify({statut:'confirme'})
       });
-      toast('✅ RDV confirmé'); charger();
+      const j = await res.json();
+      const rdv = j.rdv || {};
+      if (j.email_confirmation) {
+        toast(`✅ RDV confirmé · 📧 Email envoyé à ${rdv.client_email}`, 4000);
+      } else if (rdv.client_email) {
+        toast('✅ RDV confirmé · Email déjà envoyé', 3000);
+      } else {
+        toast('✅ RDV confirmé (pas d\'email client renseigné)', 3000);
+      }
+      charger();
     }
 
     async function refuser(id) {

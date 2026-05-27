@@ -1180,9 +1180,11 @@ def traiter_email(service, client_anthropic, email, label_ids):
     elif _sentiment == "alerte":
         logger.info(f"  ⚠️  Signal mécontentement détecté dans l'email")
 
-    # --- Étape 1b : Détection RDV désactivée ---
-    # Désactivé : l'utilisateur crée ses RDVs manuellement depuis l'agenda
-    # pour ne pas créer des entrées non souhaitées automatiquement.
+    # --- Étape 1b : Détection RDV → crée une entrée "attente" dans l'agenda ---
+    try:
+        detecter_rdv(client_anthropic, email, categorie)
+    except Exception as e:
+        logger.error(f"  ✗ Erreur détection RDV : {e}")
 
     # --- Étape 1c : Transfert automatique ---
     try:
@@ -1791,7 +1793,10 @@ def boucle_principale():
                             _s = detecter_sentiment(em)
                             if _s == "mecontent": logger.warning(f"  😤 CLIENT MÉCONTENT détecté — traiter en priorité !")
                             elif _s == "alerte":  logger.info(f"  ⚠️  Signal mécontentement détecté dans l'email")
-                            # Détection RDV désactivée (création manuelle uniquement)
+                            try:
+                                detecter_rdv(client_anthropic, em, categorie)
+                            except Exception as e:
+                                logger.error(f"  ✗ Erreur détection RDV : {e}")
                             try:
                                 transferer_email(em, categorie, mail_provider="microsoft")
                             except Exception as e:
@@ -1819,7 +1824,10 @@ def boucle_principale():
                             _s = detecter_sentiment(em)
                             if _s == "mecontent": logger.warning(f"  😤 CLIENT MÉCONTENT détecté — traiter en priorité !")
                             elif _s == "alerte":  logger.info(f"  ⚠️  Signal mécontentement détecté dans l'email")
-                            # Détection RDV désactivée (création manuelle uniquement)
+                            try:
+                                detecter_rdv(client_anthropic, em, categorie)
+                            except Exception as e:
+                                logger.error(f"  ✗ Erreur détection RDV : {e}")
                             try:
                                 transferer_email(em, categorie, imap_conn=imap_conn, mail_provider="imap")
                             except Exception as e:
