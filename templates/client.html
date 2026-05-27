@@ -608,6 +608,46 @@
     /* Legacy stat boxes (still used in stats-bar) */
     .stats-semaine-label { font-size: 11px; color: var(--muted); margin-bottom: 8px; }
 
+    /* ── Historique emails traités ── */
+    .hist-list { display: flex; flex-direction: column; gap: 8px; }
+    .hist-item {
+      border: 1px solid var(--border); border-radius: 11px;
+      overflow: hidden; transition: border-color .15s;
+    }
+    .hist-item:hover { border-color: rgba(79,110,247,.3); }
+    .hist-header {
+      display: flex; align-items: center; gap: 10px;
+      padding: 11px 14px; cursor: pointer; user-select: none;
+    }
+    .hist-cat {
+      font-size: 10px; font-weight: 800; letter-spacing: .04em;
+      padding: 3px 8px; border-radius: 6px; flex-shrink: 0;
+    }
+    .hist-meta { flex: 1; min-width: 0; }
+    .hist-sujet { font-size: 13px; font-weight: 600; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .hist-from  { font-size: 11px; color: var(--muted); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .hist-date  { font-size: 10px; color: var(--muted); flex-shrink: 0; }
+    .hist-chevron { font-size: 14px; color: var(--muted); transition: transform .2s; flex-shrink: 0; }
+    .hist-body {
+      display: none; border-top: 1px solid var(--border);
+      padding: 12px 14px; background: rgba(0,0,0,.2);
+    }
+    .hist-body.open { display: block; }
+    .hist-brouillon {
+      font-size: 12px; color: var(--text); line-height: 1.6;
+      white-space: pre-wrap; word-break: break-word;
+      max-height: 220px; overflow-y: auto;
+      background: rgba(255,255,255,.03); border-radius: 8px;
+      padding: 10px 12px; border: 1px solid var(--border);
+    }
+    .hist-copy-btn {
+      margin-top: 8px; padding: 5px 12px; border-radius: 7px; border: 1px solid var(--border);
+      background: rgba(255,255,255,.05); color: var(--muted); font-size: 11px;
+      font-weight: 600; cursor: pointer; font-family: inherit; transition: all .15s;
+    }
+    .hist-copy-btn:hover { border-color: rgba(79,110,247,.4); color: var(--text); }
+    .hist-no-brouillon { font-size: 12px; color: var(--muted); font-style: italic; }
+
     /* ── Langue des réponses ── */
     .langue-grid { display: grid; grid-template-columns: repeat(5,1fr); gap: 8px; margin-bottom: 18px; }
     .langue-btn {
@@ -2073,6 +2113,18 @@
     </div>
   </div>
 
+  <!-- Modal Historique emails traités -->
+  <div class="overlay" id="overlay-historique" onclick="if(event.target===this)fermerHistorique()">
+    <div class="modal" style="max-width:560px;max-height:88vh;overflow-y:auto">
+      <h2>📋 Historique</h2>
+      <p class="subtitle" id="hist-subtitle"></p>
+      <div id="hist-content"><div style="text-align:center;padding:20px;color:var(--muted)">Chargement…</div></div>
+      <div class="modal-btns">
+        <button class="btn-cancel" onclick="fermerHistorique()">Fermer</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Modal Absence -->
   <div class="overlay" id="overlay-absence" onclick="if(event.target===this)fermerAbsence()">
     <div class="modal" style="max-width:400px">
@@ -2404,6 +2456,7 @@
           <div class="status-bar ${statusCls}" id="status-${id}">${statusTxt}</div>
           <div class="boite-actions">
             <button class="action-btn" onclick="ouvrirChatEmail('${id}')">💬 Chat IA</button>
+            <button class="action-btn" onclick="ouvrirHistorique('${id}', '${email}')">📋 Historique</button>
             <button class="action-btn" onclick="ouvrirLabels('${id}')">⚙️ Catégories</button>
             <button class="action-btn" onclick="ouvrirStats('${id}', '${email}')">📊 Stats</button>
             <button class="action-btn" id="btn-absence-${id}" onclick="ouvrirAbsence('${id}')">🌴 Absence</button>
@@ -2699,6 +2752,109 @@
     }
 
     function fermerStatsGlobales() { document.getElementById('overlay-stats-globales').classList.remove('open'); }
+
+    // ── Historique emails traités ─────────────────────────────
+    const _CAT_COLORS = {
+      URGENT:'#ef4444',COMMERCIAL:'#22c55e',ADMINISTRATIF:'#3b82f6',SUPPORT:'#f59e0b',
+      INUTILE:'#6b7280',DEVIS:'#10b981',VISITE:'#8b5cf6',OFFRE:'#f97316',
+      JURIDIQUE:'#ec4899',RELANCE:'#06b6d4',RECLAMATION:'#ef4444',PROSPECT:'#4f6ef7',
+      COMMANDE:'#84cc16',FACTURE:'#14b8a6',CONTRAT:'#a78bfa',RESILIATION:'#f43f5e',
+      SINISTRE:'#fb923c',LIVRAISON:'#34d399',RETOUR:'#fbbf24',TECHNIQUE:'#60a5fa',
+      INFO:'#94a3b8',RENDEZ_VOUS:'#818cf8',SUIVI:'#a3e635',
+    };
+    const _CAT_EMOJI = {
+      URGENT:'🔴',COMMERCIAL:'🤝',ADMINISTRATIF:'📋',SUPPORT:'❓',INUTILE:'🗑️',
+      DEVIS:'💰',VISITE:'🏠',OFFRE:'✍️',JURIDIQUE:'⚖️',RELANCE:'🔔',RECLAMATION:'😤',
+      PROSPECT:'🔵',COMMANDE:'🛒',FACTURE:'🧾',CONTRAT:'📝',RESILIATION:'🚪',
+      SINISTRE:'🏚️',LIVRAISON:'📦',RETOUR:'↩️',TECHNIQUE:'🔧',INFO:'📌',
+      RENDEZ_VOUS:'📅',SUIVI:'👁️',
+    };
+
+    function _formatDate(iso) {
+      if (!iso) return '';
+      try {
+        const d = new Date(iso.replace(' ','T'));
+        const now = new Date();
+        const diff = (now - d) / 1000;
+        if (diff < 60)   return 'à l\'instant';
+        if (diff < 3600) return `il y a ${Math.floor(diff/60)}min`;
+        if (diff < 86400)return `il y a ${Math.floor(diff/3600)}h`;
+        return d.toLocaleDateString('fr-FR', {day:'numeric', month:'short'});
+      } catch { return iso.slice(0,10); }
+    }
+
+    async function ouvrirHistorique(boiteId, email) {
+      document.getElementById('hist-subtitle').textContent = email || '';
+      document.getElementById('hist-content').innerHTML = '<div style="text-align:center;padding:20px;color:var(--muted)">Chargement…</div>';
+      document.getElementById('overlay-historique').classList.add('open');
+
+      const res  = await fetch(`/api/emails-recents/${COMPTE_ID}/${boiteId}`);
+      const json = await res.json();
+
+      if (!json.ok || !json.emails || json.emails.length === 0) {
+        document.getElementById('hist-content').innerHTML =
+          `<div style="text-align:center;padding:32px 0;color:var(--muted)">
+            <div style="font-size:32px;margin-bottom:10px">📭</div>
+            <div style="font-size:14px;font-weight:600">Aucun email traité pour l'instant</div>
+            <div style="font-size:12px;margin-top:6px">Lancez l'agent pour commencer à traiter des emails.</div>
+          </div>`;
+        return;
+      }
+
+      const emails = json.emails;
+      let html = `<div style="font-size:11px;color:var(--muted);margin-bottom:12px;font-weight:600">${emails.length} email${emails.length>1?'s':''} traité${emails.length>1?'s':''}</div>`;
+      html += `<div class="hist-list">`;
+
+      emails.forEach((em, i) => {
+        const col   = _CAT_COLORS[em.categorie] || '#4f6ef7';
+        const emoji = _CAT_EMOJI[em.categorie] || '•';
+        const catBg = col + '22';
+        const hasBrouillon = em.brouillon && em.brouillon.trim().length > 0;
+        const brouillonEscape = em.brouillon ? em.brouillon.replace(/</g,'&lt;').replace(/>/g,'&gt;') : '';
+
+        html += `<div class="hist-item">
+          <div class="hist-header" onclick="_toggleHist(${i})">
+            <span class="hist-cat" style="background:${catBg};color:${col}">${emoji} ${em.categorie}</span>
+            <div class="hist-meta">
+              <div class="hist-sujet">${em.sujet || '(sans sujet)'}</div>
+              <div class="hist-from">De : ${em.expediteur || '—'}</div>
+            </div>
+            <span class="hist-date">${_formatDate(em.traite_at)}</span>
+            <span class="hist-chevron" id="hist-chev-${i}">›</span>
+          </div>
+          <div class="hist-body" id="hist-body-${i}">
+            ${hasBrouillon
+              ? `<div style="font-size:11px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">
+                  ✏️ Brouillon IA${em.brouillon_modifie ? ' <span style="color:#f59e0b">(modifié)</span>' : ''}
+                 </div>
+                 <div class="hist-brouillon">${brouillonEscape}</div>
+                 <button class="hist-copy-btn" onclick="_copierBrouillon(${i})">📋 Copier le brouillon</button>`
+              : `<div class="hist-no-brouillon">Aucun brouillon généré pour cet email.</div>`
+            }
+          </div>
+        </div>`;
+      });
+      html += `</div>`;
+
+      document.getElementById('hist-content').innerHTML = html;
+      // Stocker les brouillons pour la copie
+      window._histEmails = emails;
+    }
+
+    function _toggleHist(i) {
+      const body = document.getElementById(`hist-body-${i}`);
+      const chev = document.getElementById(`hist-chev-${i}`);
+      const open = body.classList.toggle('open');
+      chev.style.transform = open ? 'rotate(90deg)' : '';
+    }
+
+    function _copierBrouillon(i) {
+      const em = window._histEmails?.[i];
+      if (!em || !em.brouillon) return;
+      navigator.clipboard.writeText(em.brouillon).then(() => toast('📋 Brouillon copié !')).catch(() => {});
+    }
+
+    function fermerHistorique() { document.getElementById('overlay-historique').classList.remove('open'); }
 
     let _statsData = null;  // cache pour les données stats courantes
     let _statsCatFiltree = null;  // catégorie filtrée (null = toutes)
