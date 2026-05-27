@@ -1080,9 +1080,17 @@ HORAIRES D'OUVERTURE DE L'ENTREPRISE (à respecter impérativement) :
 → Ne jamais proposer d'heure en dehors de ces plages ou un jour fermé.
 """ if True else ""
 
+    today_for_prompt = datetime.now().strftime("%Y-%m-%d")
+    today_weekday_fr = ["lundi","mardi","mercredi","jeudi","vendredi","samedi","dimanche"][datetime.now().weekday()]
+
     prompt = f"""Analyse cet email et réponds UNIQUEMENT en JSON valide (sans markdown).
 Si l'email contient une demande de rendez-vous, extrais ces informations.
 Sinon, réponds : {{"rdv": false}}
+
+IMPORTANT — Date du jour : {today_for_prompt} ({today_weekday_fr}).
+Toutes les dates mentionnées dans l'email sont FUTURES par rapport à aujourd'hui.
+Si l'email dit "jeudi 5 juin" ou "vendredi prochain", utilise l'année {datetime.now().year} ou {datetime.now().year + 1} selon la date la plus proche dans le futur.
+Ne jamais renvoyer une date passée. Si la date est déjà passée cette année, utilise l'année suivante.
 
 Format attendu si RDV détecté :
 {{

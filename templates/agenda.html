@@ -1015,6 +1015,14 @@
         .sort((a,b) => (a.date+a.heure_debut).localeCompare(b.date+b.heure_debut))
         .slice(0, 5);
 
+      // RDVs passés récents (30 derniers jours, confirmés)
+      const il30jours = new Date(now); il30jours.setDate(now.getDate() - 30);
+      const passesStr = il30jours.toISOString().slice(0,10);
+      const recents = source
+        .filter(r => r.date < todayStr && r.date >= passesStr && r.statut === 'confirme')
+        .sort((a,b) => (b.date+b.heure_debut).localeCompare(a.date+a.heure_debut))
+        .slice(0, 5);
+
       let nextBadge = '';
       if (enCours.length) {
         nextBadge = `<div class="today-next-badge">
@@ -1111,6 +1119,27 @@
         ${prochains.length ? `
           <div class="today-section-title">Prochains RDVs</div>
           ${upcomingCards}
+        ` : ''}
+
+        ${recents.length ? `
+          <div class="today-section-title" style="color:var(--muted)">Récents (30j)</div>
+          <div style="display:flex;flex-direction:column;gap:6px">
+            ${recents.map(r => {
+              const d = new Date(r.date+'T12:00:00');
+              return `<div class="upcoming-card" style="opacity:.6" onclick="ouvrirEdit('${r.id}')">
+                <div class="upcoming-date">
+                  <div class="upcoming-day">${d.getDate()}</div>
+                  <div class="upcoming-mon">${MOIS_COURT[d.getMonth()]}</div>
+                </div>
+                <div style="width:1px;background:var(--border);align-self:stretch"></div>
+                <div class="upcoming-info">
+                  <div class="upcoming-titre">${r.titre}</div>
+                  <div class="upcoming-meta">${r.heure_debut} → ${r.heure_fin}${r.client_nom?' · 👤 '+r.client_nom:''}</div>
+                </div>
+                <span style="font-size:10px;color:var(--green);font-weight:600">✓ Confirmé</span>
+              </div>`;
+            }).join('')}
+          </div>
         ` : ''}
       `;
     }
