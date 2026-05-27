@@ -1750,21 +1750,7 @@ def import_ics(compte_id):
 
 
 # ── Agenda ────────────────────────────────────────────────────
-
-def agenda_file(compte_id):
-    return DATA_DIR / f"agenda_{compte_id}.json"
-
-def charger_agenda(compte_id):
-    f = agenda_file(compte_id)
-    if f.exists():
-        try:
-            return json.loads(f.read_text())
-        except Exception:
-            return []
-    return []
-
-def sauver_agenda(compte_id, rdvs):
-    agenda_file(compte_id).write_text(json.dumps(rdvs, indent=2, ensure_ascii=False))
+# charger_agenda / sauver_agenda sont importées depuis database.py (SQLite)
 
 @app.route("/agenda/<compte_id>")
 def agenda(compte_id):
@@ -1786,13 +1772,13 @@ def get_rdvs(compte_id):
 def creer_rdv(compte_id):
     if not check_access(compte_id):
         return jsonify({"ok": False}), 403
-    d    = request.json or {}
-    rdvs = charger_agenda(compte_id)
-    rdv  = {
+    d   = request.json or {}
+    rdv = {
         "id":          str(uuid.uuid4())[:8],
         "titre":       d.get("titre", "Rendez-vous").strip(),
         "client_nom":  d.get("client_nom", "").strip(),
         "client_email":d.get("client_email", "").strip(),
+        "client_tel":  d.get("client_tel", "").strip(),
         "adresse":     d.get("adresse", "").strip(),
         "date":        d.get("date", ""),
         "heure_debut": d.get("heure_debut", "09:00"),
@@ -1803,8 +1789,7 @@ def creer_rdv(compte_id):
         "boite_id":    d.get("boite_id", ""),
         "created_at":  __import__("datetime").datetime.now().isoformat(),
     }
-    rdvs.append(rdv)
-    sauver_agenda(compte_id, rdvs)
+    db_module.creer_rdv_db(compte_id, rdv)
     # Envoi de confirmation si RDV confirmé d'emblée
     if rdv["statut"] == "confirme" and rdv.get("client_email"):
         threading.Thread(target=_tenter_confirmation, args=(compte_id, rdv), daemon=True).start()
@@ -1814,32 +1799,32 @@ def creer_rdv(compte_id):
 def modifier_rdv(compte_id, rdv_id):
     if not check_access(compte_id):
         return jsonify({"ok": False}), 403
-    d    = request.json or {}
-    rdvs = charger_agenda(compte_id)
-    for rdv in rdvs:
-        if rdv["id"] == rdv_id:
-            statut_avant = rdv.get("statut")
-            for k in ["titre","client_nom","client_email","adresse","date",
-                      "heure_debut","heure_fin","type","statut","notes"]:
-                if k in d:
-                    rdv[k] = d[k]
-            sauver_agenda(compte_id, rdvs)
-            # Si le RDV vient d'être confirmé → envoyer l'email de confirmation au client
-            email_confirme = False
-            if (statut_avant != "confirme" and rdv.get("statut") == "confirme"
-                    and rdv.get("client_email") and not rdv.get("confirmation_envoyee_at")):
-                threading.Thread(target=_tenter_confirmation, args=(compte_id, rdv), daemon=True).start()
-                email_confirme = bool(rdv.get("client_email"))
-            return jsonify({"ok": True, "rdv": rdv, "email_confirmation": email_confirme})
-    return jsonify({"ok": False, "message": "RDV introuvable"}), 404
+    d = request.json or {}
+    # Récupérer le statut actuel avant modification
+    rdvs_avant = charger_agenda(compte_id)
+    rdv_avant  = next((r for r in rdvs_avant if r["id"] == rdv_id), None)
+    if not rdv_avant:
+        return jsonify({"ok": False, "message": "RDV introuvable"}), 404
+    statut_avant = rdv_avant.get("statut")
+    updates = {k: d[k] for k in ["titre","client_nom","client_email","client_tel",
+                                   "adresse","date","heure_debut","heure_fin",
+                                   "type","statut","notes"] if k in d}
+    rdv = db_module.modifier_rdv_db(compte_id, rdv_id, updates)
+    if not rdv:
+        return jsonify({"ok": False, "message": "RDV introuvable"}), 404
+    # Si le RDV vient d'être confirmé → envoyer l'email de confirmation au client
+    email_confirme = False
+    if (statut_avant != "confirme" and rdv.get("statut") == "confirme"
+            and rdv.get("client_email") and not rdv.get("confirmation_envoyee_at")):
+        threading.Thread(target=_tenter_confirmation, args=(compte_id, rdv), daemon=True).start()
+        email_confirme = bool(rdv.get("client_email"))
+    return jsonify({"ok": True, "rdv": rdv, "email_confirmation": email_confirme})
 
 @app.route("/api/rdv/<compte_id>/<rdv_id>", methods=["DELETE"])
 def supprimer_rdv(compte_id, rdv_id):
     if not check_access(compte_id):
         return jsonify({"ok": False}), 403
-    rdvs = charger_agenda(compte_id)
-    rdvs = [r for r in rdvs if r["id"] != rdv_id]
-    sauver_agenda(compte_id, rdvs)
+    db_module.supprimer_rdv_db(compte_id, rdv_id)
     return jsonify({"ok": True})
 
 
