@@ -1250,9 +1250,9 @@
           }
         }
       }
-      // Conflits RDV ↔ EDT (bloquer sur les créneaux EDT)
+      // Conflits RDV ↔ EDT (bloquer sur les créneaux EDT — ignorer les blocs rdv_client qui sont les RDVs eux-mêmes)
       for (const r of actifs) {
-        const edtBlocs = getEdtBlocsForDate(r.date);
+        const edtBlocs = getEdtBlocsForDate(r.date).filter(c => c.type !== 'rdv_client');
         for (const c of edtBlocs) {
           if (r.heure_debut < c.fin && c.debut < r.heure_fin) {
             ids.add(r.id);
@@ -1580,8 +1580,9 @@
     function trouverCreneauxLibres(rdv) {
       const duree = heureEnMin(rdv.heure_fin) - heureEnMin(rdv.heure_debut);
       const DEBUT = 8 * 60, FIN = 19 * 60;
-      // Inclure les blocs EDT comme occupés
+      // Inclure les blocs EDT comme occupés (ignorer rdv_client = déjà dans rdvs)
       const edtBlocs = getEdtBlocsForDate(rdv.date)
+        .filter(c => c.type !== 'rdv_client')
         .map(c => ({ debut: heureEnMin(c.debut), fin: heureEnMin(c.fin) }));
       const occupes = [
         ...rdvs.filter(r => r.date === rdv.date && r.id !== rdv.id && r.statut === 'confirme')
