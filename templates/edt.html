@@ -212,7 +212,7 @@
   </label>
   <button class="btn-sec" onclick="ouvrirModal(null, null, null)">＋ Ajouter</button>
   <button class="btn-primary" onclick="sauver()">💾 Enregistrer</button>
-  <a href="/{{ compte.id }}" class="btn-back">← Dashboard</a>
+  <a href="/dashboard" class="btn-back">← Dashboard</a>
 </header>
 
 <div class="page">
@@ -566,7 +566,8 @@ function esc(s) {
 
 // ── Boot ─────────────────────────────────────────────────────
 buildGrid();
-charger();
+// Charger après un court délai pour que le DOM soit peint
+requestAnimationFrame(() => charger());
 </script>
 </body>
 </html>
