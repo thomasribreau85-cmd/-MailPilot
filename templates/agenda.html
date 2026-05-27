@@ -1057,9 +1057,9 @@
         return hd*60+md <= hhmm && hf*60+mf > hhmm;
       });
 
-      // Prochains RDVs (pas aujourd'hui, 5 premiers à venir)
+      // Prochains RDVs (pas aujourd'hui, 5 premiers à venir — confirmés uniquement)
       const prochains = source
-        .filter(r => r.date > todayStr && (r.statut === 'confirme' || r.statut === 'attente'))
+        .filter(r => r.date > todayStr && r.statut === 'confirme')
         .sort((a,b) => (a.date+a.heure_debut).localeCompare(b.date+b.heure_debut))
         .slice(0, 5);
 
