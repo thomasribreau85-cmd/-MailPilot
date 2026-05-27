@@ -27,30 +27,23 @@
       padding: 10px 20px; position: sticky; top: 0; z-index: 50;
     }
     .header-logo { font-size: 20px; }
-    .header-titles { flex: 0 0 auto; min-width: 120px; }
+    .header-titles { flex: 0 0 auto; }
     .header-title { font-size: 15px; font-weight: 700; }
     .header-sub { font-size: 11px; color: var(--muted); }
 
-    /* Navigation semaine */
-    .week-nav {
-      flex: 1; display: flex; align-items: center; justify-content: center; gap: 6px;
-    }
+    .week-nav { flex: 1; display: flex; align-items: center; justify-content: center; gap: 6px; }
     .week-nav-btn {
       width: 30px; height: 30px; border-radius: 8px; border: 1px solid var(--border);
       background: rgba(255,255,255,.04); color: var(--muted);
-      font-size: 14px; cursor: pointer; display: flex; align-items: center;
-      justify-content: center; transition: all .15s; flex-shrink: 0;
+      font-size: 16px; cursor: pointer; display: flex; align-items: center;
+      justify-content: center; transition: all .15s;
     }
     .week-nav-btn:hover { border-color: rgba(79,110,247,.4); color: var(--text); background: rgba(79,110,247,.08); }
-    .week-label {
-      font-size: 13px; font-weight: 700; color: var(--text);
-      min-width: 200px; text-align: center; padding: 0 4px;
-    }
+    .week-label { font-size: 13px; font-weight: 700; min-width: 200px; text-align: center; }
     .week-today-btn {
       padding: 4px 10px; border-radius: 7px; border: 1px solid var(--border);
       background: rgba(255,255,255,.04); color: var(--muted);
       font-size: 11px; font-weight: 600; cursor: pointer; transition: all .15s;
-      white-space: nowrap;
     }
     .week-today-btn:hover { border-color: rgba(79,110,247,.4); color: var(--text); }
 
@@ -58,15 +51,14 @@
       padding: 7px 13px; border-radius: 9px; border: 1px solid var(--border);
       background: rgba(255,255,255,.04); color: var(--muted);
       font-size: 12px; font-weight: 600; cursor: pointer; text-decoration: none;
-      transition: all .15s; display: flex; align-items: center; gap: 5px;
+      transition: all .15s;
     }
-    .btn-back:hover { color: var(--text); border-color: rgba(255,255,255,.15); }
+    .btn-back:hover { color: var(--text); }
     .btn-primary {
       padding: 8px 16px; border-radius: 10px; border: none;
       background: linear-gradient(135deg, var(--blue), var(--blue2));
       color: #fff; font-size: 13px; font-weight: 700; cursor: pointer;
-      font-family: inherit; box-shadow: 0 4px 14px rgba(79,110,247,.3);
-      transition: all .15s;
+      font-family: inherit; box-shadow: 0 4px 14px rgba(79,110,247,.3); transition: all .15s;
     }
     .btn-primary:hover { transform: translateY(-1px); }
     .btn-sec {
@@ -77,13 +69,13 @@
     }
     .btn-sec:hover { border-color: rgba(255,255,255,.2); background: rgba(255,255,255,.08); }
 
-    .page { max-width: 1100px; margin: 0 auto; padding: 16px 16px; }
+    .page { max-width: 1100px; margin: 0 auto; padding: 16px; }
 
     .info-banner {
-      background: rgba(34,197,94,.07); border: 1px solid rgba(34,197,94,.2);
+      background: rgba(79,110,247,.07); border: 1px solid rgba(79,110,247,.2);
       border-radius: 12px; padding: 10px 15px; margin-bottom: 14px;
       display: flex; align-items: center; gap: 10px;
-      font-size: 12px; color: #86efac; line-height: 1.5;
+      font-size: 12px; color: #93b4f0; line-height: 1.5;
     }
     .legend {
       display: flex; gap: 14px; flex-wrap: wrap; margin-bottom: 12px; align-items: center;
@@ -92,94 +84,53 @@
     .legend-dot { width: 9px; height: 9px; border-radius: 2px; flex-shrink: 0; }
 
     /* ── Grille ── */
-    .grid-outer {
-      background: var(--card); border: 1px solid var(--border);
-      border-radius: 16px; overflow: hidden; overflow-x: auto;
-    }
+    .grid-outer { background: var(--card); border: 1px solid var(--border); border-radius: 16px; overflow: hidden; overflow-x: auto; }
     .grid-inner { display: flex; min-width: 700px; }
-
-    .time-axis {
-      width: 46px; flex-shrink: 0; border-right: 1px solid var(--border);
-    }
-    .time-axis-header { height: 40px; background: rgba(255,255,255,.03); border-bottom: 1px solid var(--border); }
+    .time-axis { width: 46px; flex-shrink: 0; border-right: 1px solid var(--border); }
+    .time-axis-header { height: 44px; background: rgba(255,255,255,.03); border-bottom: 1px solid var(--border); }
     .time-tick {
       height: 52px; display: flex; align-items: flex-start; justify-content: flex-end;
       padding: 3px 6px 0 0; font-size: 10px; color: var(--muted); font-weight: 600;
       border-bottom: 1px solid rgba(26,44,71,.25); user-select: none;
     }
-
     .days-wrap { flex: 1; display: flex; }
-    .day-col {
-      flex: 1; min-width: 0; border-right: 1px solid rgba(26,44,71,.4);
-      display: flex; flex-direction: column;
-    }
+    .day-col { flex: 1; min-width: 0; border-right: 1px solid rgba(26,44,71,.4); display: flex; flex-direction: column; }
     .day-col:last-child { border-right: none; }
     .day-header {
-      height: 40px; background: rgba(255,255,255,.03); border-bottom: 1px solid var(--border);
-      display: flex; align-items: center; justify-content: center; gap: 3px;
-      font-size: 11px; font-weight: 700; letter-spacing: .03em; user-select: none;
-      flex-shrink: 0; flex-direction: column; line-height: 1.2;
+      height: 44px; background: rgba(255,255,255,.03); border-bottom: 1px solid var(--border);
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      font-size: 11px; font-weight: 700; user-select: none; flex-shrink: 0; gap: 1px;
     }
-    .day-header .day-name  { font-size: 11px; font-weight: 700; }
-    .day-header .day-num   { font-size: 13px; font-weight: 800; }
-    .day-col.today .day-header { color: #93b4f0; background: rgba(79,110,247,.10); }
-    .day-col.today .day-body   { background: rgba(79,110,247,.022); }
-    .day-num-circle {
-      display: inline-flex; align-items: center; justify-content: center;
-      width: 22px; height: 22px; border-radius: 50%;
-    }
-    .day-col.today .day-num-circle {
-      background: var(--blue); color: #fff;
-    }
-
+    .day-name  { font-size: 10px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
+    .day-num   { font-size: 14px; font-weight: 800; }
+    .day-num-circle { display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px; border-radius: 50%; }
+    .day-col.today .day-header { background: rgba(79,110,247,.08); }
+    .day-col.today .day-name   { color: #93b4f0; }
+    .day-col.today .day-num-circle { background: var(--blue); color: #fff; }
+    .day-col.today .day-body   { background: rgba(79,110,247,.02); }
     .day-body { position: relative; flex: 1; }
-
-    .hour-line {
-      position: absolute; left: 0; right: 0;
-      border-bottom: 1px solid rgba(26,44,71,.35); pointer-events: none;
-    }
+    .hour-line { position: absolute; left: 0; right: 0; border-bottom: 1px solid rgba(26,44,71,.35); pointer-events: none; }
     .hour-line.half { border-bottom-style: dashed; border-bottom-color: rgba(26,44,71,.18); }
-
     .click-zone { position: absolute; inset: 0; cursor: crosshair; z-index: 1; }
-    .click-zone:hover { background: rgba(79,110,247,.03); }
-
+    .click-zone:hover { background: rgba(79,110,247,.04); }
     .block {
       position: absolute; left: 2px; right: 2px; z-index: 3;
       border-radius: 7px; padding: 3px 6px;
       font-size: 11px; font-weight: 600; line-height: 1.3;
       cursor: pointer; overflow: hidden; border-left: 3px solid;
-      transition: filter .1s, transform .1s;
-      box-shadow: 0 2px 8px rgba(0,0,0,.25);
+      transition: filter .1s, transform .1s; box-shadow: 0 2px 8px rgba(0,0,0,.25);
     }
     .block:hover { filter: brightness(1.18); transform: scale(1.01); }
     .block-title { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .block-time  { font-size: 10px; opacity: .7; }
-    /* Blocs ponctuels : légèrement différents */
-    .block.ponctuel { border-style: dashed; border-left-style: solid; }
-    .block-ponctuel-badge {
-      font-size: 8px; opacity: .75; vertical-align: middle; margin-left: 2px;
-    }
-
-    /* Ligne heure actuelle */
-    .now-line {
-      position: absolute; left: 0; right: 0; height: 2px;
-      background: rgba(239,68,68,.85); z-index: 4; pointer-events: none;
-    }
-    .now-dot {
-      position: absolute; left: -4px; top: -4px;
-      width: 10px; height: 10px; border-radius: 50%;
-      background: #ef4444; box-shadow: 0 0 6px rgba(239,68,68,.6);
-    }
-
-    /* Tooltip hover */
+    .now-line { position: absolute; left: 0; right: 0; height: 2px; background: rgba(239,68,68,.85); z-index: 4; pointer-events: none; }
+    .now-dot  { position: absolute; left: -4px; top: -4px; width: 10px; height: 10px; border-radius: 50%; background: #ef4444; box-shadow: 0 0 6px rgba(239,68,68,.6); }
     #time-tooltip {
       position: fixed; z-index: 100; pointer-events: none;
       background: rgba(13,21,38,.95); border: 1px solid var(--border);
       border-radius: 7px; padding: 4px 9px; font-size: 11px; font-weight: 700;
       color: var(--text); opacity: 0; transition: opacity .1s; white-space: nowrap;
     }
-
-    /* Résumé */
     .summary-bar {
       display: flex; flex-wrap: wrap; gap: 10px; margin-top: 12px;
       padding: 12px 16px; background: var(--card); border: 1px solid var(--border);
@@ -187,60 +138,31 @@
     }
     .summary-item { display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; }
     .summary-dot { width: 10px; height: 10px; border-radius: 3px; flex-shrink: 0; }
-    .summary-val { color: var(--text); }
-    .summary-lbl { color: var(--muted); }
 
     /* Modal */
     .overlay {
-      position: fixed; inset: 0; background: rgba(0,0,0,.65);
-      backdrop-filter: blur(6px); z-index: 200;
-      display: flex; align-items: center; justify-content: center;
+      position: fixed; inset: 0; background: rgba(0,0,0,.65); backdrop-filter: blur(6px);
+      z-index: 200; display: flex; align-items: center; justify-content: center;
       opacity: 0; pointer-events: none; transition: opacity .2s;
     }
     .overlay.open { opacity: 1; pointer-events: all; }
     .modal {
       background: var(--card2); border: 1px solid var(--border);
-      border-radius: 18px; padding: 22px; width: 100%; max-width: 420px;
+      border-radius: 18px; padding: 22px; width: 100%; max-width: 400px;
       box-shadow: 0 30px 100px rgba(0,0,0,.7);
       transform: translateY(12px) scale(.98); transition: transform .2s;
       max-height: 90vh; overflow-y: auto;
     }
     .overlay.open .modal { transform: translateY(0) scale(1); }
-    .modal h2 { font-size: 16px; font-weight: 800; margin-bottom: 14px; }
-    .form-label {
-      font-size: 11px; font-weight: 700; color: var(--muted);
-      text-transform: uppercase; letter-spacing: .06em;
-      display: block; margin-bottom: 5px;
-    }
+    .modal h2 { font-size: 16px; font-weight: 800; margin-bottom: 16px; }
+    .form-label { font-size: 11px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; display: block; margin-bottom: 5px; }
     .form-input {
       width: 100%; background: rgba(255,255,255,.05); border: 1px solid var(--border);
       border-radius: 9px; color: var(--text); font-family: inherit;
-      font-size: 13px; padding: 9px 11px; margin-bottom: 12px; outline: none;
-      transition: border-color .15s;
+      font-size: 13px; padding: 9px 11px; margin-bottom: 12px; outline: none; transition: border-color .15s;
     }
     .form-input:focus { border-color: var(--blue); }
     select.form-input { cursor: pointer; }
-
-    /* Toggle mode récurrent/ponctuel */
-    .mode-toggle { display: flex; gap: 6px; margin-bottom: 12px; }
-    .mode-btn {
-      flex: 1; padding: 8px 4px; border-radius: 9px; border: 1px solid var(--border);
-      background: rgba(255,255,255,.03); color: var(--muted);
-      font-size: 12px; font-weight: 700; cursor: pointer; font-family: inherit;
-      transition: all .15s; text-align: center;
-    }
-    .mode-btn.sel {
-      background: rgba(79,110,247,.15); border-color: rgba(79,110,247,.4); color: #93b4f0;
-    }
-
-    .days-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; margin-bottom: 12px; }
-    .day-btn {
-      padding: 6px 2px; border-radius: 7px; border: 1px solid var(--border);
-      background: rgba(255,255,255,.03); color: var(--muted);
-      font-size: 11px; font-weight: 700; cursor: pointer; text-align: center;
-      transition: all .1s; user-select: none;
-    }
-    .day-btn.sel { background: rgba(79,110,247,.2); border-color: rgba(79,110,247,.5); color: #93b4f0; }
     .time-row { display: flex; gap: 8px; }
     .time-row .form-input { flex: 1; }
     .modal-btns { display: flex; gap: 8px; margin-top: 14px; }
@@ -256,7 +178,6 @@
       color: #f87171; font-size: 13px; cursor: pointer; font-family: inherit;
     }
     .btn-del:hover { background: rgba(239,68,68,.2); }
-
     .toast {
       position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(14px);
       background: rgba(13,21,38,.97); border: 1px solid var(--border);
@@ -275,15 +196,14 @@
     <div class="header-sub">Disponibilités pour l'IA</div>
   </div>
 
-  <!-- Navigation semaine -->
   <div class="week-nav">
-    <button class="week-nav-btn" onclick="naviguerSemaine(-1)" title="Semaine précédente">‹</button>
+    <button class="week-nav-btn" onclick="naviguerSemaine(-1)">‹</button>
     <button class="week-today-btn" onclick="allerAujourdhui()">Aujourd'hui</button>
     <span class="week-label" id="week-label">…</span>
-    <button class="week-nav-btn" onclick="naviguerSemaine(1)" title="Semaine suivante">›</button>
+    <button class="week-nav-btn" onclick="naviguerSemaine(1)">›</button>
   </div>
 
-  <label class="btn-sec" title="Importer depuis Google Calendar, Outlook, Apple Calendar (.ics)">
+  <label class="btn-sec" title="Importer depuis un fichier .ics">
     📥 Importer .ics
     <input type="file" id="ics-input" accept=".ics" style="display:none" onchange="importerICS(this)" />
   </label>
@@ -294,12 +214,8 @@
 
 <div class="page">
   <div class="info-banner">
-    <span style="font-size:17px">💡</span>
-    <div>
-      <strong>🔄 Récurrent</strong> = se répète chaque semaine (modèle type) ·
-      <strong>📅 Ponctuel</strong> = une seule date précise.
-      L'IA utilise les créneaux <em>Travail</em> pour proposer des RDV.
-    </div>
+    <span style="font-size:17px">📅</span>
+    <div>Chaque événement est placé sur une <strong>date précise</strong>. L'IA utilise les créneaux <strong>Travail</strong> pour proposer des disponibilités dans ses réponses. Cliquez sur la grille pour ajouter un bloc.</div>
   </div>
   <div class="legend">
     <span style="font-size:11px;font-weight:700;color:var(--muted)">Légende :</span>
@@ -307,10 +223,6 @@
     <div class="legend-item"><div class="legend-dot" style="background:#f59e0b"></div>Réunion — occupé</div>
     <div class="legend-item"><div class="legend-dot" style="background:#a78bfa"></div>Personnel — occupé</div>
     <div class="legend-item"><div class="legend-dot" style="background:#6b7280"></div>Indisponible</div>
-    <div class="legend-item" style="margin-left:8px">
-      <div style="width:14px;height:9px;border-radius:2px;border:1px dashed #5a7090;border-left:3px solid #5a7090"></div>
-      Ponctuel
-    </div>
   </div>
 
   <div class="grid-outer">
@@ -324,7 +236,7 @@
 
   <div class="summary-bar" id="summary-bar">
     <span style="font-size:11px;font-weight:700;color:var(--muted)">Résumé :</span>
-    <span style="font-size:12px;color:var(--muted)" id="summary-content">Aucun créneau</span>
+    <span style="font-size:12px;color:var(--muted)" id="summary-content">Aucun créneau cette semaine</span>
   </div>
 </div>
 
@@ -335,14 +247,6 @@
   <div class="modal">
     <h2 id="modal-titre-h">➕ Nouveau créneau</h2>
     <input type="hidden" id="edit-id" />
-    <input type="hidden" id="edit-mode" value="recurrent" />
-
-    <!-- Toggle mode -->
-    <label class="form-label">Mode</label>
-    <div class="mode-toggle">
-      <button type="button" id="mode-btn-recurrent" class="mode-btn sel" onclick="setMode('recurrent')">🔄 Récurrent</button>
-      <button type="button" id="mode-btn-ponctuel"  class="mode-btn"     onclick="setMode('ponctuel')">📅 Ponctuel (une date)</button>
-    </div>
 
     <label class="form-label">Type</label>
     <select id="f-type" class="form-input">
@@ -353,33 +257,16 @@
     </select>
 
     <label class="form-label">Description <span style="font-weight:400;color:var(--muted)">(optionnel)</span></label>
-    <input type="text" id="f-titre" class="form-input" placeholder="Ex : Réunion équipe, Cours anglais, Dev…" maxlength="60" />
+    <input type="text" id="f-titre" class="form-input" placeholder="Ex : Réunion client, Cours anglais, Dev…" maxlength="60" />
 
-    <!-- Zone récurrent : jours de la semaine -->
-    <div id="zone-recurrent">
-      <label class="form-label">Jours</label>
-      <div class="days-grid" id="f-jours">
-        <div class="day-btn sel" data-j="0" onclick="toggleJ(this)">Lun</div>
-        <div class="day-btn sel" data-j="1" onclick="toggleJ(this)">Mar</div>
-        <div class="day-btn sel" data-j="2" onclick="toggleJ(this)">Mer</div>
-        <div class="day-btn sel" data-j="3" onclick="toggleJ(this)">Jeu</div>
-        <div class="day-btn sel" data-j="4" onclick="toggleJ(this)">Ven</div>
-        <div class="day-btn"     data-j="5" onclick="toggleJ(this)">Sam</div>
-        <div class="day-btn"     data-j="6" onclick="toggleJ(this)">Dim</div>
-      </div>
-    </div>
-
-    <!-- Zone ponctuel : sélecteur de date -->
-    <div id="zone-ponctuel" style="display:none">
-      <label class="form-label">Date</label>
-      <input type="date" id="f-date" class="form-input" />
-    </div>
+    <label class="form-label">Date</label>
+    <input type="date" id="f-date" class="form-input" />
 
     <label class="form-label">Horaires</label>
     <div class="time-row">
       <input type="time" id="f-debut" class="form-input" value="09:00" />
-      <span style="align-self:center;color:var(--muted);font-size:13px;margin-bottom:12px">→</span>
-      <input type="time" id="f-fin"   class="form-input" value="18:00" />
+      <span style="align-self:center;color:var(--muted);font-size:13px;margin-bottom:12px;flex-shrink:0">→</span>
+      <input type="time" id="f-fin" class="form-input" value="18:00" />
     </div>
 
     <div class="modal-btns">
@@ -393,24 +280,22 @@
 <div class="toast" id="toast"></div>
 
 <script>
-const COMPTE_ID  = '{{ compte.id }}';
-const JOURS_NOM  = ['Lun','Mar','Mer','Jeu','Ven','Sam','Dim'];
-const MOIS_COURT = ['jan','fév','mar','avr','mai','juin','juil','août','sep','oct','nov','déc'];
-const MOIS_LONG  = ['janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre'];
-const HOUR_START = 7;
-const HOUR_END   = 22;
+const COMPTE_ID   = '{{ compte.id }}';
+const JOURS_NOM   = ['Lun','Mar','Mer','Jeu','Ven','Sam','Dim'];
+const MOIS_COURT  = ['jan','fév','mar','avr','mai','juin','juil','août','sep','oct','nov','déc'];
+const HOUR_START  = 7;
+const HOUR_END    = 22;
 const PX_PER_HOUR = 52;
-const TOTAL_H    = (HOUR_END - HOUR_START) * PX_PER_HOUR;
+const TOTAL_H     = (HOUR_END - HOUR_START) * PX_PER_HOUR;
 
 const TYPE_COLORS = { travail:'#4f6ef7', reunion:'#f59e0b', personnel:'#a78bfa', indisponible:'#6b7280' };
 const TYPE_BG     = { travail:'rgba(79,110,247,.2)', reunion:'rgba(245,158,11,.2)', personnel:'rgba(167,139,250,.2)', indisponible:'rgba(107,114,128,.2)' };
 const TYPE_DEF    = { travail:'Travail', reunion:'Réunion', personnel:'Personnel', indisponible:'Indisponible' };
 
-let creneaux           = [];   // récurrents : {id, titre, type, jours:[], debut, fin}
-let creneauxPonctuels  = [];   // ponctuels  : {id, titre, type, date:"YYYY-MM-DD", debut, fin}
-let weekOffset         = 0;    // 0 = semaine courante
+let creneaux  = [];   // [{id, titre, type, date:"YYYY-MM-DD", debut, fin}]
+let weekOffset = 0;
 
-// ── Dates ────────────────────────────────────────────────────
+// ── Dates ─────────────────────────────────────────────────────
 function getWeekDates(offset) {
   const today = new Date();
   const dow   = today.getDay();
@@ -424,7 +309,6 @@ function getWeekDates(offset) {
 function fmtDate(d) {
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 }
-function todayStr() { return fmtDate(new Date()); }
 
 // ── Build grille (une seule fois) ─────────────────────────────
 function buildGrid() {
@@ -436,28 +320,23 @@ function buildGrid() {
     t.textContent = h < HOUR_END ? `${h}h` : '';
     axis.appendChild(t);
   }
-
   const tip  = document.getElementById('time-tooltip');
   const wrap = document.getElementById('days-wrap');
   for (let j = 0; j < 7; j++) {
-    const col  = document.createElement('div');
-    col.className = 'day-col';
-    col.dataset.col = j;
+    const col = document.createElement('div');
+    col.className = 'day-col'; col.dataset.col = j;
 
     const hdr = document.createElement('div');
-    hdr.className = 'day-header';
-    hdr.id = `hdr-${j}`;
+    hdr.className = 'day-header'; hdr.id = `hdr-${j}`;
     col.appendChild(hdr);
 
     const body = document.createElement('div');
-    body.className = 'day-body';
-    body.id = `body-${j}`;
+    body.className = 'day-body'; body.id = `body-${j}`;
     body.style.height = TOTAL_H + 'px';
 
     for (let h = 0; h <= (HOUR_END - HOUR_START); h++) {
       const full = document.createElement('div');
-      full.className = 'hour-line';
-      full.style.top = (h * PX_PER_HOUR) + 'px';
+      full.className = 'hour-line'; full.style.top = (h * PX_PER_HOUR) + 'px';
       body.appendChild(full);
       if (h < (HOUR_END - HOUR_START)) {
         const half = document.createElement('div');
@@ -477,13 +356,13 @@ function buildGrid() {
       ouvrirModal(jj, h, m);
     })(j));
     zone.addEventListener('mousemove', (e) => {
-      const rect  = body.getBoundingClientRect();
-      const relY  = e.clientY - rect.top;
+      const rect = body.getBoundingClientRect();
+      const relY = e.clientY - rect.top;
       const totalMin = Math.floor(relY / PX_PER_HOUR * 60) + HOUR_START * 60;
       const hh = Math.floor(totalMin/60), mm = totalMin%60;
       tip.textContent = `${String(hh).padStart(2,'0')}:${String(mm).padStart(2,'0')}`;
-      tip.style.left  = (e.clientX + 14) + 'px';
-      tip.style.top   = (e.clientY - 10) + 'px';
+      tip.style.left = (e.clientX + 14) + 'px';
+      tip.style.top  = (e.clientY - 10) + 'px';
       tip.style.opacity = '1';
     });
     zone.addEventListener('mouseleave', () => { tip.style.opacity = '0'; });
@@ -493,16 +372,16 @@ function buildGrid() {
   }
 }
 
-// ── Navigation semaine ────────────────────────────────────────
+// ── Navigation ────────────────────────────────────────────────
 function naviguerSemaine(delta) { weekOffset += delta; refreshSemaine(); }
 function allerAujourdhui()      { weekOffset = 0;      refreshSemaine(); }
 
 function refreshSemaine() {
   const dates   = getWeekDates(weekOffset);
-  const today   = todayStr();
+  const todayS  = fmtDate(new Date());
   const first   = dates[0], last = dates[6];
 
-  // Label semaine
+  // Label
   let label;
   if (first.getFullYear() === last.getFullYear()) {
     label = `${first.getDate()} ${MOIS_COURT[first.getMonth()]} — ${last.getDate()} ${MOIS_COURT[last.getMonth()]} ${last.getFullYear()}`;
@@ -511,16 +390,13 @@ function refreshSemaine() {
   }
   document.getElementById('week-label').textContent = label;
 
-  // Mise à jour headers
+  // Headers
   dates.forEach((d, j) => {
     const col = document.querySelector(`.day-col[data-col="${j}"]`);
     const hdr = document.getElementById(`hdr-${j}`);
-    const isToday = fmtDate(d) === today;
+    const isToday = fmtDate(d) === todayS;
     col.classList.toggle('today', isToday);
-    hdr.innerHTML = `
-      <span class="day-name">${JOURS_NOM[j]}</span>
-      <span class="day-num-circle day-num">${d.getDate()}</span>
-    `;
+    hdr.innerHTML = `<span class="day-name">${JOURS_NOM[j]}</span><span class="day-num-circle day-num">${d.getDate()}</span>`;
   });
 
   renderBlocks();
@@ -532,35 +408,28 @@ function refreshSemaine() {
 function renderBlocks() {
   document.querySelectorAll('.block').forEach(b => b.remove());
   const dates = getWeekDates(weekOffset);
-
-  // Récurrents
   creneaux.forEach(c => {
-    (c.jours||[]).forEach(j => _renderBloc(c, j, false));
-  });
-
-  // Ponctuels
-  creneauxPonctuels.forEach(c => {
-    dates.forEach((d,j) => {
-      if (fmtDate(d) === c.date) _renderBloc(c, j, true);
+    dates.forEach((d, j) => {
+      if (fmtDate(d) === c.date) _renderBloc(c, j);
     });
   });
 }
 
-function _renderBloc(c, j, isPonctuel) {
+function _renderBloc(c, j) {
   const body = document.getElementById(`body-${j}`);
   if (!body) return;
   const top = timeToY(c.debut);
   const h   = Math.max(timeToY(c.fin) - top, 18);
   if (h <= 0) return;
   const el = document.createElement('div');
-  el.className = 'block' + (isPonctuel ? ' ponctuel' : '');
+  el.className = 'block';
   el.style.cssText = `top:${top}px;height:${h}px;background:${TYPE_BG[c.type]||TYPE_BG.travail};border-left-color:${TYPE_COLORS[c.type]||TYPE_COLORS.travail};color:${TYPE_COLORS[c.type]||TYPE_COLORS.travail};`;
-  el.innerHTML = `<div class="block-title">${esc(c.titre)}${isPonctuel?'<span class="block-ponctuel-badge">📅</span>':''}</div>${h>28?`<div class="block-time">${minToStr(timeToMin(c.debut))} – ${minToStr(timeToMin(c.fin))}</div>`:''}`;
-  el.addEventListener('click', (e) => { e.stopPropagation(); ouvrirEdition(c.id, isPonctuel); });
+  el.innerHTML = `<div class="block-title">${esc(c.titre)}</div>${h>28?`<div class="block-time">${minToStr(timeToMin(c.debut))} – ${minToStr(timeToMin(c.fin))}</div>`:''}`;
+  el.addEventListener('click', (e) => { e.stopPropagation(); ouvrirEdition(c.id); });
   body.appendChild(el);
 }
 
-// ── Ligne heure actuelle ──────────────────────────────────────
+// ── Heure actuelle ────────────────────────────────────────────
 function renderNow() {
   document.querySelectorAll('.now-line').forEach(e => e.remove());
   if (weekOffset !== 0) return;
@@ -569,50 +438,44 @@ function renderNow() {
   const j   = dow === 0 ? 6 : dow - 1;
   const min = now.getHours()*60 + now.getMinutes();
   if (min < HOUR_START*60 || min > HOUR_END*60) return;
-  const top  = (min - HOUR_START*60) / 60 * PX_PER_HOUR;
   const body = document.getElementById(`body-${j}`);
   if (!body) return;
   const line = document.createElement('div');
   line.className = 'now-line';
-  line.style.top = top + 'px';
-  const dot = document.createElement('div');
-  dot.className = 'now-dot';
-  line.appendChild(dot);
-  body.appendChild(line);
+  line.style.top = ((min - HOUR_START*60)/60*PX_PER_HOUR) + 'px';
+  const dot = document.createElement('div'); dot.className = 'now-dot';
+  line.appendChild(dot); body.appendChild(line);
 }
 
 // ── Résumé ────────────────────────────────────────────────────
 function renderSummary() {
-  const dates = getWeekDates(weekOffset);
-  const totals = {};
+  const dates   = getWeekDates(weekOffset);
+  const dateSet = new Set(dates.map(d => fmtDate(d)));
+  const totals  = {};
   creneaux.forEach(c => {
-    const min  = timeToMin(c.fin) - timeToMin(c.debut);
-    const days = (c.jours||[]).length;
-    totals[c.type] = (totals[c.type]||0) + min * days;
-  });
-  creneauxPonctuels.forEach(c => {
-    const isVisible = dates.some(d => fmtDate(d) === c.date);
-    if (isVisible) {
-      const min = timeToMin(c.fin) - timeToMin(c.debut);
-      totals[c.type] = (totals[c.type]||0) + min;
-    }
+    if (!dateSet.has(c.date)) return;
+    const min = timeToMin(c.fin) - timeToMin(c.debut);
+    totals[c.type] = (totals[c.type]||0) + min;
   });
   const el = document.getElementById('summary-content');
   const entries = Object.entries(totals);
   if (!entries.length) { el.innerHTML = '<span style="color:var(--muted)">Aucun créneau cette semaine</span>'; return; }
   el.innerHTML = entries.sort((a,b)=>b[1]-a[1]).map(([type,min]) => {
     const h=Math.floor(min/60), m=min%60;
-    return `<span class="summary-item"><span class="summary-dot" style="background:${TYPE_COLORS[type]||'#4f6ef7'}"></span><span class="summary-val">${h}h${m?m+'min':''}</span><span class="summary-lbl">${TYPE_DEF[type]||type}</span></span>`;
+    return `<span class="summary-item"><span class="summary-dot" style="background:${TYPE_COLORS[type]||'#4f6ef7'}"></span><span style="color:var(--text)">${h}h${m?m+'min':''}</span><span style="color:var(--muted)">${TYPE_DEF[type]||type}</span></span>`;
   }).join('');
 }
 
-// ── Utilitaires temps ─────────────────────────────────────────
-function minToStr(m) {
-  const h=Math.floor(m/60), mn=m%60;
-  return mn ? `${h}h${String(mn).padStart(2,'0')}` : `${h}h`;
-}
+// ── Utilitaires ───────────────────────────────────────────────
+function minToStr(m) { const h=Math.floor(m/60), mn=m%60; return mn?`${h}h${String(mn).padStart(2,'0')}`:`${h}h`; }
 function timeToMin(t) { const [h,m]=t.split(':').map(Number); return h*60+m; }
 function timeToY(t)   { return (timeToMin(t)-HOUR_START*60)/60*PX_PER_HOUR; }
+function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function toast(msg, d=3000) {
+  const el = document.getElementById('toast');
+  el.textContent = msg; el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), d);
+}
 
 // ── Chargement / sauvegarde ───────────────────────────────────
 async function charger() {
@@ -620,8 +483,8 @@ async function charger() {
     const r = await fetch(`/api/edt/${COMPTE_ID}`);
     const j = await r.json();
     if (j.ok) {
-      creneaux          = j.edt.creneaux           || [];
-      creneauxPonctuels = j.edt.creneaux_ponctuels || [];
+      // Compatibilité ancien format (creneaux récurrents → ignorer)
+      creneaux = j.edt.creneaux_ponctuels || [];
     }
   } catch(e) {}
   return true;
@@ -632,7 +495,7 @@ async function sauver() {
     const r = await fetch(`/api/edt/${COMPTE_ID}`, {
       method: 'POST',
       headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({ creneaux, creneaux_ponctuels: creneauxPonctuels }),
+      body: JSON.stringify({ creneaux: [], creneaux_ponctuels: creneaux }),
     });
     const j = await r.json();
     toast(j.ok ? '✅ Emploi du temps enregistré !' : '⚠️ Erreur sauvegarde');
@@ -640,44 +503,22 @@ async function sauver() {
 }
 
 // ── Modal ─────────────────────────────────────────────────────
-let _editPonctuel = false;
-
-function setMode(mode) {
-  document.getElementById('edit-mode').value = mode;
-  document.getElementById('mode-btn-recurrent').classList.toggle('sel', mode==='recurrent');
-  document.getElementById('mode-btn-ponctuel').classList.toggle('sel', mode==='ponctuel');
-  document.getElementById('zone-recurrent').style.display = mode==='recurrent' ? '' : 'none';
-  document.getElementById('zone-ponctuel').style.display  = mode==='ponctuel'  ? '' : 'none';
-}
-
 function _resetModal() {
-  document.getElementById('edit-id').value    = '';
-  document.getElementById('f-titre').value    = '';
-  document.getElementById('f-type').value     = 'travail';
-  document.getElementById('f-debut').value    = '09:00';
-  document.getElementById('f-fin').value      = '18:00';
-  document.getElementById('f-date').value     = fmtDate(getWeekDates(weekOffset)[0]);
+  document.getElementById('edit-id').value   = '';
+  document.getElementById('f-titre').value   = '';
+  document.getElementById('f-type').value    = 'travail';
+  document.getElementById('f-debut').value   = '09:00';
+  document.getElementById('f-fin').value     = '18:00';
+  document.getElementById('f-date').value    = fmtDate(new Date());
   document.getElementById('btn-del').style.display = 'none';
-  document.querySelectorAll('#f-jours .day-btn').forEach((b,i) => b.classList.toggle('sel', i<5));
-  setMode('recurrent');
-  _editPonctuel = false;
 }
 
 function ouvrirModal(jour, h, m) {
   _resetModal();
   document.getElementById('modal-titre-h').textContent = '➕ Nouveau créneau';
   if (jour !== null && jour !== undefined) {
-    // Pré-remplir la date du jour cliqué
     const dates = getWeekDates(weekOffset);
     document.getElementById('f-date').value = fmtDate(dates[jour]);
-    // Si on est sur une semaine future → mode ponctuel par défaut
-    if (weekOffset !== 0) {
-      setMode('ponctuel');
-    } else {
-      document.querySelectorAll('#f-jours .day-btn').forEach(b => b.classList.remove('sel'));
-      const btn = document.querySelector(`#f-jours .day-btn[data-j="${jour}"]`);
-      if (btn) btn.classList.add('sel');
-    }
     const hh = Math.max(HOUR_START, Math.min(h, HOUR_END-1));
     const mm = m || 0;
     document.getElementById('f-debut').value = `${String(hh).padStart(2,'0')}:${String(mm).padStart(2,'0')}`;
@@ -687,78 +528,50 @@ function ouvrirModal(jour, h, m) {
   setTimeout(() => document.getElementById('f-titre').focus(), 80);
 }
 
-function ouvrirEdition(id, isPonctuel) {
-  _editPonctuel = isPonctuel;
-  const list = isPonctuel ? creneauxPonctuels : creneaux;
-  const c    = list.find(x => x.id===id);
+function ouvrirEdition(id) {
+  const c = creneaux.find(x => x.id===id);
   if (!c) return;
   _resetModal();
   document.getElementById('modal-titre-h').textContent = '✏️ Modifier le créneau';
-  document.getElementById('edit-id').value = id;
-  const defaut = TYPE_DEF[c.type]||c.type;
-  document.getElementById('f-titre').value  = (c.titre===defaut) ? '' : c.titre;
+  document.getElementById('edit-id').value  = id;
   document.getElementById('f-type').value   = c.type;
+  document.getElementById('f-date').value   = c.date;
   document.getElementById('f-debut').value  = c.debut;
   document.getElementById('f-fin').value    = c.fin;
+  const defaut = TYPE_DEF[c.type]||c.type;
+  document.getElementById('f-titre').value  = (c.titre===defaut) ? '' : c.titre;
   document.getElementById('btn-del').style.display = '';
-  if (isPonctuel) {
-    setMode('ponctuel');
-    document.getElementById('f-date').value = c.date;
-  } else {
-    setMode('recurrent');
-    document.querySelectorAll('#f-jours .day-btn').forEach(b => {
-      b.classList.toggle('sel', (c.jours||[]).includes(Number(b.dataset.j)));
-    });
-  }
   document.getElementById('overlay-modal').classList.add('open');
 }
 
 function fermerModal() { document.getElementById('overlay-modal').classList.remove('open'); }
-function toggleJ(el)   { el.classList.toggle('sel'); }
 
 function validerBlock() {
-  const mode  = document.getElementById('edit-mode').value;
-  const desc  = document.getElementById('f-titre').value.trim();
+  const date  = document.getElementById('f-date').value;
   const type  = document.getElementById('f-type').value;
+  const desc  = document.getElementById('f-titre').value.trim();
   const debut = document.getElementById('f-debut').value;
   const fin   = document.getElementById('f-fin').value;
   const titre = desc || TYPE_DEF[type] || type;
   const editId= document.getElementById('edit-id').value;
 
-  if (!debut||!fin)    { toast('⚠️ Horaires requis'); return; }
-  if (debut>=fin)      { toast('⚠️ L\'heure de fin doit être après le début'); return; }
+  if (!date)        { toast('⚠️ Date requise'); return; }
+  if (!debut||!fin) { toast('⚠️ Horaires requis'); return; }
+  if (debut >= fin) { toast('⚠️ L\'heure de fin doit être après le début'); return; }
 
-  if (mode === 'ponctuel') {
-    const date = document.getElementById('f-date').value;
-    if (!date) { toast('⚠️ Date requise'); return; }
-    const bloc = { titre, type, date, debut, fin };
-    if (editId) {
-      const idx = creneauxPonctuels.findIndex(c=>c.id===editId);
-      if (idx>=0) creneauxPonctuels[idx] = {...creneauxPonctuels[idx], ...bloc};
-    } else {
-      creneauxPonctuels.push({ id: Math.random().toString(36).slice(2,10), ...bloc });
-    }
+  const bloc = { titre, type, date, debut, fin };
+  if (editId) {
+    const idx = creneaux.findIndex(c=>c.id===editId);
+    if (idx>=0) creneaux[idx] = {...creneaux[idx], ...bloc};
   } else {
-    const jours = [...document.querySelectorAll('#f-jours .day-btn.sel')].map(b=>Number(b.dataset.j));
-    if (!jours.length) { toast('⚠️ Sélectionne au moins un jour'); return; }
-    const bloc = { titre, type, jours, debut, fin };
-    if (editId) {
-      const idx = creneaux.findIndex(c=>c.id===editId);
-      if (idx>=0) creneaux[idx] = {...creneaux[idx], ...bloc};
-    } else {
-      creneaux.push({ id: Math.random().toString(36).slice(2,10), ...bloc });
-    }
+    creneaux.push({ id: Math.random().toString(36).slice(2,10), ...bloc });
   }
   renderBlocks(); renderSummary(); fermerModal();
 }
 
 function supprimerBlock() {
   const id = document.getElementById('edit-id').value;
-  if (_editPonctuel) {
-    creneauxPonctuels = creneauxPonctuels.filter(c=>c.id!==id);
-  } else {
-    creneaux = creneaux.filter(c=>c.id!==id);
-  }
+  creneaux = creneaux.filter(c=>c.id!==id);
   renderBlocks(); renderSummary(); fermerModal();
 }
 
@@ -775,11 +588,7 @@ async function importerICS(input) {
       const nouveaux = j.creneaux || [];
       let ajoutes = 0;
       nouveaux.forEach(nc => {
-        const existe = creneaux.some(c =>
-          c.debut===nc.debut && c.fin===nc.fin &&
-          JSON.stringify((c.jours||[]).sort())===JSON.stringify((nc.jours||[]).sort()) &&
-          c.titre===nc.titre
-        );
+        const existe = creneaux.some(c => c.debut===nc.debut && c.fin===nc.fin && c.titre===nc.titre && c.date===nc.date);
         if (!existe) { creneaux.push({id:Math.random().toString(36).slice(2,10),...nc}); ajoutes++; }
       });
       renderBlocks(); renderSummary();
@@ -791,22 +600,9 @@ async function importerICS(input) {
   input.value = '';
 }
 
-// ── Utilitaires ───────────────────────────────────────────────
-function toast(msg, d=3000) {
-  const el = document.getElementById('toast');
-  el.textContent = msg; el.classList.add('show');
-  setTimeout(() => el.classList.remove('show'), d);
-}
-function esc(s) {
-  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-}
-
 // ── Boot ──────────────────────────────────────────────────────
 buildGrid();
-requestAnimationFrame(async () => {
-  await charger();
-  refreshSemaine();
-});
+requestAnimationFrame(async () => { await charger(); refreshSemaine(); });
 setInterval(renderNow, 60000);
 document.addEventListener('keydown', e => {
   if ((e.ctrlKey||e.metaKey) && e.key==='s') { e.preventDefault(); sauver(); }
