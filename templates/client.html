@@ -954,7 +954,7 @@
 
       <!-- Navigation principale (desktop) -->
       <nav class="top-nav">
-        <button class="top-nav-btn" onclick="document.getElementById('stats-bar').scrollIntoView({behavior:'smooth'})">
+        <button class="top-nav-btn" onclick="ouvrirStatsGlobales()">
           📊 Statistiques
         </button>
         {% if compte.agenda_actif != false %}
@@ -2061,6 +2061,18 @@
     </div>
   </div>
 
+  <!-- Modal Stats Globales -->
+  <div class="overlay" id="overlay-stats-globales" onclick="if(event.target===this)fermerStatsGlobales()">
+    <div class="modal" style="max-width:480px;max-height:88vh;overflow-y:auto">
+      <h2>📊 Vue d'ensemble</h2>
+      <p class="subtitle">Activité globale de toutes vos boîtes mail</p>
+      <div id="stats-globales-content">Chargement…</div>
+      <div class="modal-btns">
+        <button class="btn-cancel" onclick="fermerStatsGlobales()">Fermer</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Modal Absence -->
   <div class="overlay" id="overlay-absence" onclick="if(event.target===this)fermerAbsence()">
     <div class="modal" style="max-width:400px">
@@ -2570,6 +2582,123 @@
     }
 
     function fermerStats() { document.getElementById('overlay-stats').classList.remove('open'); }
+
+    // ── Stats Globales ────────────────────────────────────────
+    async function ouvrirStatsGlobales() {
+      document.getElementById('stats-globales-content').innerHTML = '<div style="text-align:center;padding:20px;color:var(--muted)">Chargement…</div>';
+      document.getElementById('overlay-stats-globales').classList.add('open');
+
+      // Charger les stats de toutes les boîtes en parallèle
+      const boiteIds = Object.keys(boitesState);
+      if (boiteIds.length === 0) {
+        document.getElementById('stats-globales-content').innerHTML = '<div style="text-align:center;padding:20px;color:var(--muted)">Aucune boîte mail connectée.</div>';
+        return;
+      }
+
+      const results = await Promise.all(
+        boiteIds.map(id => fetch(`/stats/${COMPTE_ID}/${id}`).then(r => r.json()).catch(() => null))
+      );
+
+      // Agréger toutes les données
+      let totalTraitesSem = 0, totalBrouillonsSem = 0, totalTraitesHist = 0, totalBrouillonsHist = 0;
+      const catsAggGlobal = {};
+      const parBoite = [];
+
+      results.forEach((json, i) => {
+        if (!json || !json.ok) return;
+        const id  = boiteIds[i];
+        const b   = boitesState[id] || {};
+        const sc  = json.semaine_courante || {};
+        const hist = json.historique || [];
+
+        const tSem  = sc.traites    || 0;
+        const bSem  = sc.brouillons || 0;
+        const tHist = hist.reduce((s,h) => s+(h.traites||0), 0) + tSem;
+        const bHist = hist.reduce((s,h) => s+(h.brouillons||0), 0) + bSem;
+
+        totalTraitesSem    += tSem;
+        totalBrouillonsSem += bSem;
+        totalTraitesHist   += tHist;
+        totalBrouillonsHist+= bHist;
+
+        // Catégories agrégées
+        [...hist, sc].forEach(h => {
+          Object.entries(h.categories || {}).forEach(([c,n]) => { catsAggGlobal[c] = (catsAggGlobal[c]||0)+n; });
+        });
+
+        parBoite.push({ email: b.email || id, tSem, bSem, tHist, actif: b.actif });
+      });
+
+      const tauxConv = totalTraitesSem > 0 ? Math.round(totalBrouillonsSem / totalTraitesSem * 100) : 0;
+      const catEntries = Object.entries(catsAggGlobal).sort((a,b) => b[1]-a[1]).slice(0,6);
+      const colors = ['#4f6ef7','#22c55e','#f59e0b','#a78bfa','#ef4444','#06b6d4'];
+      const emojis = { URGENT:'🔴',COMMERCIAL:'🤝',ADMINISTRATIF:'📋',SUPPORT:'❓',INUTILE:'🗑️',DEVIS:'💰',VISITE:'🏠',OFFRE:'✍️',JURIDIQUE:'⚖️',RELANCE:'🔔',RECLAMATION:'😤',PROSPECT:'🔵',COMMANDE:'🛒',FACTURE:'🧾',CONTRAT:'📝',RESILIATION:'🚪',SINISTRE:'🏚️',LIVRAISON:'📦',RETOUR:'↩️',TECHNIQUE:'🔧',INFO:'📌',RENDEZ_VOUS:'📅',SUIVI:'👁️' };
+      const maxCat = catEntries[0]?.[1] || 1;
+
+      let html = '';
+
+      // KPIs globaux
+      html += `<div class="stats-kpis" style="margin-bottom:20px">
+        <div class="kpi-box blue">
+          <div class="kpi-label">📧 Cette semaine</div>
+          <div class="kpi-value">${totalTraitesSem}</div>
+          <div class="kpi-meta"><span class="kpi-trend-flat">toutes boîtes</span></div>
+        </div>
+        <div class="kpi-box green">
+          <div class="kpi-label">✏️ Brouillons sem.</div>
+          <div class="kpi-value">${totalBrouillonsSem}</div>
+          <div class="kpi-meta"><span class="kpi-trend-flat">${tauxConv}% taux</span></div>
+        </div>
+        <div class="kpi-box purple">
+          <div class="kpi-label">🏆 Total historique</div>
+          <div class="kpi-value">${totalTraitesHist}</div>
+          <div class="kpi-meta"><span class="kpi-trend-flat">${totalBrouillonsHist} brouillons</span></div>
+        </div>
+        <div class="kpi-box yellow">
+          <div class="kpi-label">🤖 Boîtes actives</div>
+          <div class="kpi-value">${parBoite.filter(b=>b.actif).length}/${parBoite.length}</div>
+          <div class="kpi-meta"><span class="kpi-trend-flat">agents en cours</span></div>
+        </div>
+      </div>`;
+
+      // Par boîte
+      if (parBoite.length > 1) {
+        html += `<div class="stats-section-title">📬 Par boîte mail — cette semaine</div>`;
+        html += `<div style="display:flex;flex-direction:column;gap:8px;margin-bottom:20px">`;
+        parBoite.forEach(b => {
+          html += `<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:rgba(255,255,255,.03);border:1px solid var(--border);border-radius:10px">
+            <span style="font-size:11px">${b.actif ? '🟢' : '⚫'}</span>
+            <span style="flex:1;font-size:12px;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${b.email}</span>
+            <span style="font-size:12px;color:#4f6ef7;font-weight:700">${b.tSem} emails</span>
+            <span style="font-size:11px;color:var(--muted)">${b.bSem} brouillons</span>
+          </div>`;
+        });
+        html += `</div>`;
+      }
+
+      // Top catégories
+      if (catEntries.length > 0) {
+        html += `<div class="stats-section-title">📂 Top catégories — tout l'historique</div>
+          <div class="cats-list">`;
+        catEntries.forEach(([cat, nb], i) => {
+          const pct = Math.round(nb / maxCat * 100);
+          const col = colors[i % colors.length];
+          html += `<div class="cat-item">
+            <span style="font-size:13px;width:16px;text-align:center">${emojis[cat]||'•'}</span>
+            <span style="min-width:110px;font-size:11px;font-weight:600;color:var(--text)">${cat}</span>
+            <div class="cat-bar-wrap"><div class="cat-bar" style="width:${pct}%;background:${col}"></div></div>
+            <span class="cat-count">${nb}</span>
+          </div>`;
+        });
+        html += `</div>`;
+      } else {
+        html += `<div style="text-align:center;color:var(--muted);font-size:13px;padding:16px 0">Aucune donnée — lancez votre agent pour commencer !</div>`;
+      }
+
+      document.getElementById('stats-globales-content').innerHTML = html;
+    }
+
+    function fermerStatsGlobales() { document.getElementById('overlay-stats-globales').classList.remove('open'); }
 
     let _statsData = null;  // cache pour les données stats courantes
     let _statsCatFiltree = null;  // catégorie filtrée (null = toutes)
