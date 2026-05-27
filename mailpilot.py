@@ -160,6 +160,61 @@ def detecter_sentiment(email: dict) -> str:
     return "neutre"
 
 
+# ── Calcul des créneaux disponibles depuis l'emploi du temps ──
+def _creneaux_dispo_texte(edt: dict, nb_jours: int = 7) -> str:
+    """
+    Calcule le texte des créneaux libres pour les N prochains jours,
+    en soustrayant les blocs occupés des blocs de travail.
+    """
+    from datetime import date as _date, timedelta as _td
+    creneaux = edt.get("creneaux", [])
+    if not creneaux:
+        return ""
+
+    JOURS_FR  = ["lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi", "dimanche"]
+    JOURS_ABR = ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"]
+
+    def to_min(t: str) -> int:
+        h, m = t.split(":")
+        return int(h) * 60 + int(m)
+
+    def to_str(m: int) -> str:
+        return f"{m // 60:02d}h{m % 60:02d}" if m % 60 else f"{m // 60:02d}h"
+
+    lignes = []
+    today  = _date.today()
+    for i in range(1, nb_jours + 1):
+        d       = today + _td(days=i)
+        jour_id = d.weekday()
+
+        travail = [c for c in creneaux if c.get("type") == "travail" and jour_id in c.get("jours", [])]
+        if not travail:
+            continue
+        occupes = sorted(
+            [(to_min(c["debut"]), to_min(c["fin"])) for c in creneaux
+             if c.get("type") != "travail" and jour_id in c.get("jours", [])],
+            key=lambda x: x[0]
+        )
+
+        dispos = []
+        for t in travail:
+            cursor = to_min(t["debut"])
+            fin_t  = to_min(t["fin"])
+            for ob, of in occupes:
+                if ob >= fin_t or of <= cursor:
+                    continue
+                if cursor < ob:
+                    dispos.append(f"{to_str(cursor)}-{to_str(ob)}")
+                cursor = max(cursor, of)
+            if cursor < fin_t:
+                dispos.append(f"{to_str(cursor)}-{to_str(fin_t)}")
+
+        if dispos:
+            lignes.append(f"  • {JOURS_FR[jour_id]} {d.day}/{d.month} : {', '.join(dispos)}")
+
+    return ("Créneaux disponibles pour rendez-vous :\n" + "\n".join(lignes)) if lignes else ""
+
+
 # --- Modèles Claude à utiliser ---
 MODEL_CLASSIFICATION = "claude-haiku-4-5-20251001"  # Rapide et économique pour classer
 MODEL_REDACTION      = "claude-sonnet-4-6"           # Plus puissant pour rédiger
@@ -455,6 +510,17 @@ Email reçu :
     instructions_globales = os.getenv("AGENT_INSTRUCTIONS_GLOBALES", "").strip()
     if instructions_globales:
         prompt += f"\n\n--- CONSIGNES SPÉCIFIQUES ---\nApplique impérativement ces consignes à chaque réponse :\n{instructions_globales}\n---"
+
+    # Emploi du temps — créneaux disponibles (RENDEZ_VOUS uniquement)
+    if categorie == "RENDEZ_VOUS":
+        _edt_raw = os.getenv("AGENT_EDT", "").strip()
+        if _edt_raw:
+            try:
+                _edt_texte = _creneaux_dispo_texte(json.loads(_edt_raw))
+                if _edt_texte:
+                    prompt += f"\n\n--- DISPONIBILITÉS (propose des créneaux parmi ceux-ci) ---\n{_edt_texte}\n---"
+            except Exception as _e:
+                logger.warning(f"  ✗ EDT parse error : {_e}")
 
     # Instruction de langue
     _LANGUE_INSTRUCTIONS = {

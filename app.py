@@ -324,6 +324,7 @@ def _lancer_agent(compte_id, boite_id, c, b, data):
         "AGENT_INSTRUCTIONS_GLOBALES": _get_instructions_globales(compte_id),
         "AGENT_CUSTOM_CATEGORIES":     json.dumps(_get_categories_custom(compte_id), ensure_ascii=False),
         "AGENT_BLACKLIST":             "|".join(_get_blacklist(compte_id)),
+        "AGENT_EDT":                   json.dumps(_get_edt(compte_id), ensure_ascii=False),
         **_nettoyage_env(compte_id),
         "TRANSFERTS_RULES":    "|".join(
             f"{r['categorie']}:{r['to']}"
@@ -1590,6 +1591,126 @@ def sauver_horaires(compte_id):
     horaires = d.get("horaires", {})
     set_setting(compte_id, "horaires", horaires)
     return jsonify({"ok": True})
+
+
+# ── Emploi du temps ───────────────────────────────────────────
+
+def _get_edt(compte_id):
+    return get_setting(compte_id, "emploi_du_temps", {"creneaux": []})
+
+@app.route("/emploi-du-temps/<compte_id>")
+def emploi_du_temps(compte_id):
+    if not check_access(compte_id):
+        return redirect("/login")
+    data = charger_comptes()
+    c    = trouver_compte(data, compte_id)
+    if not c:
+        return redirect("/login")
+    return render_template("edt.html", compte=c)
+
+@app.route("/api/edt/<compte_id>", methods=["GET"])
+def get_edt(compte_id):
+    if not check_access(compte_id):
+        return jsonify({"ok": False}), 403
+    return jsonify({"ok": True, "edt": _get_edt(compte_id)})
+
+@app.route("/api/edt/<compte_id>", methods=["POST"])
+def sauver_edt(compte_id):
+    if not check_access(compte_id):
+        return jsonify({"ok": False}), 403
+    d = request.json or {}
+    creneaux = d.get("creneaux", [])
+    validated = []
+    for c in creneaux:
+        if not isinstance(c, dict): continue
+        validated.append({
+            "id":      str(c.get("id", ""))[:40] or str(uuid.uuid4())[:8],
+            "titre":   str(c.get("titre", ""))[:60],
+            "type":    str(c.get("type", "travail")) if str(c.get("type","")) in ("travail","reunion","personnel","indisponible") else "travail",
+            "couleur": str(c.get("couleur", "#4f6ef7"))[:20],
+            "jours":   [int(j) for j in c.get("jours", []) if isinstance(j, int) and 0 <= j <= 6],
+            "debut":   str(c.get("debut", "09:00"))[:5],
+            "fin":     str(c.get("fin",   "18:00"))[:5],
+        })
+    set_setting(compte_id, "emploi_du_temps", {"creneaux": validated})
+    return jsonify({"ok": True, "creneaux": validated})
+
+@app.route("/api/edt/<compte_id>/import-ics", methods=["POST"])
+def import_ics(compte_id):
+    """Parse un fichier .ics et retourne les créneaux récurrents détectés."""
+    if not check_access(compte_id):
+        return jsonify({"ok": False}), 403
+    f = request.files.get("ics")
+    if not f:
+        return jsonify({"ok": False, "message": "Aucun fichier"}), 400
+    try:
+        content = f.read().decode("utf-8", errors="ignore")
+    except Exception:
+        return jsonify({"ok": False, "message": "Impossible de lire le fichier"}), 400
+
+    import re as _re
+    from datetime import date as _date
+
+    BYDAY_MAP = {"MO": 0, "TU": 1, "WE": 2, "TH": 3, "FR": 4, "SA": 5, "SU": 6}
+    TYPE_COLORS = {"reunion": "#f59e0b", "travail": "#4f6ef7", "personnel": "#a78bfa", "indisponible": "#6b7280"}
+
+    def _prop(block, name):
+        m = _re.search(rf'{name}[^:\n]*:([^\r\n]+)', block)
+        return m.group(1).strip() if m else ""
+
+    creneaux = []
+    for ev in _re.findall(r'BEGIN:VEVENT(.*?)END:VEVENT', content, _re.DOTALL):
+        rrule   = _prop(ev, 'RRULE')
+        dtstart = _prop(ev, 'DTSTART')
+        dtend   = _prop(ev, 'DTEND')
+        summary = _prop(ev, 'SUMMARY') or "Événement"
+
+        # Ne garder que les événements récurrents hebdomadaires ou quotidiens
+        if not rrule or ("FREQ=WEEKLY" not in rrule and "FREQ=DAILY" not in rrule):
+            continue
+
+        # Extraire heure de début
+        m_s = _re.search(r'T(\d{2})(\d{2})', dtstart)
+        if not m_s:
+            continue
+        h_s, m_s2 = int(m_s.group(1)), int(m_s.group(2))
+
+        # Extraire heure de fin
+        m_e = _re.search(r'T(\d{2})(\d{2})', dtend) if dtend else None
+        h_e, m_e2 = (int(m_e.group(1)), int(m_e.group(2))) if m_e else (min(h_s + 1, 21), m_s2)
+
+        # Jours concernés
+        if "FREQ=DAILY" in rrule:
+            jours = list(range(5))  # lun-ven par défaut
+        elif "BYDAY=" in rrule:
+            bm = _re.search(r'BYDAY=([^;]+)', rrule)
+            jours = [BYDAY_MAP[x.strip()[-2:]] for x in bm.group(1).split(",") if x.strip()[-2:] in BYDAY_MAP] if bm else []
+        else:
+            # Déduire depuis DTSTART
+            ds = _re.match(r'(\d{8})', dtstart)
+            if ds:
+                try:
+                    d = _date(int(ds.group(1)[:4]), int(ds.group(1)[4:6]), int(ds.group(1)[6:8]))
+                    jours = [d.weekday()]
+                except Exception:
+                    jours = []
+            else:
+                jours = []
+
+        if not jours:
+            continue
+
+        creneaux.append({
+            "id":      str(uuid.uuid4())[:8],
+            "titre":   summary[:60],
+            "type":    "reunion",
+            "couleur": TYPE_COLORS["reunion"],
+            "jours":   jours,
+            "debut":   f"{h_s:02d}:{m_s2:02d}",
+            "fin":     f"{h_e:02d}:{m_e2:02d}",
+        })
+
+    return jsonify({"ok": True, "creneaux": creneaux, "nb": len(creneaux)})
 
 
 # ── Agenda ────────────────────────────────────────────────────
