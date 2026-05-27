@@ -200,6 +200,38 @@
     .creneau-btn:hover { background: rgba(79,110,247,.25); border-color: var(--blue); color: #fff; }
     .creneau-vide { font-size: 12px; color: var(--muted); }
 
+    /* ── Blocs EDT dans l'agenda ── */
+    .semaine-edt {
+      background: rgba(107,114,128,.15); border-left: 2px solid #6b7280;
+      border-radius: 6px; padding: 3px 6px; font-size: 11px; color: #9ca3af;
+      margin-bottom: 3px; cursor: pointer; transition: background .15s;
+    }
+    .semaine-edt:hover { background: rgba(107,114,128,.28); }
+    .semaine-edt.type-travail     { border-left-color: #4f6ef7; color: #93b4f0; background: rgba(79,110,247,.1); }
+    .semaine-edt.type-reunion     { border-left-color: #f59e0b; color: #fbbf24; background: rgba(245,158,11,.1); }
+    .semaine-edt.type-personnel   { border-left-color: #a78bfa; color: #c4b5fd; background: rgba(167,139,250,.1); }
+    .semaine-edt.type-indisponible{ border-left-color: #6b7280; color: #9ca3af; background: rgba(107,114,128,.12); }
+    .mois-edt {
+      font-size: 10px; padding: 1px 5px; border-radius: 4px; margin-bottom: 2px;
+      background: rgba(107,114,128,.18); color: #9ca3af;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .mois-edt.type-travail     { background: rgba(79,110,247,.12);  color: #93b4f0; }
+    .mois-edt.type-reunion     { background: rgba(245,158,11,.12);  color: #fbbf24; }
+    .mois-edt.type-personnel   { background: rgba(167,139,250,.12); color: #c4b5fd; }
+    .mois-edt.type-indisponible{ background: rgba(107,114,128,.12); color: #9ca3af; }
+    .today-edt-card {
+      display: flex; align-items: center; gap: 12px;
+      background: rgba(107,114,128,.1); border: 1px solid rgba(107,114,128,.2);
+      border-left: 3px solid #6b7280; border-radius: 10px; padding: 8px 14px;
+      margin-bottom: 6px; opacity: .75;
+    }
+    .today-edt-card.type-travail     { border-left-color: #4f6ef7; background: rgba(79,110,247,.07); }
+    .today-edt-card.type-reunion     { border-left-color: #f59e0b; background: rgba(245,158,11,.07); }
+    .today-edt-card.type-personnel   { border-left-color: #a78bfa; background: rgba(167,139,250,.07); }
+    .today-edt-card.type-indisponible{ border-left-color: #6b7280; background: rgba(107,114,128,.07); }
+    .edt-badge { font-size: 9px; padding: 2px 6px; border-radius: 4px; background: rgba(107,114,128,.25); color: #9ca3af; font-weight: 700; letter-spacing: .04em; }
+
     /* ── Vue liste ── */
     .liste-section-title {
       font-size: 12px; font-weight: 700; color: var(--muted);
@@ -922,6 +954,7 @@
     let editId = null;
     let searchQ = '';
     let filtreType = 'tous';
+    let edt = { creneaux: [], creneaux_ponctuels: [] };
 
     const MOIS_LONG  = ['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'];
     const MOIS_COURT = ['Jan','Fév','Mar','Avr','Mai','Jun','Jul','Aoû','Sep','Oct','Nov','Déc'];
@@ -961,14 +994,29 @@
 
     // ── Chargement ───────────────────────────────────────────
     async function charger() {
-      const r = await fetch(`/api/rdv/${COMPTE_ID}`);
-      const j = await r.json();
-      rdvs = j.rdvs || [];
+      const [rRdv, rEdt] = await Promise.all([
+        fetch(`/api/rdv/${COMPTE_ID}`),
+        fetch(`/api/edt/${COMPTE_ID}`)
+      ]);
+      const jRdv = await rRdv.json();
+      const jEdt = await rEdt.json();
+      rdvs = jRdv.rdvs || [];
+      if (jEdt.ok) edt = jEdt.edt || { creneaux: [], creneaux_ponctuels: [] };
       rendreTout();
       // Re-planifier les rappels avec les RDVs à jour
       if (_notifEnabled && 'Notification' in window && Notification.permission === 'granted') {
         planifierRappels();
       }
+    }
+
+    // ── Helper EDT : retourne les blocs EDT d'une date donnée ─
+    function getEdtBlocsForDate(dateStr) {
+      const d = new Date(dateStr + 'T12:00:00');
+      // EDT jours : 0=Lun, 1=Mar, ..., 6=Dim  /  JS getDay() : 0=Dim, 1=Lun, ..., 6=Sam
+      const edtJour = (d.getDay() + 6) % 7;
+      const recurrents = (edt.creneaux || []).filter(c => (c.jours || []).includes(edtJour));
+      const ponctuels  = (edt.creneaux_ponctuels || []).filter(c => c.date === dateStr);
+      return [...recurrents, ...ponctuels];
     }
 
     function rendreTout() {
@@ -1050,6 +1098,23 @@
         </div>`;
       }
 
+      // Blocs EDT du jour entremêlés dans la timeline
+      const edtDuJour = getEdtBlocsForDate(todayStr);
+      const edtCards = edtDuJour
+        .sort((a,b) => a.debut.localeCompare(b.debut))
+        .map(c => `
+          <div class="today-edt-card type-${c.type}" onclick="window.location='/emploi-du-temps/${COMPTE_ID}'">
+            <div class="today-time-col">
+              <div class="today-time-h">${c.debut}</div>
+              <div class="today-time-fin">→ ${c.fin}</div>
+            </div>
+            <div style="width:1px;background:rgba(107,114,128,.3);align-self:stretch"></div>
+            <div class="today-rdv-info">
+              <div class="today-rdv-titre">${c.titre || 'Bloc EDT'}</div>
+            </div>
+            <span class="edt-badge">EDT</span>
+          </div>`);
+
       const todayCards = todayRdvs.map(r => {
         const [hd, md] = r.heure_debut.split(':').map(Number);
         const [hf, mf] = r.heure_fin.split(':').map(Number);
@@ -1110,9 +1175,13 @@
           ${nextBadge}
         </div>
 
-        <div class="today-section-title">Planning du jour (${todayRdvs.length})</div>
-        ${todayRdvs.length
-          ? `<div class="today-timeline">${todayCards}</div>`
+        <div class="today-section-title">Planning du jour (${todayRdvs.length}${edtDuJour.length ? ` · <span style="color:var(--muted);font-size:10px">+${edtDuJour.length} EDT</span>` : ''})</div>
+        ${todayRdvs.length || edtDuJour.length
+          ? `<div class="today-timeline">${[...todayCards, ...edtCards].sort((a,b) => {
+              const tA = a.match(/today-time-h">([\d:]+)/)?.[1] || '00:00';
+              const tB = b.match(/today-time-h">([\d:]+)/)?.[1] || '00:00';
+              return tA.localeCompare(tB);
+            }).join('')}</div>`
           : `<div class="today-empty"><div class="big">☀️</div><p>Aucun RDV aujourd'hui.<br>Clique sur <strong>+ Nouveau RDV</strong> pour en ajouter un.</p></div>`
         }
 
@@ -1168,6 +1237,7 @@
     function detecterConflits() {
       const actifs = rdvs.filter(r => r.statut === 'confirme' || r.statut === 'attente');
       const ids = new Set();
+      // Conflits RDV ↔ RDV
       for (let i = 0; i < actifs.length; i++) {
         for (let j = i + 1; j < actifs.length; j++) {
           const a = actifs[i], b = actifs[j];
@@ -1175,6 +1245,15 @@
           if (a.statut !== 'confirme' && b.statut !== 'confirme') continue;
           if (a.heure_debut < b.heure_fin && b.heure_debut < a.heure_fin) {
             ids.add(a.id); ids.add(b.id);
+          }
+        }
+      }
+      // Conflits RDV ↔ EDT (bloquer sur les créneaux EDT)
+      for (const r of actifs) {
+        const edtBlocs = getEdtBlocsForDate(r.date);
+        for (const c of edtBlocs) {
+          if (r.heure_debut < c.fin && c.debut < r.heure_fin) {
+            ids.add(r.id);
           }
         }
       }
@@ -1240,6 +1319,25 @@
         const rdvJour = source
           .filter(r => r.date === dateStr && (r.statut === 'confirme' || r.statut === 'attente'))
           .sort((a,b) => a.heure_debut.localeCompare(b.heure_debut));
+        const edtJour = getEdtBlocsForDate(dateStr)
+          .sort((a,b) => a.debut.localeCompare(b.debut));
+
+        const rdvHtml = rdvJour.map(r => `
+          <div class="semaine-rdv type-${r.type}" onclick="event.stopPropagation();ouvrirEdit('${r.id}')">
+            <div>${r.heure_debut}</div>
+            <div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${r.titre}</div>
+          </div>`).join('');
+        const edtHtml = edtJour.map(c => `
+          <div class="semaine-edt type-${c.type}" onclick="event.stopPropagation();window.location='/emploi-du-temps/${COMPTE_ID}'" title="${c.titre} · ${c.debut}–${c.fin}">
+            <div>${c.debut}</div>
+            <div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${c.titre || 'EDT'}</div>
+          </div>`).join('');
+
+        // Mélanger et trier par heure
+        const allItems = [
+          ...rdvJour.map(r => ({ h: r.heure_debut, html: `<div class="semaine-rdv type-${r.type}" onclick="event.stopPropagation();ouvrirEdit('${r.id}')"><div>${r.heure_debut}</div><div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${r.titre}</div></div>` })),
+          ...edtJour.map(c => ({ h: c.debut, html: `<div class="semaine-edt type-${c.type}" onclick="event.stopPropagation();window.location='/emploi-du-temps/${COMPTE_ID}'" title="${c.titre} · ${c.debut}–${c.fin}"><div>${c.debut}</div><div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${c.titre||'EDT'}</div></div>` }))
+        ].sort((a,b) => a.h.localeCompare(b.h));
 
         return `
           <div class="semaine-col">
@@ -1248,12 +1346,8 @@
               <div class="jour-num">${d.getDate()}</div>
             </div>
             <div class="semaine-col-body" onclick="ouvrirModal('${dateStr}')">
-              ${rdvJour.length
-                ? rdvJour.map(r => `
-                    <div class="semaine-rdv type-${r.type}" onclick="event.stopPropagation();ouvrirEdit('${r.id}')">
-                      <div>${r.heure_debut}</div>
-                      <div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${r.titre}</div>
-                    </div>`).join('')
+              ${allItems.length
+                ? allItems.map(x => x.html).join('')
                 : `<div class="semaine-empty">+</div>`
               }
             </div>
@@ -1318,23 +1412,31 @@
       const rdvJour = source
         .filter(r => r.date === dateStr && (r.statut === 'confirme' || r.statut === 'attente'))
         .sort((a,b) => a.heure_debut.localeCompare(b.heure_debut));
+      const edtJour = getEdtBlocsForDate(dateStr)
+        .sort((a,b) => a.debut.localeCompare(b.debut));
 
       const maxVisible = 2;
-      const visible = rdvJour.slice(0, maxVisible);
-      const more    = rdvJour.length - maxVisible;
+      const totalItems = rdvJour.length + edtJour.length;
+      // Prend d'abord les RDVs, puis les EDT pour remplir les 2 slots max
+      const visibleRdv = rdvJour.slice(0, maxVisible);
+      const visibleEdt = edtJour.slice(0, Math.max(0, maxVisible - visibleRdv.length));
+      const more = totalItems - visibleRdv.length - visibleEdt.length;
 
       const numEl = todayStr === dateStr
         ? `<div class="mois-cell-num" style="display:flex">${d.getDate()}</div>`
         : `<div class="mois-cell-num">${d.getDate()}</div>`;
 
-      const rdvEls = visible.map(r =>
+      const rdvEls = visibleRdv.map(r =>
         `<div class="mois-rdv type-${r.type}" onclick="event.stopPropagation();ouvrirEdit('${r.id}')" title="${r.titre} · ${r.heure_debut}">${r.heure_debut} ${r.titre}</div>`
+      ).join('');
+      const edtEls = visibleEdt.map(c =>
+        `<div class="mois-edt type-${c.type}" onclick="event.stopPropagation();window.location='/emploi-du-temps/${COMPTE_ID}'" title="${c.titre} · ${c.debut}–${c.fin}">📋 ${c.debut} ${c.titre||'EDT'}</div>`
       ).join('');
 
       const moreEl = more > 0 ? `<div class="mois-more">+${more} autre${more>1?'s':''}</div>` : '';
 
       return `<div class="mois-cell ${todayStr===dateStr?'today':''} ${otherMonth?'other-month':''}" onclick="ouvrirModal('${dateStr}')">
-        ${numEl}${rdvEls}${moreEl}
+        ${numEl}${rdvEls}${edtEls}${moreEl}
       </div>`;
     }
 
@@ -1476,10 +1578,14 @@
     function trouverCreneauxLibres(rdv) {
       const duree = heureEnMin(rdv.heure_fin) - heureEnMin(rdv.heure_debut);
       const DEBUT = 8 * 60, FIN = 19 * 60;
-      const occupes = rdvs
-        .filter(r => r.date === rdv.date && r.id !== rdv.id && r.statut === 'confirme')
-        .map(r => ({ debut: heureEnMin(r.heure_debut), fin: heureEnMin(r.heure_fin) }))
-        .sort((a,b) => a.debut - b.debut);
+      // Inclure les blocs EDT comme occupés
+      const edtBlocs = getEdtBlocsForDate(rdv.date)
+        .map(c => ({ debut: heureEnMin(c.debut), fin: heureEnMin(c.fin) }));
+      const occupes = [
+        ...rdvs.filter(r => r.date === rdv.date && r.id !== rdv.id && r.statut === 'confirme')
+          .map(r => ({ debut: heureEnMin(r.heure_debut), fin: heureEnMin(r.heure_fin) })),
+        ...edtBlocs
+      ].sort((a,b) => a.debut - b.debut);
       const libres = [];
       let cursor = DEBUT;
       for (const occ of occupes) {
