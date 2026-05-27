@@ -1583,7 +1583,7 @@
       const today = new Date();
       const todayStr = today.toISOString().slice(0,10);
       const slots = [];
-      for (let offset = 1; offset <= 14 && slots.length < 3; offset++) {
+      for (let offset = 1; offset <= 21 && slots.length < 5; offset++) {
         const d = new Date(today);
         d.setDate(today.getDate() + offset);
         const dateStr = d.toISOString().slice(0,10);
@@ -1603,11 +1603,11 @@
         for (const occ of occupes) {
           if (cursor + duree <= occ.debut) {
             slots.push({ date: dateStr, heure_debut: minEnHeure(cursor), heure_fin: minEnHeure(cursor+duree) });
-            if (slots.length >= 3) break;
+            if (slots.length >= 5) break;
           }
           cursor = Math.max(cursor, occ.fin);
         }
-        if (slots.length < 3 && cursor + duree <= FIN) {
+        if (slots.length < 5 && cursor + duree <= FIN) {
           slots.push({ date: dateStr, heure_debut: minEnHeure(cursor), heure_fin: minEnHeure(cursor+duree) });
         }
       }
