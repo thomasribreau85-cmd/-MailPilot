@@ -10,187 +10,405 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="apple-mobile-web-app-title" content="MailPilot" />
   <meta name="theme-color" content="#4f6ef7" />
-  <title>MailPilot</title>
+  <title>MailPilot — Dashboard</title>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     :root {
-      --bg:#0e0e0e; --card:#181818; --border:#2a2a2a;
-      --text:#e8e8e8; --muted:#666; --green:#22c55e;
-      --red:#ef4444; --blue:#3b82f6; --yellow:#f59e0b; --radius:12px;
+      --bg: #060b18; --card: #0d1526; --card2: #111d35; --border: #1a2c47;
+      --text: #f0f4ff; --muted: #5a7090; --blue: #4f6ef7; --blue2: #7c4ff8;
+      --green: #22c55e; --red: #ef4444; --yellow: #f59e0b; --radius: 14px;
     }
-    body { background:var(--bg); color:var(--text); font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text",sans-serif; min-height:100vh; padding:24px 20px 60px; }
+    body {
+      background: var(--bg); color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Inter", sans-serif;
+      min-height: 100vh; padding: 0 0 80px;
+      background-image:
+        radial-gradient(ellipse 60% 40% at 20% 10%, rgba(79,110,247,.12) 0%, transparent 70%),
+        radial-gradient(ellipse 50% 35% at 80% 85%, rgba(124,79,248,.09) 0%, transparent 70%);
+    }
 
-    header { display:flex; align-items:center; justify-content:space-between; max-width:900px; margin:0 auto 24px; gap:16px; flex-wrap:wrap; }
-    .logo-zone { display:flex; align-items:center; gap:10px; }
-    .logo-zone .icon { font-size:26px; }
-    .logo-zone h1 { font-size:20px; font-weight:700; }
-    .logo-zone p { font-size:12px; color:var(--muted); margin-top:1px; }
-    .api-zone { display:flex; align-items:center; gap:8px; background:var(--card); border:1px solid var(--border); border-radius:10px; padding:8px 12px; flex:1; max-width:420px; }
-    .api-zone label { font-size:11px; color:var(--muted); white-space:nowrap; }
-    .api-zone input { flex:1; background:transparent; border:none; color:var(--text); font-size:13px; outline:none; font-family:monospace; min-width:0; }
-    .api-zone button { background:#252525; border:1px solid var(--border); color:var(--text); border-radius:7px; padding:5px 12px; font-size:12px; font-weight:600; cursor:pointer; }
-    .api-zone button:hover { background:#2f2f2f; }
+    /* ── HEADER ── */
+    .topbar {
+      position: sticky; top: 0; z-index: 50;
+      background: rgba(6,11,24,.85); backdrop-filter: blur(20px);
+      border-bottom: 1px solid var(--border);
+      padding: 0 20px;
+    }
+    .topbar-inner {
+      max-width: 960px; margin: 0 auto;
+      display: flex; align-items: center; gap: 12px;
+      height: 58px;
+    }
+    .logo { display: flex; align-items: center; gap: 10px; text-decoration: none; }
+    .logo-icon {
+      width: 34px; height: 34px; border-radius: 9px;
+      background: linear-gradient(135deg, var(--blue), var(--blue2));
+      display: flex; align-items: center; justify-content: center; font-size: 17px;
+      box-shadow: 0 2px 12px rgba(79,110,247,.35);
+    }
+    .logo-text { font-size: 17px; font-weight: 700; color: var(--text); }
+    .logo-badge { font-size: 10px; background: rgba(79,110,247,.2); color: var(--blue); border: 1px solid rgba(79,110,247,.3); border-radius: 5px; padding: 2px 7px; font-weight: 600; }
 
-    .actions-bar { max-width:900px; margin:0 auto 16px; display:flex; justify-content:flex-end; }
-    .btn-add { display:flex; align-items:center; gap:6px; background:var(--blue); color:#fff; border:none; border-radius:9px; padding:9px 16px; font-size:13px; font-weight:600; cursor:pointer; font-family:inherit; }
-    .btn-add:hover { opacity:.88; }
+    .topbar-spacer { flex: 1; }
 
-    .comptes-list { max-width:900px; margin:0 auto; display:flex; flex-direction:column; gap:20px; }
-    .empty-state { text-align:center; padding:60px 20px; color:var(--muted); }
-    .empty-state .big { font-size:40px; margin-bottom:12px; }
+    .api-zone {
+      display: flex; align-items: center; gap: 8px;
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 9px; padding: 6px 10px; max-width: 320px;
+    }
+    .api-zone label { font-size: 10px; color: var(--muted); white-space: nowrap; }
+    .api-zone input { flex: 1; background: transparent; border: none; color: var(--text); font-size: 12px; outline: none; font-family: monospace; min-width: 0; }
+    .api-zone button { background: rgba(79,110,247,.15); border: 1px solid rgba(79,110,247,.3); color: var(--blue); border-radius: 6px; padding: 4px 10px; font-size: 11px; font-weight: 600; cursor: pointer; white-space: nowrap; }
+    .api-zone button:hover { background: rgba(79,110,247,.25); }
 
-    /* Compte card */
-    .compte-card { background:var(--card); border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; }
-    .compte-header { display:flex; align-items:center; gap:14px; padding:16px 20px 12px; border-bottom:1px solid var(--border); }
-    .compte-avatar { width:36px; height:36px; border-radius:50%; background:#222; display:flex; align-items:center; justify-content:center; font-size:16px; font-weight:700; color:var(--blue); flex-shrink:0; }
-    .compte-info { flex:1; min-width:0; }
-    .compte-info .name { font-size:15px; font-weight:600; }
-    .compte-info .meta { font-size:12px; color:var(--muted); margin-top:2px; }
-    .compte-actions { display:flex; gap:6px; }
-    .icon-btn { background:#1e1e1e; border:1px solid var(--border); color:var(--muted); border-radius:7px; padding:6px 10px; font-size:13px; cursor:pointer; }
-    .icon-btn:hover { color:var(--red); border-color:var(--red); }
+    .btn-logout { color: var(--muted); font-size: 12px; text-decoration: none; padding: 6px 10px; border-radius: 7px; border: 1px solid var(--border); transition: .15s; white-space: nowrap; }
+    .btn-logout:hover { color: var(--text); border-color: var(--muted); }
 
-    /* Boites list */
-    .boites-list { padding:12px 20px; display:flex; flex-direction:column; gap:10px; }
-    .boite-row { background:#111; border:1px solid var(--border); border-radius:9px; padding:12px 14px; }
-    .boite-row.actif { border-color:#1a4a2a; }
-    .boite-top { display:flex; align-items:center; gap:10px; margin-bottom:10px; }
-    .status-dot { width:9px; height:9px; border-radius:50%; background:var(--muted); flex-shrink:0; }
-    .status-dot.actif { background:var(--green); animation:pulse 1.8s infinite; }
+    /* ── MAIN ── */
+    .main { max-width: 960px; margin: 0 auto; padding: 28px 20px 0; }
+
+    /* Stats bar */
+    .stats-bar { display: flex; gap: 12px; margin-bottom: 24px; flex-wrap: wrap; }
+    .stat-pill {
+      background: var(--card); border: 1px solid var(--border); border-radius: 10px;
+      padding: 10px 16px; display: flex; align-items: center; gap: 10px; flex: 1; min-width: 130px;
+    }
+    .stat-icon { font-size: 20px; }
+    .stat-val { font-size: 22px; font-weight: 700; line-height: 1; }
+    .stat-lbl { font-size: 11px; color: var(--muted); margin-top: 2px; }
+
+    /* Actions bar */
+    .actions-bar { display: flex; align-items: center; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; }
+    .actions-bar h2 { font-size: 15px; font-weight: 700; flex: 1; }
+    .btn-add {
+      display: flex; align-items: center; gap: 6px;
+      background: linear-gradient(135deg, var(--blue), var(--blue2));
+      color: #fff; border: none; border-radius: 9px;
+      padding: 9px 16px; font-size: 13px; font-weight: 600; cursor: pointer; font-family: inherit;
+      box-shadow: 0 2px 12px rgba(79,110,247,.3);
+    }
+    .btn-add:hover { opacity: .88; }
+
+    /* ── COMPTE CARD ── */
+    .compte-card {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: var(--radius); overflow: hidden; margin-bottom: 20px;
+      transition: border-color .2s;
+    }
+    .compte-card:hover { border-color: rgba(79,110,247,.3); }
+
+    .compte-header {
+      display: flex; align-items: center; gap: 14px;
+      padding: 16px 20px; border-bottom: 1px solid var(--border);
+    }
+    .compte-avatar {
+      width: 40px; height: 40px; border-radius: 50%;
+      background: linear-gradient(135deg, rgba(79,110,247,.25), rgba(124,79,248,.25));
+      border: 1px solid rgba(79,110,247,.3);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 17px; font-weight: 700; color: var(--blue); flex-shrink: 0;
+    }
+    .compte-info { flex: 1; min-width: 0; }
+    .compte-info .name { font-size: 15px; font-weight: 600; }
+    .compte-info .meta { font-size: 12px; color: var(--muted); margin-top: 3px; }
+
+    /* RDV badges */
+    .rdv-badges { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+    .rdv-badge {
+      font-size: 11px; font-weight: 600; border-radius: 6px; padding: 3px 9px;
+      display: flex; align-items: center; gap: 4px;
+    }
+    .rdv-badge.attente { background: rgba(245,158,11,.15); color: var(--yellow); border: 1px solid rgba(245,158,11,.25); }
+    .rdv-badge.confirme { background: rgba(34,197,94,.15); color: var(--green); border: 1px solid rgba(34,197,94,.25); }
+
+    /* Navigation rapide par compte */
+    .compte-nav {
+      display: flex; gap: 6px; padding: 12px 16px;
+      border-bottom: 1px solid var(--border); flex-wrap: wrap;
+      background: rgba(255,255,255,.02);
+    }
+    .nav-btn {
+      display: flex; align-items: center; gap: 5px;
+      background: var(--card2); border: 1px solid var(--border);
+      color: var(--text); border-radius: 8px; padding: 6px 12px;
+      font-size: 12px; font-weight: 600; cursor: pointer; text-decoration: none;
+      transition: .15s; font-family: inherit;
+    }
+    .nav-btn:hover { border-color: var(--blue); color: var(--blue); background: rgba(79,110,247,.08); }
+    .nav-btn.agenda { --c: #4f6ef7; }
+    .nav-btn.edt    { --c: #7c4ff8; }
+    .nav-btn.chat   { --c: #22c55e; }
+    .nav-btn.agenda:hover { border-color: #4f6ef7; color: #4f6ef7; background: rgba(79,110,247,.08); }
+    .nav-btn.edt:hover    { border-color: #7c4ff8; color: #7c4ff8; background: rgba(124,79,248,.08); }
+    .nav-btn.chat:hover   { border-color: #22c55e; color: #22c55e; background: rgba(34,197,94,.08); }
+
+    /* Boites */
+    .boites-list { padding: 14px 16px; display: flex; flex-direction: column; gap: 10px; }
+    .boite-row {
+      background: var(--card2); border: 1px solid var(--border);
+      border-radius: 10px; padding: 12px 14px;
+      transition: border-color .2s;
+    }
+    .boite-row.actif { border-color: rgba(34,197,94,.3); background: rgba(34,197,94,.04); }
+    .boite-top { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+    .status-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); flex-shrink: 0; }
+    .status-dot.actif { background: var(--green); animation: pulse 1.8s infinite; }
     @keyframes pulse { 0%{box-shadow:0 0 0 0 rgba(34,197,94,.6)} 70%{box-shadow:0 0 0 8px rgba(34,197,94,0)} 100%{box-shadow:0 0 0 0 rgba(34,197,94,0)} }
-    .boite-email { flex:1; font-size:13px; font-weight:600; }
-    .boite-provider { font-size:11px; color:var(--muted); }
-    .boite-count { font-size:13px; font-weight:700; color:var(--text); }
-    .boite-count-lbl { font-size:10px; color:var(--muted); }
-    .boite-btns { display:flex; gap:6px; }
-    .btn { padding:8px 12px; border-radius:7px; border:none; font-size:12px; font-weight:600; font-family:inherit; cursor:pointer; transition:opacity .15s; }
-    .btn:disabled { opacity:.4; cursor:not-allowed; }
-    .btn:hover:not(:disabled) { opacity:.85; }
-    .btn-connect { background:var(--blue); color:#fff; flex:1; }
-    .btn-start   { background:var(--green); color:#000; flex:1; }
-    .btn-stop    { background:var(--red); color:#fff; flex:1; }
-    .btn-icon    { background:#1e1e1e; border:1px solid var(--border); color:var(--muted); }
-    .btn-icon:hover { color:var(--text); }
+    .boite-email { flex: 1; font-size: 13px; font-weight: 600; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .boite-count-wrap { text-align: right; flex-shrink: 0; }
+    .boite-count { font-size: 15px; font-weight: 700; }
+    .boite-count-lbl { font-size: 10px; color: var(--muted); }
+    .boite-btns { display: flex; gap: 6px; flex-wrap: wrap; }
 
-    .log-toggle { width:100%; background:transparent; border:none; border-top:1px solid var(--border); color:var(--muted); font-size:11px; font-family:inherit; padding:7px 14px; text-align:left; cursor:pointer; margin-top:8px; }
-    .log-toggle:hover { color:var(--text); }
-    .log-feed { display:none; background:#0a0a0a; border-top:1px solid var(--border); padding:10px 14px; height:180px; overflow-y:auto; font-family:"SF Mono","Menlo",monospace; font-size:11px; line-height:1.7; color:#888; margin-top:4px; border-radius:6px; }
-    .log-feed.open { display:block; }
-    .log-line.ok   { color:var(--green); }
-    .log-line.err  { color:var(--red); }
-    .log-line.warn { color:var(--yellow); }
-    .log-line.info { color:#7dd3fc; }
+    .btn { padding: 8px 14px; border-radius: 8px; border: none; font-size: 12px; font-weight: 600; font-family: inherit; cursor: pointer; transition: opacity .15s; }
+    .btn:disabled { opacity: .4; cursor: not-allowed; }
+    .btn:hover:not(:disabled) { opacity: .85; }
+    .btn-connect { background: rgba(79,110,247,.2); border: 1px solid rgba(79,110,247,.4); color: var(--blue); flex: 1; }
+    .btn-start   { background: rgba(34,197,94,.2); border: 1px solid rgba(34,197,94,.4); color: var(--green); flex: 1; }
+    .btn-stop    { background: rgba(239,68,68,.2); border: 1px solid rgba(239,68,68,.4); color: var(--red); flex: 1; }
+    .btn-icon    { background: var(--card); border: 1px solid var(--border); color: var(--muted); padding: 8px 10px; }
+    .btn-icon:hover { color: var(--text); border-color: var(--muted); }
 
-    /* Modals */
-    .overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,.8); z-index:100; align-items:center; justify-content:center; padding:20px; }
-    .overlay.open { display:flex; }
-    .modal { background:var(--card); border:1px solid var(--border); border-radius:16px; padding:28px; width:100%; max-width:440px; max-height:90vh; overflow-y:auto; }
-    .modal h2 { font-size:17px; font-weight:700; margin-bottom:20px; }
-    .field { margin-bottom:14px; }
-    .field label { display:block; font-size:11px; color:var(--muted); margin-bottom:5px; font-weight:500; }
-    .field input { width:100%; background:#111; border:1px solid var(--border); border-radius:8px; color:var(--text); font-size:14px; padding:9px 12px; outline:none; font-family:inherit; }
-    .field input:focus { border-color:var(--blue); }
-    .modal-btns { display:flex; gap:10px; margin-top:20px; }
-    .btn-modal-cancel { flex:1; padding:10px; background:#1e1e1e; border:1px solid var(--border); color:var(--text); border-radius:8px; font-size:14px; font-weight:600; cursor:pointer; font-family:inherit; }
-    .btn-modal-ok { flex:2; padding:10px; background:var(--blue); border:none; color:#fff; border-radius:8px; font-size:14px; font-weight:600; cursor:pointer; font-family:inherit; }
+    .log-toggle {
+      width: 100%; background: transparent; border: none;
+      border-top: 1px solid var(--border); color: var(--muted);
+      font-size: 11px; font-family: inherit; padding: 7px 14px;
+      text-align: left; cursor: pointer; margin-top: 8px;
+    }
+    .log-toggle:hover { color: var(--text); }
+    .log-feed {
+      display: none; background: rgba(0,0,0,.4);
+      border-top: 1px solid var(--border); padding: 10px 14px;
+      height: 170px; overflow-y: auto;
+      font-family: "SF Mono", "Menlo", monospace; font-size: 11px;
+      line-height: 1.7; color: var(--muted); margin-top: 4px; border-radius: 6px;
+    }
+    .log-feed.open { display: block; }
+    .log-line.ok   { color: var(--green); }
+    .log-line.err  { color: var(--red); }
+    .log-line.warn { color: var(--yellow); }
+    .log-line.info { color: #7dd3fc; }
+
+    /* ── EMPTY STATE ── */
+    .empty-state { text-align: center; padding: 70px 20px; color: var(--muted); }
+    .empty-state .big { font-size: 48px; margin-bottom: 14px; }
+    .empty-state p { font-size: 15px; }
+
+    /* ── MODALS ── */
+    .overlay {
+      display: none; position: fixed; inset: 0;
+      background: rgba(0,0,0,.75); backdrop-filter: blur(6px);
+      z-index: 100; align-items: center; justify-content: center; padding: 20px;
+    }
+    .overlay.open { display: flex; }
+    .modal {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 18px; padding: 28px; width: 100%; max-width: 440px;
+      max-height: 90vh; overflow-y: auto;
+      box-shadow: 0 24px 80px rgba(0,0,0,.6);
+    }
+    .modal h2 { font-size: 17px; font-weight: 700; margin-bottom: 20px; }
+    .field { margin-bottom: 14px; }
+    .field label { display: block; font-size: 11px; color: var(--muted); margin-bottom: 5px; font-weight: 500; text-transform: uppercase; letter-spacing: .5px; }
+    .field input {
+      width: 100%; background: var(--card2); border: 1px solid var(--border);
+      border-radius: 9px; color: var(--text); font-size: 14px;
+      padding: 10px 13px; outline: none; font-family: inherit;
+    }
+    .field input:focus { border-color: var(--blue); }
+    .modal-btns { display: flex; gap: 10px; margin-top: 20px; }
+    .btn-modal-cancel { flex: 1; padding: 11px; background: var(--card2); border: 1px solid var(--border); color: var(--text); border-radius: 9px; font-size: 14px; font-weight: 600; cursor: pointer; font-family: inherit; }
+    .btn-modal-ok { flex: 2; padding: 11px; background: linear-gradient(135deg, var(--blue), var(--blue2)); border: none; color: #fff; border-radius: 9px; font-size: 14px; font-weight: 600; cursor: pointer; font-family: inherit; box-shadow: 0 4px 16px rgba(79,110,247,.3); }
+    .btn-modal-ok:hover { opacity: .9; }
 
     /* Labels */
-    .label-grid { display:flex; flex-direction:column; gap:8px; }
-    .label-item { display:flex; align-items:center; gap:12px; background:#111; border:1px solid var(--border); border-radius:8px; padding:10px 14px; cursor:pointer; }
-    .label-item:hover { border-color:var(--blue); }
-    .label-item input[type=checkbox] { width:16px; height:16px; cursor:pointer; accent-color:var(--blue); }
-    .label-item .label-emoji { font-size:16px; }
-    .label-item .label-text { flex:1; }
-    .label-item .label-name { font-size:13px; font-weight:600; }
-    .label-item .label-desc { font-size:11px; color:var(--muted); margin-top:2px; }
-    .label-item.locked { opacity:0.5; cursor:not-allowed; }
+    .label-grid { display: flex; flex-direction: column; gap: 8px; }
+    .label-item {
+      display: flex; align-items: center; gap: 12px;
+      background: var(--card2); border: 1px solid var(--border);
+      border-radius: 9px; padding: 10px 14px; cursor: pointer;
+    }
+    .label-item:hover { border-color: var(--blue); }
+    .label-item input[type=checkbox] { width: 16px; height: 16px; cursor: pointer; accent-color: var(--blue); }
+    .label-item .label-emoji { font-size: 16px; }
+    .label-item .label-text { flex: 1; }
+    .label-item .label-name { font-size: 13px; font-weight: 600; }
+    .label-item .label-desc { font-size: 11px; color: var(--muted); margin-top: 2px; }
+    .label-item.locked { opacity: .5; cursor: not-allowed; }
 
-    #toast { position:fixed; bottom:28px; left:50%; transform:translateX(-50%) translateY(20px); background:#222; border:1px solid var(--border); color:var(--text); padding:11px 20px; border-radius:10px; font-size:13px; opacity:0; transition:opacity .2s,transform .2s; pointer-events:none; white-space:nowrap; z-index:200; }
-    #toast.show { opacity:1; transform:translateX(-50%) translateY(0); }
+    /* Toast */
+    #toast {
+      position: fixed; bottom: 28px; left: 50%;
+      transform: translateX(-50%) translateY(20px);
+      background: var(--card2); border: 1px solid var(--border);
+      color: var(--text); padding: 11px 20px;
+      border-radius: 12px; font-size: 13px; font-weight: 500;
+      opacity: 0; transition: opacity .2s, transform .2s;
+      pointer-events: none; white-space: nowrap; z-index: 200;
+      box-shadow: 0 8px 32px rgba(0,0,0,.4);
+    }
+    #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+    /* Compte actions */
+    .compte-actions { display: flex; gap: 6px; align-items: center; }
+    .icon-btn {
+      background: var(--card2); border: 1px solid var(--border);
+      color: var(--muted); border-radius: 7px; padding: 6px 10px;
+      font-size: 13px; cursor: pointer; transition: .15s;
+    }
+    .icon-btn:hover { color: var(--red); border-color: var(--red); background: rgba(239,68,68,.08); }
+
+    /* Mobile */
+    @media (max-width: 600px) {
+      .topbar-inner { gap: 8px; }
+      .api-zone { display: none; }
+      .stats-bar { gap: 8px; }
+      .stat-pill { min-width: 100px; padding: 8px 12px; }
+      .stat-val { font-size: 18px; }
+      .compte-header { padding: 12px 14px; }
+      .boites-list { padding: 10px 12px; }
+      .compte-nav { padding: 10px 12px; }
+    }
   </style>
 </head>
 <body>
 
-  <header>
-    <div class="logo-zone">
-      <span class="icon">🛩️</span>
-      <div>
-        <h1>MailPilot</h1>
-        <p>Administration — multi-comptes</p>
+  <!-- TOPBAR -->
+  <div class="topbar">
+    <div class="topbar-inner">
+      <a class="logo" href="/dashboard">
+        <div class="logo-icon">✉️</div>
+        <span class="logo-text">MailPilot</span>
+        <span class="logo-badge">ADMIN</span>
+      </a>
+      <div class="topbar-spacer"></div>
+      <div class="api-zone">
+        <label>Clé API&nbsp;</label>
+        <input type="password" id="api-key" value="{{ data.api_key }}" placeholder="sk-ant-..." />
+        <button onclick="sauvegarderAPI()">Sauv.</button>
       </div>
+      <a href="/logout" class="btn-logout">⎋ Déco</a>
     </div>
-    <div class="api-zone">
-      <label>Clé API&nbsp;</label>
-      <input type="password" id="api-key" value="{{ data.api_key }}" placeholder="sk-ant-..." />
-      <button onclick="sauvegarderAPI()">Sauv.</button>
-    </div>
-    <a href="/logout" style="color:var(--muted);font-size:12px;text-decoration:none;white-space:nowrap;">⎋ Déconnexion</a>
-  </header>
-
-  <div class="actions-bar">
-    <button class="btn-add" onclick="ouvrirModal()">＋ Nouveau compte</button>
   </div>
 
-  <div class="comptes-list" id="liste">
-    {% if not data.comptes %}
-    <div class="empty-state">
-      <div class="big">📭</div>
-      <p>Aucun compte configuré.</p>
-    </div>
-    {% endif %}
+  <div class="main">
 
-    {% for c in data.comptes %}
-    <div class="compte-card" id="card-{{ c.id }}">
-      <div class="compte-header">
-        <div class="compte-avatar">{{ (c.nom or '?')[0].upper() }}</div>
-        <div class="compte-info">
-          <div class="name">{{ c.nom or '—' }}</div>
-          <div class="meta">
-            {{ c.get('login_email', '') }}
-            {% if c.agence %} · {{ c.agence }}{% endif %}
-            {% if c.zone %} · {{ c.zone }}{% endif %}
-            — {{ c.get('boites', [])|length }} boîte(s)
-          </div>
-        </div>
-        <div class="compte-actions">
-          <button class="icon-btn" onclick="supprimerCompte('{{ c.id }}')" title="Supprimer le compte">🗑</button>
+    <!-- STATS -->
+    <div class="stats-bar" id="stats-bar">
+      <div class="stat-pill">
+        <span class="stat-icon">👥</span>
+        <div>
+          <div class="stat-val" id="stat-comptes">{{ data.comptes|length }}</div>
+          <div class="stat-lbl">Compte{{ 's' if data.comptes|length > 1 else '' }}</div>
         </div>
       </div>
+      <div class="stat-pill">
+        <span class="stat-icon">📬</span>
+        <div>
+          <div class="stat-val" id="stat-boites">{{ data.comptes | sum(attribute='boites', start=[]) | list | length }}</div>
+          <div class="stat-lbl">Boîte{{ 's' if (data.comptes | sum(attribute='boites', start=[]) | list | length) > 1 else '' }} mail</div>
+        </div>
+      </div>
+      <div class="stat-pill">
+        <span class="stat-icon">📅</span>
+        <div>
+          <div class="stat-val" id="stat-rdv-attente">—</div>
+          <div class="stat-lbl">RDVs en attente</div>
+        </div>
+      </div>
+      <div class="stat-pill">
+        <span class="stat-icon">✅</span>
+        <div>
+          <div class="stat-val" id="stat-rdv-confirme">—</div>
+          <div class="stat-lbl">RDVs confirmés</div>
+        </div>
+      </div>
+    </div>
 
-      <!-- Boites mail du compte -->
-      <div class="boites-list" id="boites-{{ c.id }}">
-        {% for b in c.get('boites', []) %}
-        {% set prov_icon = '📧' if b.provider == 'gmail' else ('💼' if b.provider == 'microsoft' else '🌐') %}
-        {% set prov_lbl  = 'Gmail' if b.provider == 'gmail' else ('Outlook' if b.provider == 'microsoft' else 'IMAP') %}
-        <div class="boite-row" id="boite-{{ c.id }}-{{ b.id }}">
-          <div class="boite-top">
-            <div class="status-dot" id="dot-{{ c.id }}-{{ b.id }}"></div>
-            <div class="boite-email">{{ prov_icon }} {{ b.email }}</div>
-            <div style="text-align:right">
-              <div class="boite-count" id="count-{{ c.id }}-{{ b.id }}">0</div>
-              <div class="boite-count-lbl">emails</div>
+    <!-- ACTIONS BAR -->
+    <div class="actions-bar">
+      <h2>Comptes</h2>
+      <button class="btn-add" onclick="ouvrirModal()">＋ Nouveau compte</button>
+    </div>
+
+    <!-- LISTE COMPTES -->
+    <div id="liste">
+      {% if not data.comptes %}
+      <div class="empty-state">
+        <div class="big">📭</div>
+        <p>Aucun compte configuré.<br>Cliquez sur "Nouveau compte" pour commencer.</p>
+      </div>
+      {% endif %}
+
+      {% for c in data.comptes %}
+      <div class="compte-card" id="card-{{ c.id }}">
+
+        <!-- En-tête compte -->
+        <div class="compte-header">
+          <div class="compte-avatar">{{ (c.nom or '?')[0].upper() }}</div>
+          <div class="compte-info">
+            <div class="name">{{ c.nom or '—' }}</div>
+            <div class="meta">
+              {{ c.get('login_email', '') }}
+              {% if c.agence %} · {{ c.agence }}{% endif %}
+              {% if c.zone %} · {{ c.zone }}{% endif %}
+              — {{ c.get('boites', [])|length }} boîte(s)
             </div>
           </div>
-          <div class="boite-btns" id="btns-{{ c.id }}-{{ b.id }}">
-            {% if b.connecte and (b.provider == 'imap' or b.token) %}
-            <button class="btn btn-start" onclick="demarrer('{{ c.id }}','{{ b.id }}')">▶ Démarrer</button>
-            {% elif b.provider == 'microsoft' %}
-            <button class="btn btn-connect" onclick="connecterMicrosoft('{{ c.id }}','{{ b.id }}')">🔗 Connecter Outlook</button>
-            {% else %}
-            <button class="btn btn-connect" onclick="connecterGmail('{{ c.id }}','{{ b.id }}')">🔗 Connecter Gmail</button>
-            {% endif %}
-            <button class="btn btn-icon" onclick="ouvrirLabels('{{ c.id }}','{{ b.id }}','{{ b.email }}')" title="Catégories">⚙️</button>
-          </div>
-          <button class="log-toggle" onclick="toggleLogs('{{ c.id }}-{{ b.id }}')">▾ Journal — {{ b.email }}</button>
-          <div class="log-feed" id="logs-{{ c.id }}-{{ b.id }}">
-            <div class="log-line">En attente de démarrage…</div>
+          <div class="compte-actions">
+            <!-- Badges RDV -->
+            <div class="rdv-badges" id="rdv-badges-{{ c.id }}">
+              <span class="rdv-badge attente" id="badge-attente-{{ c.id }}" style="display:none">⏳ <span id="n-attente-{{ c.id }}">0</span></span>
+              <span class="rdv-badge confirme" id="badge-confirme-{{ c.id }}" style="display:none">✅ <span id="n-confirme-{{ c.id }}">0</span></span>
+            </div>
+            <button class="icon-btn" onclick="supprimerCompte('{{ c.id }}')" title="Supprimer le compte">🗑</button>
           </div>
         </div>
-        {% endfor %}
+
+        <!-- Navigation rapide -->
+        <div class="compte-nav">
+          <a class="nav-btn agenda" href="/agenda/{{ c.id }}">📅 Agenda</a>
+          <a class="nav-btn edt"    href="/edt/{{ c.id }}">🗓 Emploi du temps</a>
+          <button class="nav-btn chat" onclick="ouvrirChat('{{ c.id }}')">💬 Chat IA</button>
+        </div>
+
+        <!-- Boites mail -->
+        <div class="boites-list" id="boites-{{ c.id }}">
+          {% for b in c.get('boites', []) %}
+          {% set prov_icon = '📧' if b.provider == 'gmail' else ('💼' if b.provider == 'microsoft' else '🌐') %}
+          {% set prov_lbl  = 'Gmail' if b.provider == 'gmail' else ('Outlook' if b.provider == 'microsoft' else 'IMAP') %}
+          <div class="boite-row" id="boite-{{ c.id }}-{{ b.id }}">
+            <div class="boite-top">
+              <div class="status-dot" id="dot-{{ c.id }}-{{ b.id }}"></div>
+              <div class="boite-email">{{ prov_icon }} {{ b.email }}</div>
+              <div class="boite-count-wrap">
+                <div class="boite-count" id="count-{{ c.id }}-{{ b.id }}">0</div>
+                <div class="boite-count-lbl">emails</div>
+              </div>
+            </div>
+            <div class="boite-btns" id="btns-{{ c.id }}-{{ b.id }}">
+              {% if b.connecte and (b.provider == 'imap' or b.token) %}
+              <button class="btn btn-start" onclick="demarrer('{{ c.id }}','{{ b.id }}')">▶ Démarrer</button>
+              {% elif b.provider == 'microsoft' %}
+              <button class="btn btn-connect" onclick="connecterMicrosoft('{{ c.id }}','{{ b.id }}')">🔗 Connecter Outlook</button>
+              {% else %}
+              <button class="btn btn-connect" onclick="connecterGmail('{{ c.id }}','{{ b.id }}')">🔗 Connecter Gmail</button>
+              {% endif %}
+              <button class="btn btn-icon" onclick="ouvrirLabels('{{ c.id }}','{{ b.id }}','{{ b.email }}')" title="Catégories IA">⚙️</button>
+            </div>
+            <button class="log-toggle" onclick="toggleLogs('{{ c.id }}-{{ b.id }}')">▾ Journal — {{ b.email }}</button>
+            <div class="log-feed" id="logs-{{ c.id }}-{{ b.id }}">
+              <div class="log-line">En attente de démarrage…</div>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+
       </div>
+      {% endfor %}
     </div>
-    {% endfor %}
-  </div>
+
+  </div><!-- /main -->
 
   <!-- Modal nouveau compte -->
   <div class="overlay" id="overlay" onclick="if(event.target===this)fermerModal()">
@@ -204,7 +422,7 @@
       <div class="field"><label>Mot de passe *</label><input type="password" id="m-password" placeholder="6 caractères min" /></div>
       <div class="modal-btns">
         <button class="btn-modal-cancel" onclick="fermerModal()">Annuler</button>
-        <button class="btn-modal-ok" onclick="ajouterCompte()">Créer</button>
+        <button class="btn-modal-ok" onclick="ajouterCompte()">Créer le compte</button>
       </div>
     </div>
   </div>
@@ -212,7 +430,7 @@
   <!-- Modal Labels -->
   <div class="overlay" id="overlay-labels" onclick="if(event.target===this)fermerLabels()">
     <div class="modal" style="max-width:520px">
-      <h2>⚙️ Catégories d'emails</h2>
+      <h2>⚙️ Catégories IA détectées</h2>
       <p class="field" style="font-size:12px;color:var(--muted);margin-bottom:16px" id="labels-subtitle"></p>
       <div class="label-grid" id="label-grid">Chargement…</div>
       <div class="modal-btns">
@@ -222,15 +440,44 @@
     </div>
   </div>
 
+  <!-- Modal Chat IA Email -->
+  <div class="overlay" id="overlay-chat" onclick="if(event.target===this)fermerChat()">
+    <div class="modal" style="max-width:600px; padding:0; overflow:hidden; border-radius:18px;">
+      <div style="padding:20px 24px; border-bottom:1px solid var(--border); display:flex; align-items:center; gap:12px;">
+        <div style="width:32px;height:32px;border-radius:8px;background:linear-gradient(135deg,#22c55e,#16a34a);display:flex;align-items:center;justify-content:center;font-size:16px;">💬</div>
+        <div>
+          <div style="font-size:15px;font-weight:700;">Chat IA — Emails</div>
+          <div style="font-size:11px;color:var(--muted)" id="chat-subtitle">Posez une question sur vos emails</div>
+        </div>
+        <button onclick="fermerChat()" style="margin-left:auto;background:none;border:none;color:var(--muted);font-size:20px;cursor:pointer;line-height:1;">×</button>
+      </div>
+      <div id="chat-messages" style="height:320px;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:10px;">
+        <div style="text-align:center;color:var(--muted);font-size:13px;padding:40px 0;">
+          💬 Posez une question sur vos emails<br>
+          <span style="font-size:11px;margin-top:6px;display:block">Ex : "Résume mes emails de la semaine", "Quels clients ont répondu ?"</span>
+        </div>
+      </div>
+      <div style="padding:14px 16px;border-top:1px solid var(--border);display:flex;gap:8px;">
+        <input id="chat-input" type="text" placeholder="Posez votre question…"
+          style="flex:1;background:var(--card2);border:1px solid var(--border);border-radius:9px;color:var(--text);font-size:13px;padding:10px 13px;outline:none;font-family:inherit;"
+          onkeydown="if(event.key==='Enter')envoyerChat()" />
+        <button onclick="envoyerChat()"
+          style="background:linear-gradient(135deg,#22c55e,#16a34a);border:none;color:#fff;border-radius:9px;padding:10px 16px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;">
+          Envoyer
+        </button>
+      </div>
+    </div>
+  </div>
+
   <div id="toast"></div>
 
   <script>
+    // ── UTILS ─────────────────────────────────────────────────
     function toast(msg, duree=2800) {
       const el = document.getElementById('toast');
       el.textContent = msg; el.classList.add('show');
       setTimeout(() => el.classList.remove('show'), duree);
     }
-
     function classeLog(l) {
       if (l.includes('[CRITICAL]') || l.includes('Erreur') || l.includes('ERROR')) return 'err';
       if (l.includes('Brouillon créé') || l.includes('✓') || l.includes('réussie') || l.includes('créé')) return 'ok';
@@ -239,13 +486,13 @@
       return '';
     }
 
-    // ── API Key ───────────────────────────────────────────────
+    // ── API KEY ───────────────────────────────────────────────
     async function sauvegarderAPI() {
       await fetch('/sauvegarder_api', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ api_key: document.getElementById('api-key').value }) });
       toast('🔑 Clé API sauvegardée');
     }
 
-    // ── Modal ─────────────────────────────────────────────────
+    // ── MODALS ────────────────────────────────────────────────
     function ouvrirModal() { document.getElementById('overlay').classList.add('open'); document.getElementById('m-nom').focus(); }
     function fermerModal() { document.getElementById('overlay').classList.remove('open'); }
 
@@ -256,65 +503,57 @@
       if (!nom || !email) { toast('⚠️ Nom et email obligatoires'); return; }
       if (!password || password.length < 6) { toast('⚠️ Mot de passe requis (6 car. min)'); return; }
       const res  = await fetch('/ajouter_compte', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          nom, email, password,
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ nom, email, password,
           agence: document.getElementById('m-agence').value.trim(),
           tel:    document.getElementById('m-tel').value.trim(),
-          zone:   document.getElementById('m-zone').value.trim()
-        })
+          zone:   document.getElementById('m-zone').value.trim() })
       });
       const json = await res.json();
-      if (json.ok) { fermerModal(); toast('✓ Compte créé ! L\'agent peut maintenant se connecter.'); location.reload(); }
+      if (json.ok) { fermerModal(); toast('✓ Compte créé !'); location.reload(); }
       else { toast('❌ ' + (json.message || 'Erreur')); }
     }
 
-    // ── OAuth Gmail ───────────────────────────────────────────
+    // ── OAUTH ─────────────────────────────────────────────────
     async function connecterGmail(compteId, boiteId) {
       const res  = await fetch(`/connecter_gmail/${compteId}/${boiteId}`, { method:'POST' });
       const json = await res.json();
       if (!json.ok) { toast('❌ ' + (json.message || 'Erreur')); return; }
       if (json.auth_url) window.location.href = json.auth_url;
-      else { toast('✓ ' + (json.message || 'Gmail connecté !')); rafraichirCompte(compteId); }
+      else { toast('✓ Gmail connecté !'); rafraichirCompte(compteId); }
     }
-
     async function connecterMicrosoft(compteId, boiteId) {
       const res  = await fetch(`/connecter_microsoft/${compteId}/${boiteId}`, { method:'POST' });
       const json = await res.json();
       if (!json.ok) { toast('❌ ' + (json.message || 'Erreur')); return; }
       if (json.auth_url) window.location.href = json.auth_url;
-      else { toast('✓ ' + (json.message || 'Outlook connecté !')); rafraichirCompte(compteId); }
+      else { toast('✓ Outlook connecté !'); rafraichirCompte(compteId); }
     }
 
-    // ── Démarrer / Arrêter ────────────────────────────────────
+    // ── START / STOP ──────────────────────────────────────────
     async function demarrer(compteId, boiteId) {
       const res  = await fetch(`/demarrer/${compteId}/${boiteId}`, { method:'POST' });
       const json = await res.json();
       if (!json.ok) { toast('⚠️ ' + json.message); return; }
       rafraichirCompte(compteId);
     }
-
     async function arreter(compteId, boiteId) {
       await fetch(`/arreter/${compteId}/${boiteId}`, { method:'POST' });
       rafraichirCompte(compteId);
     }
 
-    // ── Supprimer compte ──────────────────────────────────────
+    // ── SUPPRIMER COMPTE ──────────────────────────────────────
     async function supprimerCompte(id) {
-      if (!confirm('Supprimer ce compte et toutes ses boîtes mail ?')) return;
+      if (!confirm('Supprimer ce compte et toutes ses données ?')) return;
       await fetch(`/supprimer_compte/${id}`, { method:'POST' });
-      const card = document.getElementById(`card-${id}`);
-      if (card) card.remove();
+      document.getElementById(`card-${id}`)?.remove();
       toast('Compte supprimé');
     }
 
-    // ── Logs ──────────────────────────────────────────────────
-    function toggleLogs(key) {
-      document.getElementById(`logs-${key}`).classList.toggle('open');
-    }
+    // ── LOGS ──────────────────────────────────────────────────
+    function toggleLogs(key) { document.getElementById(`logs-${key}`).classList.toggle('open'); }
 
-    // ── Rafraîchir un compte ──────────────────────────────────
+    // ── RAFRAICHIR COMPTE ─────────────────────────────────────
     async function rafraichirCompte(compteId) {
       const r = await fetch(`/statut/${compteId}`);
       if (!r.ok) return;
@@ -322,20 +561,14 @@
       if (!data.boites) return;
 
       for (const b of data.boites) {
-        const key    = `${compteId}-${b.id}`;
-        const row    = document.getElementById(`boite-${key}`);
+        const key = `${compteId}-${b.id}`;
+        const row = document.getElementById(`boite-${key}`);
         if (!row) continue;
-
-        // Dot
         const dot = document.getElementById(`dot-${key}`);
         if (dot) dot.className = 'status-dot' + (b.actif ? ' actif' : '');
         row.classList.toggle('actif', b.actif);
-
-        // Compteur
         const cnt = document.getElementById(`count-${key}`);
         if (cnt) cnt.textContent = b.emails_traites || 0;
-
-        // Boutons
         const btns = document.getElementById(`btns-${key}`);
         if (btns) {
           let html;
@@ -351,8 +584,6 @@
           html += `<button class="btn btn-icon" onclick="ouvrirLabels('${compteId}','${b.id}','${b.email}')" title="Catégories">⚙️</button>`;
           btns.innerHTML = html;
         }
-
-        // Logs
         if (b.logs && b.logs.length) {
           const feed = document.getElementById(`logs-${key}`);
           if (feed) {
@@ -363,17 +594,14 @@
       }
     }
 
-    // ── Labels ────────────────────────────────────────────────
-    let labelsCompteId = null;
-    let labelsBoiteId  = null;
-    let tousLabels     = {};
+    // ── LABELS ────────────────────────────────────────────────
+    let labelsCompteId = null, labelsBoiteId = null, tousLabels = {};
 
     async function ouvrirLabels(compteId, boiteId, email) {
-      labelsCompteId = compteId;
-      labelsBoiteId  = boiteId;
+      labelsCompteId = compteId; labelsBoiteId = boiteId;
       const res  = await fetch(`/labels/${compteId}/${boiteId}`);
       const json = await res.json();
-      tousLabels   = json.tous;
+      tousLabels = json.tous;
       const actifs = json.actifs;
       document.getElementById('labels-subtitle').textContent = email;
       document.getElementById('label-grid').innerHTML = Object.entries(tousLabels).map(([key, info]) => {
@@ -384,9 +612,7 @@
       }).join('');
       document.getElementById('overlay-labels').classList.add('open');
     }
-
     function fermerLabels() { document.getElementById('overlay-labels').classList.remove('open'); }
-
     async function sauvegarderLabels() {
       const labels = Object.keys(tousLabels).filter(k => document.getElementById(`lbl-${k}`)?.checked);
       const res  = await fetch(`/labels/${labelsCompteId}/${labelsBoiteId}`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ labels }) });
@@ -394,17 +620,95 @@
       if (json.ok) { fermerLabels(); toast(`✓ ${json.labels.length} catégories sauvegardées !`); }
     }
 
-    // ── Polling global ────────────────────────────────────────
+    // ── CHAT IA ───────────────────────────────────────────────
+    let chatCompteId = null;
+
+    function ouvrirChat(compteId) {
+      chatCompteId = compteId;
+      document.getElementById('overlay-chat').classList.add('open');
+      document.getElementById('chat-input').focus();
+    }
+    function fermerChat() {
+      document.getElementById('overlay-chat').classList.remove('open');
+    }
+    function ajouterMsgChat(role, text, loading=false) {
+      const container = document.getElementById('chat-messages');
+      const isFirst = container.querySelector('.init-msg');
+      if (isFirst) container.innerHTML = '';
+      const div = document.createElement('div');
+      div.style.cssText = `max-width:85%;padding:10px 14px;border-radius:12px;font-size:13px;line-height:1.5;`;
+      if (role === 'user') {
+        div.style.cssText += 'background:rgba(79,110,247,.2);border:1px solid rgba(79,110,247,.3);align-self:flex-end;margin-left:auto;';
+      } else {
+        div.style.cssText += 'background:var(--card2);border:1px solid var(--border);align-self:flex-start;';
+      }
+      div.textContent = loading ? '…' : text;
+      if (loading) div.id = 'chat-loading';
+      container.appendChild(div);
+      container.scrollTop = container.scrollHeight;
+      return div;
+    }
+    async function envoyerChat() {
+      const input = document.getElementById('chat-input');
+      const question = input.value.trim();
+      if (!question || !chatCompteId) return;
+      input.value = '';
+      ajouterMsgChat('user', question);
+      const loadDiv = ajouterMsgChat('ia', '', true);
+      try {
+        const res = await fetch(`/api/chat-email`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ compte_id: chatCompteId, question })
+        });
+        const json = await res.json();
+        loadDiv.textContent = json.reponse || json.error || 'Erreur';
+      } catch(e) {
+        loadDiv.textContent = 'Erreur de connexion';
+      }
+    }
+
+    // ── RDV STATS (global + par compte) ──────────────────────
     const compteIds = [{% for c in data.comptes %}'{{ c.id }}'{% if not loop.last %},{% endif %}{% endfor %}];
 
-    async function polling() {
+    async function chargerRdvStats() {
+      let totalAttente = 0, totalConfirme = 0;
       for (const id of compteIds) {
-        await rafraichirCompte(id);
+        try {
+          const r = await fetch(`/api/rdv/${id}`);
+          if (!r.ok) continue;
+          const j = await r.json();
+          const rdvs = j.rdvs || [];
+          const attente  = rdvs.filter(r => r.statut === 'attente').length;
+          const confirme = rdvs.filter(r => r.statut === 'confirme').length;
+          totalAttente  += attente;
+          totalConfirme += confirme;
+          // Badges par compte
+          const ba = document.getElementById(`badge-attente-${id}`);
+          const bc = document.getElementById(`badge-confirme-${id}`);
+          const na = document.getElementById(`n-attente-${id}`);
+          const nc = document.getElementById(`n-confirme-${id}`);
+          if (na) na.textContent = attente;
+          if (nc) nc.textContent = confirme;
+          if (ba) ba.style.display = attente  > 0 ? '' : 'none';
+          if (bc) bc.style.display = confirme > 0 ? '' : 'none';
+        } catch(e) {}
       }
+      const sa = document.getElementById('stat-rdv-attente');
+      const sc = document.getElementById('stat-rdv-confirme');
+      if (sa) sa.textContent = totalAttente;
+      if (sc) sc.textContent = totalConfirme;
+    }
+
+    // ── POLLING ───────────────────────────────────────────────
+    async function polling() {
+      for (const id of compteIds) await rafraichirCompte(id);
     }
 
     setInterval(polling, 3000);
     polling();
+    chargerRdvStats();
+    setInterval(chargerRdvStats, 15000);
   </script>
 
 </body>
