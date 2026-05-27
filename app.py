@@ -634,6 +634,17 @@ def privacy():
     return render_template("privacy.html")
 
 
+@app.route("/sw.js")
+def service_worker():
+    """Service worker servi à la racine pour avoir accès à tout le site."""
+    from flask import send_from_directory, make_response
+    resp = make_response(send_from_directory("static", "sw.js"))
+    resp.headers["Content-Type"] = "application/javascript"
+    resp.headers["Service-Worker-Allowed"] = "/"
+    resp.headers["Cache-Control"] = "no-cache"
+    return resp
+
+
 @app.route("/sauvegarder_api", methods=["POST"])
 def sauvegarder_api():
     if not session.get("admin"):

@@ -596,6 +596,48 @@
     .upcoming-titre { font-size: 13px; font-weight: 600; }
     .upcoming-meta  { font-size: 11px; color: var(--muted); margin-top: 2px; }
 
+    /* ── Rappels notification ── */
+    .notif-btn {
+      position: relative;
+    }
+    .notif-btn.on { border-color: rgba(79,110,247,.5); color: var(--blue); background: rgba(79,110,247,.1); }
+    .notif-badge {
+      position: absolute; top: -5px; right: -5px; width: 8px; height: 8px;
+      border-radius: 50%; background: var(--blue); border: 2px solid var(--bg);
+    }
+    .notif-panel {
+      display: none; position: absolute; top: calc(100% + 10px); right: 0;
+      width: 280px; background: var(--card2); border: 1px solid var(--border);
+      border-radius: 16px; padding: 18px; z-index: 60;
+      box-shadow: 0 16px 48px rgba(0,0,0,.6);
+    }
+    .notif-panel.open { display: block; }
+    .notif-panel-title {
+      font-size: 13px; font-weight: 700; margin-bottom: 14px;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .notif-row {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 14px;
+    }
+    .notif-row label { font-size: 13px; color: var(--text); font-weight: 500; }
+    .notif-row span  { font-size: 11px; color: var(--muted); }
+    .notif-select {
+      background: #05091a; border: 1px solid var(--border); border-radius: 8px;
+      color: var(--text); font-size: 12px; padding: 6px 10px; outline: none;
+      font-family: inherit; width: 100%; margin-top: 6px;
+      transition: border-color .15s;
+    }
+    .notif-select:focus { border-color: var(--blue); }
+    .notif-divider { height: 1px; background: var(--border); margin: 12px 0; }
+    .notif-status {
+      font-size: 11px; text-align: center; padding: 6px 10px;
+      border-radius: 8px; margin-top: 8px;
+    }
+    .notif-status.ok     { background: rgba(34,197,94,.1);  color: #86efac; }
+    .notif-status.warn   { background: rgba(245,158,11,.1); color: #fcd34d; }
+    .notif-status.denied { background: rgba(239,68,68,.1);  color: #fca5a5; }
+
     /* Kbd hint */
     .kbd-hint {
       font-size: 11px; color: var(--muted); margin-bottom: 12px; text-align: right;
@@ -655,6 +697,40 @@
     <button class="btn-icon" onclick="document.getElementById('import-ics').click()">📥 .ics</button>
     <input type="file" id="import-ics" accept=".ics" style="display:none" onchange="importerICS(this)" />
     <button class="btn-icon" onclick="exporterICS()">📤 .ics</button>
+    <!-- Bouton rappels -->
+    <div style="position:relative" id="notif-wrap">
+      <button class="btn-icon notif-btn" id="notif-btn" onclick="toggleNotifPanel()">
+        🔔 Rappels
+      </button>
+      <div class="notif-panel" id="notif-panel">
+        <div class="notif-panel-title">🔔 Rappels de RDV</div>
+
+        <div class="notif-row">
+          <div>
+            <label>Notifications actives</label>
+            <div><span id="notif-perm-txt">—</span></div>
+          </div>
+          <label class="toggle-switch" style="flex-shrink:0">
+            <input type="checkbox" id="notif-toggle" onchange="onToggleNotif(this.checked)" />
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+
+        <div id="notif-avance-row">
+          <label style="font-size:12px;color:var(--muted);font-weight:500">Rappeler combien de temps avant ?</label>
+          <select class="notif-select" id="notif-avance" onchange="onAvanceChange(this.value)">
+            <option value="5">5 minutes avant</option>
+            <option value="15">15 minutes avant</option>
+            <option value="30" selected>30 minutes avant</option>
+            <option value="60">1 heure avant</option>
+            <option value="120">2 heures avant</option>
+          </select>
+        </div>
+
+        <div class="notif-divider"></div>
+        <div id="notif-status-box"></div>
+      </div>
+    </div>
     <button class="btn-primary" onclick="ouvrirModal()">+ Nouveau RDV</button>
   </div>
 
@@ -889,6 +965,10 @@
       const j = await r.json();
       rdvs = j.rdvs || [];
       rendreTout();
+      // Re-planifier les rappels avec les RDVs à jour
+      if (_notifEnabled && 'Notification' in window && Notification.permission === 'granted') {
+        planifierRappels();
+      }
     }
 
     function rendreTout() {
@@ -1602,6 +1682,187 @@
       toast(`✅ ${confirmes.length} RDV exporté(s)`);
     }
 
+    // ── Rappels notifications ────────────────────────────────
+    let _notifEnabled = localStorage.getItem('notif_enabled') === 'true';
+    let _notifAvance  = parseInt(localStorage.getItem('notif_avance') || '30');
+    let _reminderTimers = [];
+    let _swReg = null;
+
+    // Enregistre le service worker
+    async function initSW() {
+      if (!('serviceWorker' in navigator)) return;
+      try {
+        _swReg = await navigator.serviceWorker.register('/sw.js', { scope: '/' });
+      } catch(e) { console.warn('SW registration failed', e); }
+    }
+
+    // Met à jour l'UI du panel rappels
+    function updateNotifUI() {
+      const toggle = document.getElementById('notif-toggle');
+      const btn    = document.getElementById('notif-btn');
+      const permTxt = document.getElementById('notif-perm-txt');
+      const statusBox = document.getElementById('notif-status-box');
+      const avanceRow = document.getElementById('notif-avance-row');
+      const avanceSel = document.getElementById('notif-avance');
+
+      if (toggle) toggle.checked = _notifEnabled;
+      if (avanceSel) avanceSel.value = String(_notifAvance);
+
+      const perm = 'Notification' in window ? Notification.permission : 'unsupported';
+
+      // Badge sur le bouton si actif
+      let badge = document.getElementById('notif-badge');
+      if (_notifEnabled && perm === 'granted') {
+        btn?.classList.add('on');
+        if (!badge) {
+          badge = document.createElement('div');
+          badge.id = 'notif-badge';
+          badge.className = 'notif-badge';
+          document.getElementById('notif-btn')?.appendChild(badge);
+        }
+      } else {
+        btn?.classList.remove('on');
+        badge?.remove();
+      }
+
+      if (avanceRow) avanceRow.style.display = _notifEnabled ? 'block' : 'none';
+
+      let statusHtml = '';
+      if (!('Notification' in window)) {
+        statusHtml = '<div class="notif-status denied">⚠️ Notifications non supportées par ce navigateur</div>';
+      } else if (perm === 'denied') {
+        statusHtml = '<div class="notif-status denied">🚫 Notifications bloquées — autorise-les dans les paramètres du navigateur</div>';
+      } else if (!_notifEnabled) {
+        statusHtml = '<div class="notif-status warn">🔕 Rappels désactivés</div>';
+      } else if (perm === 'granted') {
+        const count = _reminderTimers.length;
+        statusHtml = `<div class="notif-status ok">✅ ${count} rappel${count!==1?'s':''} programmé${count!==1?'s':''}</div>`;
+      } else {
+        statusHtml = '<div class="notif-status warn">⏳ En attente d\'autorisation…</div>';
+      }
+      if (statusBox) statusBox.innerHTML = statusHtml;
+      if (permTxt) {
+        permTxt.textContent = perm === 'granted' ? '✅ Autorisées' : perm === 'denied' ? '🚫 Bloquées' : '⏳ Non demandées';
+      }
+    }
+
+    function toggleNotifPanel() {
+      const panel = document.getElementById('notif-panel');
+      panel?.classList.toggle('open');
+      if (panel?.classList.contains('open')) updateNotifUI();
+    }
+
+    // Fermer le panel en cliquant ailleurs
+    document.addEventListener('click', e => {
+      const wrap = document.getElementById('notif-wrap');
+      if (wrap && !wrap.contains(e.target)) {
+        document.getElementById('notif-panel')?.classList.remove('open');
+      }
+    });
+
+    async function onToggleNotif(checked) {
+      _notifEnabled = checked;
+      localStorage.setItem('notif_enabled', checked);
+
+      if (checked) {
+        if (!('Notification' in window)) { updateNotifUI(); return; }
+        if (Notification.permission === 'denied') { updateNotifUI(); return; }
+        if (Notification.permission !== 'granted') {
+          const perm = await Notification.requestPermission();
+          if (perm !== 'granted') {
+            _notifEnabled = false;
+            document.getElementById('notif-toggle').checked = false;
+            localStorage.setItem('notif_enabled', 'false');
+            updateNotifUI();
+            return;
+          }
+        }
+        planifierRappels();
+      } else {
+        annulerRappels();
+      }
+      updateNotifUI();
+    }
+
+    function onAvanceChange(val) {
+      _notifAvance = parseInt(val);
+      localStorage.setItem('notif_avance', val);
+      if (_notifEnabled) { annulerRappels(); planifierRappels(); }
+      updateNotifUI();
+    }
+
+    function annulerRappels() {
+      _reminderTimers.forEach(clearTimeout);
+      _reminderTimers = [];
+    }
+
+    function planifierRappels() {
+      annulerRappels();
+      if (!_notifEnabled) return;
+      if (!('Notification' in window) || Notification.permission !== 'granted') return;
+
+      const now      = Date.now();
+      const todayStr = new Date().toISOString().slice(0,10);
+      // Rappels pour aujourd'hui et les 2 prochains jours
+      const limite   = new Date(now + 2 * 86400000).toISOString().slice(0,10);
+
+      const cibles = rdvs.filter(r =>
+        r.statut === 'confirme' &&
+        r.date >= todayStr && r.date <= limite
+      );
+
+      for (const rdv of cibles) {
+        const rdvTime   = new Date(rdv.date + 'T' + rdv.heure_debut + ':00').getTime();
+        const notifTime = rdvTime - _notifAvance * 60000;
+        const delay     = notifTime - now;
+        if (delay > 0) {
+          const t = setTimeout(() => afficherNotifRDV(rdv), delay);
+          _reminderTimers.push(t);
+        }
+      }
+      updateNotifUI();
+    }
+
+    async function afficherNotifRDV(rdv) {
+      const avanceLabel = _notifAvance < 60
+        ? `${_notifAvance} min`
+        : `${_notifAvance/60}h`;
+      const title   = `⏰ RDV dans ${avanceLabel}`;
+      const options = {
+        body: `${rdv.titre}${rdv.client_nom ? '\n👤 '+rdv.client_nom : ''}${rdv.adresse ? '\n📍 '+rdv.adresse : ''}`,
+        icon: '/static/icon.svg',
+        badge: '/static/icon.svg',
+        tag: 'rdv-' + rdv.id,
+        requireInteraction: true,
+        data: {
+          rdvId: rdv.id,
+          agendaUrl: window.location.href
+        }
+      };
+
+      try {
+        if (_swReg) {
+          await _swReg.showNotification(title, options);
+        } else {
+          new Notification(title, options);
+        }
+      } catch(e) {
+        new Notification(title, { body: options.body, icon: options.icon });
+      }
+
+      // Re-planifier pour les RDVs suivants (au cas où la page tourne)
+      updateNotifUI();
+    }
+
+    // Initialisation rappels après chargement des RDVs
+    async function initRappels() {
+      await initSW();
+      updateNotifUI();
+      if (_notifEnabled && 'Notification' in window && Notification.permission === 'granted') {
+        planifierRappels();
+      }
+    }
+
     // ── Raccourcis clavier ───────────────────────────────────
     document.addEventListener('keydown', e => {
       const modalOpen = document.getElementById('overlay-rdv').classList.contains('open');
@@ -1624,6 +1885,7 @@
 
     // ── Init ─────────────────────────────────────────────────
     charger();
+    initRappels();
   </script>
 </body>
 </html>
