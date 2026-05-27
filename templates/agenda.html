@@ -926,6 +926,26 @@
     </div>
   </div>
 
+  <!-- Modal Proposer créneaux au client -->
+  <div class="overlay" id="overlay-creneaux" onclick="if(event.target===this)fermerCreneaux()">
+    <div class="modal" style="max-width:500px">
+      <h2>📅 Proposer des créneaux</h2>
+      <p style="font-size:12px;color:var(--muted);margin-bottom:16px">
+        Modifiez ou ajoutez des créneaux. Le client recevra un email avec les liens pour choisir.
+      </p>
+      <div id="creneaux-liste" style="display:flex;flex-direction:column;gap:8px;margin-bottom:14px"></div>
+      <button onclick="ajouterCreneau()" style="width:100%;padding:9px;background:rgba(79,110,247,.1);
+        border:1px dashed rgba(79,110,247,.35);border-radius:10px;color:#93b4f0;font-size:13px;
+        font-weight:600;cursor:pointer;font-family:inherit;transition:all .15s">
+        + Ajouter un créneau
+      </button>
+      <div class="modal-btns" style="margin-top:18px">
+        <button class="btn-cancel" onclick="fermerCreneaux()">Annuler</button>
+        <button class="btn-save" onclick="envoyerCreneaux()">📧 Envoyer au client</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Modal Horaires d'ouverture -->
   <div class="overlay" id="overlay-horaires" onclick="if(event.target===this)fermerHoraires()">
     <div class="modal" style="max-width:520px">
@@ -1575,30 +1595,28 @@
     }
 
     // ── Proposer créneaux au client ──────────────────────────
-    async function proposerCreneaux(id) {
+    let _proposerRdvId = null;
+
+    function proposerCreneaux(id) {
       const rdv = rdvs.find(r => r.id === id);
       if (!rdv) return;
+      _proposerRdvId = id;
 
-      // Calculer 3 créneaux libres sur les 7 prochains jours
+      // Calculer 5 créneaux libres automatiquement
       const today = new Date();
-      const todayStr = today.toISOString().slice(0,10);
       const slots = [];
       for (let offset = 1; offset <= 21 && slots.length < 5; offset++) {
         const d = new Date(today);
         d.setDate(today.getDate() + offset);
         const dateStr = d.toISOString().slice(0,10);
-        // Exclure weekends (sam=6, dim=0) sauf si déjà des RDVs ce jour
         if (d.getDay() === 0 || d.getDay() === 6) continue;
-        // Créneaux occupés ce jour (RDVs + EDT non-rdv_client)
         const occupes = [
           ...rdvs.filter(r => r.date === dateStr && r.statut === 'confirme')
             .map(r => ({ debut: heureEnMin(r.heure_debut), fin: heureEnMin(r.heure_fin) })),
           ...getEdtBlocsForDate(dateStr).filter(c => c.type !== 'rdv_client')
             .map(c => ({ debut: heureEnMin(c.debut), fin: heureEnMin(c.fin) }))
         ].sort((a,b) => a.debut - b.debut);
-
-        const duree = 60; // 1h par défaut
-        const DEBUT = 9*60, FIN = 18*60;
+        const duree = 60, DEBUT = 9*60, FIN = 18*60;
         let cursor = DEBUT;
         for (const occ of occupes) {
           if (cursor + duree <= occ.debut) {
@@ -1607,32 +1625,59 @@
           }
           cursor = Math.max(cursor, occ.fin);
         }
-        if (slots.length < 5 && cursor + duree <= FIN) {
+        if (slots.length < 5 && cursor + duree <= FIN)
           slots.push({ date: dateStr, heure_debut: minEnHeure(cursor), heure_fin: minEnHeure(cursor+duree) });
-        }
       }
 
-      if (!slots.length) { toast('⚠️ Aucun créneau libre trouvé sur les 14 prochains jours'); return; }
+      // Remplir le modal avec les créneaux calculés
+      const liste = document.getElementById('creneaux-liste');
+      liste.innerHTML = '';
+      slots.forEach(s => ajouterLigneCreneau(s.date, s.heure_debut, s.heure_fin));
+      if (!slots.length) ajouterLigneCreneau('', '09:00', '10:00');
 
-      // Afficher les créneaux proposés à l'utilisateur pour validation
-      const MOIS_FR = ['janv','févr','mars','avr','mai','juin','juil','août','sept','oct','nov','déc'];
-      const JOURS_FR = ['dim','lun','mar','mer','jeu','ven','sam'];
-      const labels = slots.map(s => {
-        const dd = new Date(s.date+'T12:00:00');
-        return `${JOURS_FR[dd.getDay()]} ${dd.getDate()} ${MOIS_FR[dd.getMonth()]} — ${s.heure_debut} à ${s.heure_fin}`;
+      document.getElementById('overlay-creneaux').classList.add('open');
+    }
+
+    function ajouterCreneau() { ajouterLigneCreneau('', '09:00', '10:00'); }
+
+    function ajouterLigneCreneau(date, debut, fin) {
+      const liste = document.getElementById('creneaux-liste');
+      const today = new Date().toISOString().slice(0,10);
+      const row = document.createElement('div');
+      row.style.cssText = 'display:flex;gap:8px;align-items:center;background:#111d35;border:1px solid #1a2c47;border-radius:10px;padding:8px 12px';
+      row.innerHTML = `
+        <input type="date" value="${date}" min="${today}" style="flex:1.5;background:transparent;border:none;color:#f0f4ff;font-size:13px;outline:none;font-family:inherit">
+        <input type="time" value="${debut}" style="flex:1;background:transparent;border:none;color:#4f6ef7;font-size:13px;font-weight:600;outline:none;font-family:inherit">
+        <span style="color:var(--muted);font-size:12px">→</span>
+        <input type="time" value="${fin}" style="flex:1;background:transparent;border:none;color:#4f6ef7;font-size:13px;font-weight:600;outline:none;font-family:inherit">
+        <button onclick="this.closest('div').remove()" style="background:rgba(239,68,68,.12);border:none;color:#ef4444;border-radius:6px;width:26px;height:26px;cursor:pointer;font-size:14px;font-family:inherit">✕</button>`;
+      liste.appendChild(row);
+    }
+
+    function fermerCreneaux() {
+      document.getElementById('overlay-creneaux').classList.remove('open');
+      _proposerRdvId = null;
+    }
+
+    async function envoyerCreneaux() {
+      if (!_proposerRdvId) return;
+      const rdv = rdvs.find(r => r.id === _proposerRdvId);
+      const rows = document.querySelectorAll('#creneaux-liste > div');
+      const slots = [];
+      rows.forEach(row => {
+        const [dateI, debutI, finI] = row.querySelectorAll('input');
+        if (dateI.value && debutI.value && finI.value)
+          slots.push({ date: dateI.value, heure_debut: debutI.value, heure_fin: finI.value });
       });
-
-      const msg = `Envoyer ces créneaux à ${rdv.client_email} ?\n\n${labels.map((l,i)=>`${i+1}. ${l}`).join('\n')}\n\nLe client recevra un email avec des liens pour choisir.`;
-      if (!confirm(msg)) return;
-
-      const res = await fetch(`/api/rdv/${COMPTE_ID}/${id}/proposer-creneaux`, {
-        method: 'POST',
-        headers: {'Content-Type':'application/json'},
+      if (!slots.length) { toast('⚠️ Ajoutez au moins un créneau'); return; }
+      const res = await fetch(`/api/rdv/${COMPTE_ID}/${_proposerRdvId}/proposer-creneaux`, {
+        method: 'POST', headers: {'Content-Type':'application/json'},
         body: JSON.stringify({ slots })
       });
       const j = await res.json();
       if (j.ok) {
-        toast(`📅 ${j.nb_creneaux} créneau${j.nb_creneaux>1?'x':''} envoyé${j.nb_creneaux>1?'s':''} à ${rdv.client_email}`, 4000);
+        fermerCreneaux();
+        toast(`📅 ${j.nb_creneaux} créneau${j.nb_creneaux>1?'x':''} envoyé${j.nb_creneaux>1?'s':''} à ${rdv?.client_email||''}`, 4000);
       } else {
         toast('⚠️ ' + (j.message || 'Erreur envoi créneaux'));
       }
