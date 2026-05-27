@@ -2800,6 +2800,61 @@ def thread_rappel_rdv():
         _time.sleep(1800)
 
 
+# ── Chat général dashboard ────────────────────────────────────────────────────
+@app.route("/api/chat-dashboard/<compte_id>", methods=["POST"])
+@limiter.limit("20 per hour; 3 per minute", methods=["POST"])
+def chat_dashboard(compte_id):
+    """Chat IA général : répond à des questions sur les emails / RDVs du compte."""
+    if not check_access(compte_id):
+        return jsonify({"ok": False}), 403
+    d = request.json or {}
+    question = _sanitize_chat_input(d.get("question", "").strip())
+    if not question:
+        return jsonify({"ok": False, "message": "Question vide ou refusée"}), 400
+
+    data_c = charger_comptes()
+    c = trouver_compte(data_c, compte_id)
+    if not c:
+        return jsonify({"ok": False}), 404
+
+    api_key = os.environ.get("ANTHROPIC_API_KEY") or data_c.get("api_key", "")
+    if not api_key:
+        return jsonify({"ok": False, "message": "Clé API Anthropic manquante"}), 400
+
+    # Récupérer un résumé des RDVs pour le contexte
+    try:
+        rdvs = db_module.charger_agenda(compte_id)
+        rdv_ctx = ""
+        if rdvs:
+            lignes = []
+            for r in rdvs[:20]:
+                lignes.append(f"- {r.get('date','')} {r.get('heure_debut','')} | {r.get('titre','')} | {r.get('statut','')} | client: {r.get('client_nom','')}")
+            rdv_ctx = "RDVs récents :\n" + "\n".join(lignes)
+    except Exception:
+        rdv_ctx = ""
+
+    nom = c.get("nom", "l'agent")
+    prompt_sys = f"""Tu es l'assistant IA de {nom} sur MailPilot.
+Tu peux répondre à des questions sur ses rendez-vous, ses emails, son activité.
+Réponds en français, de façon concise et utile.
+{rdv_ctx}"""
+
+    try:
+        import anthropic as _ant
+        client = _ant.Anthropic(api_key=api_key)
+        msg = client.messages.create(
+            model="claude-haiku-4-5",
+            max_tokens=512,
+            system=prompt_sys,
+            messages=[{"role": "user", "content": question}]
+        )
+        reponse = msg.content[0].text if msg.content else "Pas de réponse."
+        return jsonify({"ok": True, "reponse": reponse})
+    except Exception as e:
+        logger.error(f"chat_dashboard error: {e}")
+        return jsonify({"ok": False, "message": str(e)}), 500
+
+
 # Démarrage des threads relance + rappel sous Gunicorn (production Railway)
 _relance_thread_started = False
 def _start_relance_thread():

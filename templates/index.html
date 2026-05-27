@@ -368,7 +368,7 @@
         <!-- Navigation rapide -->
         <div class="compte-nav">
           <a class="nav-btn agenda" href="/agenda/{{ c.id }}">📅 Agenda</a>
-          <a class="nav-btn edt"    href="/edt/{{ c.id }}">🗓 Emploi du temps</a>
+          <a class="nav-btn edt"    href="/emploi-du-temps/{{ c.id }}">🗓 Emploi du temps</a>
           <button class="nav-btn chat" onclick="ouvrirChat('{{ c.id }}')">💬 Chat IA</button>
         </div>
 
@@ -656,10 +656,10 @@
       ajouterMsgChat('user', question);
       const loadDiv = ajouterMsgChat('ia', '', true);
       try {
-        const res = await fetch(`/api/chat-email`, {
+        const res = await fetch(`/api/chat-dashboard/${chatCompteId}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ compte_id: chatCompteId, question })
+          body: JSON.stringify({ question })
         });
         const json = await res.json();
         loadDiv.textContent = json.reponse || json.error || 'Erreur';
