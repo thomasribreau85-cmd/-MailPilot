@@ -503,6 +503,99 @@
       .stat-val { font-size: 22px; }
     }
 
+    /* ── Vue aujourd'hui ── */
+    .today-header {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 20px; flex-wrap: wrap; gap: 12px;
+    }
+    .today-date-big {
+      display: flex; align-items: baseline; gap: 10px;
+    }
+    .today-day-num {
+      font-size: 52px; font-weight: 900; line-height: 1;
+      background: linear-gradient(135deg, var(--blue), var(--blue2));
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    }
+    .today-day-info { display: flex; flex-direction: column; }
+    .today-day-name { font-size: 18px; font-weight: 700; }
+    .today-month    { font-size: 13px; color: var(--muted); }
+    .today-next-badge {
+      background: rgba(79,110,247,.12); border: 1px solid rgba(79,110,247,.25);
+      border-radius: 12px; padding: 10px 16px; font-size: 13px;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .today-next-label { color: var(--muted); font-size: 11px; font-weight: 600; margin-bottom: 2px; text-transform: uppercase; }
+    .today-next-val   { font-weight: 700; color: var(--text); }
+
+    .today-timeline {
+      display: flex; flex-direction: column; gap: 10px; margin-bottom: 32px;
+    }
+    .today-rdv-card {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 14px; padding: 16px 20px;
+      display: flex; align-items: center; gap: 16px; cursor: pointer;
+      transition: all .18s; border-left-width: 3px; position: relative;
+    }
+    .today-rdv-card:hover { transform: translateX(4px); border-color: rgba(79,110,247,.35); }
+    .today-rdv-card.statut-confirme { border-left-color: var(--green); }
+    .today-rdv-card.statut-attente  { border-left-color: var(--yellow); }
+    .today-rdv-card.statut-conflit  { border-left-color: var(--red); }
+    .today-rdv-card.past { opacity: .45; }
+    .today-rdv-card.en-cours {
+      border-color: rgba(79,110,247,.5);
+      box-shadow: 0 0 0 1px rgba(79,110,247,.2), 0 4px 20px rgba(79,110,247,.1);
+    }
+    .en-cours-dot {
+      position: absolute; top: 12px; right: 14px;
+      width: 8px; height: 8px; border-radius: 50%; background: var(--blue);
+      animation: pulse 1.5s ease-in-out infinite;
+    }
+    @keyframes pulse {
+      0%,100% { opacity: 1; transform: scale(1); }
+      50%      { opacity: .5; transform: scale(1.4); }
+    }
+    .today-time-col {
+      min-width: 70px; text-align: center;
+    }
+    .today-time-h  { font-size: 20px; font-weight: 800; color: var(--blue); line-height: 1; }
+    .today-time-fin { font-size: 11px; color: var(--muted); margin-top: 2px; }
+    .today-rdv-info { flex: 1; min-width: 0; }
+    .today-rdv-titre { font-size: 15px; font-weight: 700; }
+    .today-rdv-meta  { font-size: 12px; color: var(--muted); margin-top: 4px; display: flex; gap: 10px; flex-wrap: wrap; }
+    .today-rdv-actions { display: flex; gap: 8px; }
+
+    .today-section-title {
+      font-size: 12px; font-weight: 700; color: var(--muted);
+      text-transform: uppercase; letter-spacing: .06em;
+      margin: 24px 0 12px; display: flex; align-items: center; gap: 8px;
+    }
+    .today-section-title::after {
+      content: ''; flex: 1; height: 1px; background: var(--border);
+    }
+    .today-empty {
+      text-align: center; padding: 36px 20px;
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 14px; color: var(--muted);
+    }
+    .today-empty .big { font-size: 36px; margin-bottom: 10px; }
+    .today-empty p { font-size: 13px; }
+
+    .upcoming-card {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 12px; padding: 12px 16px; margin-bottom: 8px;
+      display: flex; align-items: center; gap: 14px; cursor: pointer;
+      transition: all .15s;
+    }
+    .upcoming-card:hover { border-color: rgba(79,110,247,.3); transform: translateX(3px); }
+    .upcoming-date {
+      text-align: center; min-width: 44px;
+    }
+    .upcoming-day  { font-size: 20px; font-weight: 800; color: var(--blue); line-height: 1; }
+    .upcoming-mon  { font-size: 10px; color: var(--muted); text-transform: uppercase; }
+    .upcoming-info { flex: 1; min-width: 0; }
+    .upcoming-titre { font-size: 13px; font-weight: 600; }
+    .upcoming-meta  { font-size: 11px; color: var(--muted); margin-top: 2px; }
+
     /* Kbd hint */
     .kbd-hint {
       font-size: 11px; color: var(--muted); margin-bottom: 12px; text-align: right;
@@ -554,9 +647,9 @@
   <div class="toolbar">
     <h2>🗓️ Agenda</h2>
     <div class="toggle-view">
-      <button class="toggle-btn active" id="btn-liste"   onclick="setVue('liste')">☰ Liste</button>
-      <button class="toggle-btn"        id="btn-semaine" onclick="setVue('semaine')">⊞ Semaine</button>
-      <button class="toggle-btn"        id="btn-mois"    onclick="setVue('mois')">📅 Mois</button>
+      <button class="toggle-btn active" id="btn-aujourd-hui" onclick="setVue('aujourd-hui')">📍 Aujourd'hui</button>
+      <button class="toggle-btn"        id="btn-semaine"    onclick="setVue('semaine')">⊞ Semaine</button>
+      <button class="toggle-btn"        id="btn-mois"       onclick="setVue('mois')">📅 Mois</button>
     </div>
     <button class="btn-icon" onclick="ouvrirHoraires()">⚙️ Horaires</button>
     <button class="btn-icon" onclick="document.getElementById('import-ics').click()">📥 .ics</button>
@@ -635,14 +728,9 @@
     </div>
   </div>
 
-  <!-- Vue liste -->
-  <div id="vue-liste">
-    <div id="liste-content">
-      <div class="empty-state">
-        <div class="big">🗓️</div>
-        <p>Aucun rendez-vous. Clique sur "+ Nouveau RDV" pour commencer.</p>
-      </div>
-    </div>
+  <!-- Vue aujourd'hui -->
+  <div id="vue-aujourd-hui">
+    <div id="today-content"></div>
   </div>
 
   <!-- Vue semaine -->
@@ -752,7 +840,7 @@
   <script>
     const COMPTE_ID = "{{ compte.id }}";
     let rdvs = [];
-    let vue   = 'liste';
+    let vue   = 'aujourd-hui';
     let semaineOffset = 0;
     let moisOffset    = 0;
     let editId = null;
@@ -806,9 +894,145 @@
     function rendreTout() {
       rendreStats();
       rendreAlertes();
-      if (vue === 'liste')    rendreListe();
+      if (vue === 'aujourd-hui') rendreAujourdhui();
       else if (vue === 'semaine') rendreSemaine();
       else rendreMois();
+    }
+
+    // ── Vue aujourd'hui ──────────────────────────────────────
+    function rendreAujourdhui() {
+      const now     = new Date();
+      const todayStr = now.toISOString().slice(0,10);
+      const hhmm    = now.getHours()*60 + now.getMinutes();
+
+      const JOURS_FR = ['Dimanche','Lundi','Mardi','Mercredi','Jeudi','Vendredi','Samedi'];
+      const nomJour  = JOURS_FR[now.getDay()];
+      const numJour  = now.getDate();
+      const nomMois  = MOIS_LONG[now.getMonth()];
+      const annee    = now.getFullYear();
+
+      const source  = rdvsFiltres();
+      const todayRdvs = source
+        .filter(r => r.date === todayStr)
+        .sort((a,b) => a.heure_debut.localeCompare(b.heure_debut));
+
+      // Prochain RDV du jour
+      const prochain = todayRdvs.find(r => {
+        const [h,m] = r.heure_debut.split(':').map(Number);
+        return h*60+m > hhmm;
+      });
+
+      // En cours
+      const enCours = todayRdvs.filter(r => {
+        const [hd, md] = r.heure_debut.split(':').map(Number);
+        const [hf, mf] = r.heure_fin.split(':').map(Number);
+        return hd*60+md <= hhmm && hf*60+mf > hhmm;
+      });
+
+      // Prochains RDVs (pas aujourd'hui, 5 premiers à venir)
+      const prochains = source
+        .filter(r => r.date > todayStr && (r.statut === 'confirme' || r.statut === 'attente'))
+        .sort((a,b) => (a.date+a.heure_debut).localeCompare(b.date+b.heure_debut))
+        .slice(0, 5);
+
+      let nextBadge = '';
+      if (enCours.length) {
+        nextBadge = `<div class="today-next-badge">
+          <span style="font-size:20px">🔵</span>
+          <div>
+            <div class="today-next-label">En cours</div>
+            <div class="today-next-val">${enCours[0].titre} · jusqu'à ${enCours[0].heure_fin}</div>
+          </div>
+        </div>`;
+      } else if (prochain) {
+        const [ph, pm] = prochain.heure_debut.split(':').map(Number);
+        const diffMin  = ph*60+pm - hhmm;
+        const diffTxt  = diffMin < 60 ? `dans ${diffMin} min` : `à ${prochain.heure_debut}`;
+        nextBadge = `<div class="today-next-badge">
+          <span style="font-size:20px">⏰</span>
+          <div>
+            <div class="today-next-label">Prochain</div>
+            <div class="today-next-val">${prochain.titre} — ${diffTxt}</div>
+          </div>
+        </div>`;
+      } else if (!todayRdvs.length) {
+        nextBadge = `<div class="today-next-badge" style="opacity:.6">
+          <span style="font-size:20px">✨</span>
+          <div><div class="today-next-label">Journée libre</div></div>
+        </div>`;
+      }
+
+      const todayCards = todayRdvs.map(r => {
+        const [hd, md] = r.heure_debut.split(':').map(Number);
+        const [hf, mf] = r.heure_fin.split(':').map(Number);
+        const isEnCours = hd*60+md <= hhmm && hf*60+mf > hhmm;
+        const isPast    = hf*60+mf <= hhmm;
+        const confirmBtn = r.statut === 'attente'
+          ? `<button class="rdv-btn confirm" onclick="event.stopPropagation();confirmer('${r.id}')">✓</button>` : '';
+        return `
+          <div class="today-rdv-card statut-${r.statut} ${isPast?'past':''} ${isEnCours?'en-cours':''}"
+               onclick="ouvrirEdit('${r.id}')">
+            ${isEnCours ? '<div class="en-cours-dot"></div>' : ''}
+            <div class="today-time-col">
+              <div class="today-time-h">${r.heure_debut}</div>
+              <div class="today-time-fin">→ ${r.heure_fin}</div>
+            </div>
+            <div style="width:1px;background:var(--border);align-self:stretch"></div>
+            <div class="today-rdv-info">
+              <div class="today-rdv-titre">${r.titre}</div>
+              <div class="today-rdv-meta">
+                ${r.client_nom ? `<span>👤 ${r.client_nom}</span>` : ''}
+                ${r.adresse ? `<span>📍 ${r.adresse}</span>` : ''}
+                <span class="rdv-type-badge type-badge-${r.type}" style="font-size:10px;padding:2px 8px">${TYPE_LABELS[r.type]||r.type}</span>
+              </div>
+            </div>
+            <div class="today-rdv-actions" onclick="event.stopPropagation()">
+              ${confirmBtn}
+              <button class="rdv-btn" onclick="ouvrirEdit('${r.id}')">✏️</button>
+              <button class="rdv-btn danger" onclick="supprimerRdv('${r.id}')">🗑</button>
+            </div>
+          </div>`;
+      }).join('');
+
+      const upcomingCards = prochains.map(r => {
+        const d = new Date(r.date+'T12:00:00');
+        return `<div class="upcoming-card" onclick="ouvrirEdit('${r.id}')">
+          <div class="upcoming-date">
+            <div class="upcoming-day">${d.getDate()}</div>
+            <div class="upcoming-mon">${MOIS_COURT[d.getMonth()]}</div>
+          </div>
+          <div style="width:1px;background:var(--border);align-self:stretch"></div>
+          <div class="upcoming-info">
+            <div class="upcoming-titre">${r.titre}</div>
+            <div class="upcoming-meta">${r.heure_debut} → ${r.heure_fin}${r.client_nom?' · 👤 '+r.client_nom:''}</div>
+          </div>
+          <span class="rdv-type-badge type-badge-${r.type}" style="font-size:10px;padding:2px 8px">${TYPE_LABELS[r.type]||r.type}</span>
+        </div>`;
+      }).join('');
+
+      document.getElementById('today-content').innerHTML = `
+        <div class="today-header">
+          <div class="today-date-big">
+            <div class="today-day-num">${numJour}</div>
+            <div class="today-day-info">
+              <div class="today-day-name">${nomJour}</div>
+              <div class="today-month">${nomMois} ${annee}</div>
+            </div>
+          </div>
+          ${nextBadge}
+        </div>
+
+        <div class="today-section-title">Planning du jour (${todayRdvs.length})</div>
+        ${todayRdvs.length
+          ? `<div class="today-timeline">${todayCards}</div>`
+          : `<div class="today-empty"><div class="big">☀️</div><p>Aucun RDV aujourd'hui.<br>Clique sur <strong>+ Nouveau RDV</strong> pour en ajouter un.</p></div>`
+        }
+
+        ${prochains.length ? `
+          <div class="today-section-title">Prochains RDVs</div>
+          ${upcomingCards}
+        ` : ''}
+      `;
     }
 
     function rendreStats() {
@@ -880,66 +1104,6 @@
         </div>
       </div>
       ${type === 'conflit' ? `<div class="creneaux-box" id="alt-${r.id}" style="display:none"></div>` : ''}`;
-    }
-
-    // ── Vue liste ────────────────────────────────────────────
-    function rendreListe() {
-      const today = new Date().toISOString().slice(0,10);
-      const source = rdvsFiltres();
-      const tries = [...source]
-        .filter(r => r.statut === 'confirme' || r.statut === 'attente')
-        .sort((a,b) => (a.date+a.heure_debut).localeCompare(b.date+b.heure_debut));
-
-      const passes  = tries.filter(r => r.date < today);
-      const avenir  = tries.filter(r => r.date >= today);
-
-      if (!tries.length) {
-        document.getElementById('liste-content').innerHTML = searchQ || filtreType !== 'tous'
-          ? `<div class="empty-state"><div class="big">🔍</div><p>Aucun résultat pour cette recherche.</p></div>`
-          : `<div class="empty-state"><div class="big">🗓️</div><p>Aucun rendez-vous.<br>Clique sur "+ Nouveau RDV" pour commencer.</p></div>`;
-        return;
-      }
-
-      let html = '';
-      if (avenir.length) {
-        html += `<div class="liste-section-title">📅 À venir (${avenir.length})</div>`;
-        html += avenir.map(rdvCard).join('');
-      }
-      if (passes.length) {
-        html += `<div class="liste-section-title" style="margin-top:28px">🕐 Passés (${passes.length})</div>`;
-        html += passes.map(r => rdvCard(r, true)).join('');
-      }
-
-      document.getElementById('liste-content').innerHTML = html;
-    }
-
-    function rdvCard(r, passe=false) {
-      const d   = new Date(r.date + 'T12:00:00');
-      const day = d.getDate();
-      const mon = MOIS_COURT[d.getMonth()];
-      const typeClass = `type-badge-${r.type}`;
-      const statutClass = `statut-${r.statut}`;
-      const confirmBtn = r.statut === 'attente'
-        ? `<button class="rdv-btn confirm" onclick="event.stopPropagation();confirmer('${r.id}')">✓</button>` : '';
-      return `
-        <div class="rdv-card ${statutClass}" onclick="ouvrirEdit('${r.id}')" style="${passe?'opacity:.55':''}">
-          <div class="rdv-date-col">
-            <div class="rdv-day">${day}</div>
-            <div class="rdv-mon">${mon}</div>
-          </div>
-          <div class="rdv-divider"></div>
-          <div class="rdv-heure">${r.heure_debut} <span>→ ${r.heure_fin}</span></div>
-          <div class="rdv-info">
-            <div class="rdv-titre">${r.titre}</div>
-            <div class="rdv-meta">${r.client_nom ? '👤 '+r.client_nom+' · ' : ''}${r.adresse || 'Pas de lieu'}</div>
-          </div>
-          <div class="rdv-type-badge ${typeClass}">${TYPE_LABELS[r.type]||r.type}</div>
-          <div class="rdv-actions" onclick="event.stopPropagation()">
-            ${confirmBtn}
-            <button class="rdv-btn" onclick="ouvrirEdit('${r.id}')">✏️</button>
-            <button class="rdv-btn danger" onclick="supprimerRdv('${r.id}')">🗑</button>
-          </div>
-        </div>`;
     }
 
     // ── Vue semaine ──────────────────────────────────────────
@@ -1074,16 +1238,17 @@
       semaineOffset = 0;
       moisOffset    = 0;
       if (vue === 'semaine') rendreSemaine();
-      else rendreMois();
+      else if (vue === 'mois') rendreMois();
+      else rendreAujourdhui();
     }
 
     // ── Toggle vue ───────────────────────────────────────────
     function setVue(v) {
       vue = v;
-      document.getElementById('vue-liste').style.display    = v==='liste'    ? 'block' : 'none';
-      document.getElementById('vue-semaine').style.display  = v==='semaine'  ? 'block' : 'none';
-      document.getElementById('vue-mois').style.display     = v==='mois'     ? 'block' : 'none';
-      ['liste','semaine','mois'].forEach(x =>
+      document.getElementById('vue-aujourd-hui').style.display = v==='aujourd-hui' ? 'block' : 'none';
+      document.getElementById('vue-semaine').style.display     = v==='semaine'     ? 'block' : 'none';
+      document.getElementById('vue-mois').style.display        = v==='mois'        ? 'block' : 'none';
+      ['aujourd-hui','semaine','mois'].forEach(x =>
         document.getElementById('btn-'+x).classList.toggle('active', x===v)
       );
       rendreTout();
@@ -1453,7 +1618,7 @@
       }
       // N = Nouveau RDV (seulement si pas en train de taper)
       if (!modalOpen && e.key === 'n' && !['INPUT','TEXTAREA','SELECT'].includes(document.activeElement.tagName)) {
-        ouvrirModal();
+        ouvrirModal(new Date().toISOString().slice(0,10));
       }
     });
 
