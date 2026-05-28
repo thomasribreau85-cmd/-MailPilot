@@ -440,6 +440,13 @@ def set_security_headers(resp):
 def trop_de_requetes(e):
     return jsonify({"ok": False, "message": "Trop de tentatives. Réessayez dans quelques minutes."}), 429
 
+@app.errorhandler(404)
+def page_not_found(e):
+    # Les routes API retournent du JSON, les pages HTML retournent la 404 stylisée
+    if request.path.startswith("/api/"):
+        return jsonify({"ok": False, "message": "Route introuvable"}), 404
+    return render_template("404.html"), 404
+
 # ── Routes ────────────────────────────────────────────────────
 
 @app.route("/login", methods=["GET", "POST"])

@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="icon" type="image/svg+xml" href="/static/icon.svg" />
+  <meta name="theme-color" content="#4f6ef7" />
+  <title>Page introuvable — MailPilot</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: #060b18; color: #f0f4ff;
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Inter", sans-serif;
+      min-height: 100vh; display: flex; align-items: center; justify-content: center;
+      padding: 24px;
+      background-image:
+        radial-gradient(ellipse 60% 50% at 30% 20%, rgba(79,110,247,.12) 0%, transparent 70%),
+        radial-gradient(ellipse 50% 40% at 75% 80%, rgba(124,79,248,.09) 0%, transparent 70%);
+    }
+    .container { text-align: center; max-width: 480px; }
+    .logo {
+      width: 72px; height: 72px; border-radius: 20px;
+      background: linear-gradient(135deg, #4f6ef7, #7c4ff8);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 36px; margin: 0 auto 32px;
+      box-shadow: 0 8px 32px rgba(79,110,247,.4);
+    }
+    .code {
+      font-size: 96px; font-weight: 800; line-height: 1;
+      background: linear-gradient(135deg, #4f6ef7, #7c4ff8);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      letter-spacing: -.04em; margin-bottom: 16px;
+    }
+    h1 { font-size: 24px; font-weight: 700; margin-bottom: 12px; }
+    p { font-size: 15px; color: #5a7090; line-height: 1.6; margin-bottom: 36px; }
+    .btns { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+    .btn-primary {
+      background: linear-gradient(135deg, #4f6ef7, #7c4ff8);
+      color: #fff; text-decoration: none; border-radius: 10px;
+      padding: 12px 24px; font-size: 14px; font-weight: 700;
+      box-shadow: 0 4px 16px rgba(79,110,247,.35);
+      transition: opacity .15s;
+    }
+    .btn-primary:hover { opacity: .88; }
+    .btn-secondary {
+      background: rgba(255,255,255,.05); border: 1px solid #1a2c47;
+      color: #f0f4ff; text-decoration: none; border-radius: 10px;
+      padding: 12px 24px; font-size: 14px; font-weight: 600;
+      transition: .15s;
+    }
+    .btn-secondary:hover { border-color: #5a7090; background: rgba(255,255,255,.08); }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="logo">✉️</div>
+    <div class="code">404</div>
+    <h1>Page introuvable</h1>
+    <p>Cette page n'existe pas ou a été déplacée.<br>Retournez à l'accueil pour continuer.</p>
+    <div class="btns">
+      <a class="btn-primary" href="/">← Retour à l'accueil</a>
+      <a class="btn-secondary" href="/dashboard">Dashboard</a>
+    </div>
+  </div>
+</body>
+</html>
