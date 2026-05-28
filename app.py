@@ -626,7 +626,24 @@ def home():
         return redirect("/admin-dashboard")
     if session.get("user_id"):
         return redirect("/dashboard")
-    return redirect("/login")
+    return render_template("landing.html")
+
+
+@app.route("/api/beta-inscription", methods=["POST"])
+def beta_inscription():
+    """Enregistre les demandes d'accès bêta."""
+    d = request.json or {}
+    email = (d.get("email") or "").strip().lower()
+    if not email or "@" not in email:
+        return jsonify({"ok": False, "message": "Email invalide"}), 400
+    beta_file = os.path.join(os.path.dirname(__file__), "beta_inscrits.txt")
+    try:
+        with open(beta_file, "a", encoding="utf-8") as f:
+            from datetime import datetime as _dt
+            f.write(f"{_dt.now().strftime('%Y-%m-%d %H:%M')} | {email}\n")
+    except Exception as e:
+        logger.warning(f"beta_inscription write error: {e}")
+    return jsonify({"ok": True})
 
 
 @app.route("/privacy")

@@ -1,0 +1,550 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="manifest" href="/static/manifest.json" />
+  <link rel="icon" type="image/svg+xml" href="/static/icon.svg" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="theme-color" content="#4f6ef7" />
+  <title>MailPilot — Votre assistant IA pour les emails professionnels</title>
+  <meta name="description" content="MailPilot détecte automatiquement les demandes de rendez-vous dans vos emails et les ajoute à votre agenda. Compatible Gmail, Outlook et IMAP." />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #060b18; --card: #0d1526; --card2: #111d35; --border: #1a2c47;
+      --text: #f0f4ff; --muted: #5a7090; --blue: #4f6ef7; --blue2: #7c4ff8;
+      --green: #22c55e; --red: #ef4444; --yellow: #f59e0b;
+    }
+    html { scroll-behavior: smooth; }
+    body {
+      background: var(--bg); color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Inter", sans-serif;
+      min-height: 100vh; overflow-x: hidden;
+    }
+
+    /* ── NAV ── */
+    nav {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+      background: rgba(6,11,24,.85); backdrop-filter: blur(20px);
+      border-bottom: 1px solid var(--border);
+      padding: 0 24px;
+    }
+    .nav-inner {
+      max-width: 1100px; margin: 0 auto;
+      display: flex; align-items: center; gap: 12px; height: 62px;
+    }
+    .nav-logo { display: flex; align-items: center; gap: 10px; text-decoration: none; flex: 1; }
+    .nav-logo-icon {
+      width: 36px; height: 36px; border-radius: 10px;
+      background: linear-gradient(135deg, var(--blue), var(--blue2));
+      display: flex; align-items: center; justify-content: center; font-size: 18px;
+      box-shadow: 0 2px 14px rgba(79,110,247,.4);
+    }
+    .nav-logo-text { font-size: 18px; font-weight: 700; color: var(--text); }
+    .nav-links { display: flex; gap: 4px; align-items: center; }
+    .nav-link { color: var(--muted); text-decoration: none; font-size: 14px; padding: 6px 12px; border-radius: 8px; transition: .15s; }
+    .nav-link:hover { color: var(--text); background: rgba(255,255,255,.05); }
+    .nav-cta {
+      background: linear-gradient(135deg, var(--blue), var(--blue2));
+      color: #fff; text-decoration: none; border-radius: 9px;
+      padding: 8px 18px; font-size: 14px; font-weight: 600;
+      box-shadow: 0 2px 14px rgba(79,110,247,.35);
+      transition: opacity .15s; white-space: nowrap;
+    }
+    .nav-cta:hover { opacity: .88; }
+    .nav-login { color: var(--muted); text-decoration: none; font-size: 14px; padding: 8px 14px; border: 1px solid var(--border); border-radius: 9px; transition: .15s; white-space: nowrap; }
+    .nav-login:hover { color: var(--text); border-color: var(--muted); }
+
+    /* ── HERO ── */
+    .hero {
+      padding: 160px 24px 100px;
+      text-align: center;
+      position: relative; overflow: hidden;
+    }
+    .hero::before {
+      content: '';
+      position: absolute; inset: 0; pointer-events: none;
+      background:
+        radial-gradient(ellipse 80% 60% at 50% -10%, rgba(79,110,247,.22) 0%, transparent 70%),
+        radial-gradient(ellipse 50% 40% at 80% 80%, rgba(124,79,248,.12) 0%, transparent 70%);
+    }
+    .hero-badge {
+      display: inline-flex; align-items: center; gap: 7px;
+      background: rgba(79,110,247,.12); border: 1px solid rgba(79,110,247,.25);
+      color: #a5b4fc; border-radius: 20px; padding: 6px 14px;
+      font-size: 13px; font-weight: 500; margin-bottom: 28px;
+    }
+    .hero-badge .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--green); animation: pulse 1.8s infinite; }
+    @keyframes pulse { 0%{box-shadow:0 0 0 0 rgba(34,197,94,.6)} 70%{box-shadow:0 0 0 8px rgba(34,197,94,0)} 100%{box-shadow:0 0 0 0 rgba(34,197,94,0)} }
+    .hero h1 {
+      font-size: clamp(36px, 6vw, 68px); font-weight: 800;
+      line-height: 1.1; letter-spacing: -.02em;
+      margin-bottom: 22px; max-width: 820px; margin-left: auto; margin-right: auto;
+    }
+    .hero h1 .gradient {
+      background: linear-gradient(135deg, #a5b4fc, var(--blue2), #818cf8);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .hero p {
+      font-size: clamp(16px, 2vw, 20px); color: var(--muted);
+      max-width: 600px; margin: 0 auto 40px; line-height: 1.6;
+    }
+    .hero-btns { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; margin-bottom: 60px; }
+    .btn-hero-primary {
+      display: flex; align-items: center; gap: 8px;
+      background: linear-gradient(135deg, var(--blue), var(--blue2));
+      color: #fff; text-decoration: none; border-radius: 12px;
+      padding: 14px 28px; font-size: 16px; font-weight: 700;
+      box-shadow: 0 4px 24px rgba(79,110,247,.45);
+      transition: opacity .15s, transform .15s;
+    }
+    .btn-hero-primary:hover { opacity: .9; transform: translateY(-1px); }
+    .btn-hero-secondary {
+      display: flex; align-items: center; gap: 8px;
+      background: rgba(255,255,255,.05); border: 1px solid var(--border);
+      color: var(--text); text-decoration: none; border-radius: 12px;
+      padding: 14px 28px; font-size: 16px; font-weight: 600;
+      transition: .15s;
+    }
+    .btn-hero-secondary:hover { background: rgba(255,255,255,.09); border-color: var(--muted); }
+
+    /* HERO MOCKUP */
+    .hero-mockup {
+      max-width: 860px; margin: 0 auto;
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 20px; overflow: hidden;
+      box-shadow: 0 40px 120px rgba(0,0,0,.6), 0 0 0 1px rgba(79,110,247,.1);
+    }
+    .mockup-bar {
+      background: var(--card2); border-bottom: 1px solid var(--border);
+      padding: 12px 18px; display: flex; align-items: center; gap: 10px;
+    }
+    .mockup-dots { display: flex; gap: 6px; }
+    .mockup-dots span { width: 11px; height: 11px; border-radius: 50%; }
+    .mockup-dots span:nth-child(1) { background: #ef4444; }
+    .mockup-dots span:nth-child(2) { background: #f59e0b; }
+    .mockup-dots span:nth-child(3) { background: #22c55e; }
+    .mockup-url { flex: 1; background: rgba(255,255,255,.06); border-radius: 6px; padding: 5px 12px; font-size: 12px; color: var(--muted); text-align: center; }
+    .mockup-body { padding: 24px; display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .mock-card {
+      background: var(--card2); border: 1px solid var(--border);
+      border-radius: 12px; padding: 16px;
+    }
+    .mock-card-title { font-size: 12px; color: var(--muted); margin-bottom: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: .5px; }
+    .mock-email { display: flex; gap: 10px; align-items: flex-start; margin-bottom: 10px; padding-bottom: 10px; border-bottom: 1px solid var(--border); }
+    .mock-email:last-child { margin-bottom: 0; padding-bottom: 0; border-bottom: none; }
+    .mock-avatar { width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; flex-shrink: 0; }
+    .mock-email-text { flex: 1; min-width: 0; }
+    .mock-email-name { font-size: 12px; font-weight: 600; }
+    .mock-email-preview { font-size: 11px; color: var(--muted); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .mock-badge { font-size: 10px; border-radius: 5px; padding: 2px 7px; font-weight: 600; flex-shrink: 0; margin-top: 2px; }
+    .mock-badge.rdv { background: rgba(79,110,247,.2); color: #a5b4fc; border: 1px solid rgba(79,110,247,.3); }
+    .mock-badge.ok  { background: rgba(34,197,94,.2);  color: var(--green); border: 1px solid rgba(34,197,94,.3); }
+    .mock-badge.wait{ background: rgba(245,158,11,.2); color: var(--yellow); border: 1px solid rgba(245,158,11,.3); }
+    .mock-rdv-item { display: flex; gap: 10px; align-items: center; margin-bottom: 8px; }
+    .mock-rdv-item:last-child { margin-bottom: 0; }
+    .mock-rdv-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+    .mock-rdv-info { flex: 1; }
+    .mock-rdv-name { font-size: 12px; font-weight: 600; }
+    .mock-rdv-date { font-size: 11px; color: var(--muted); }
+    .mock-ai-tag {
+      display: inline-flex; align-items: center; gap: 5px;
+      background: rgba(79,110,247,.12); border: 1px solid rgba(79,110,247,.2);
+      border-radius: 6px; padding: 3px 9px; font-size: 11px; color: #a5b4fc;
+      margin-bottom: 8px;
+    }
+
+    /* ── LOGOS / COMPAT ── */
+    .compat-section { padding: 40px 24px; text-align: center; }
+    .compat-label { font-size: 13px; color: var(--muted); margin-bottom: 20px; }
+    .compat-logos { display: flex; justify-content: center; gap: 32px; flex-wrap: wrap; align-items: center; }
+    .compat-logo {
+      display: flex; align-items: center; gap: 8px;
+      color: var(--muted); font-size: 14px; font-weight: 600;
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 10px; padding: 10px 18px;
+    }
+    .compat-logo span { font-size: 20px; }
+
+    /* ── FEATURES ── */
+    .features { padding: 80px 24px; }
+    .section-label {
+      text-align: center; font-size: 13px; font-weight: 600;
+      color: var(--blue); text-transform: uppercase; letter-spacing: 1px;
+      margin-bottom: 12px;
+    }
+    .section-title {
+      text-align: center; font-size: clamp(28px, 4vw, 42px);
+      font-weight: 800; letter-spacing: -.02em; margin-bottom: 14px;
+    }
+    .section-sub {
+      text-align: center; font-size: 17px; color: var(--muted);
+      max-width: 520px; margin: 0 auto 56px; line-height: 1.6;
+    }
+    .features-grid {
+      max-width: 1100px; margin: 0 auto;
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 20px;
+    }
+    .feature-card {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 16px; padding: 28px;
+      transition: border-color .2s, transform .2s;
+    }
+    .feature-card:hover { border-color: rgba(79,110,247,.35); transform: translateY(-3px); }
+    .feature-icon {
+      width: 48px; height: 48px; border-radius: 13px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 24px; margin-bottom: 18px;
+    }
+    .feature-card h3 { font-size: 17px; font-weight: 700; margin-bottom: 8px; }
+    .feature-card p { font-size: 14px; color: var(--muted); line-height: 1.6; }
+
+    /* ── HOW IT WORKS ── */
+    .how { padding: 80px 24px; background: rgba(13,21,38,.5); }
+    .steps {
+      max-width: 860px; margin: 0 auto;
+      display: flex; flex-direction: column; gap: 0;
+    }
+    .step {
+      display: flex; gap: 28px; align-items: flex-start;
+      padding: 28px 0; border-bottom: 1px solid var(--border);
+    }
+    .step:last-child { border-bottom: none; }
+    .step-num {
+      width: 44px; height: 44px; border-radius: 50%; flex-shrink: 0;
+      background: linear-gradient(135deg, var(--blue), var(--blue2));
+      display: flex; align-items: center; justify-content: center;
+      font-size: 18px; font-weight: 800; color: #fff;
+      box-shadow: 0 4px 16px rgba(79,110,247,.4);
+    }
+    .step-content h3 { font-size: 18px; font-weight: 700; margin-bottom: 6px; }
+    .step-content p { font-size: 15px; color: var(--muted); line-height: 1.6; }
+
+    /* ── CTA ── */
+    .cta-section {
+      padding: 100px 24px; text-align: center;
+      position: relative; overflow: hidden;
+    }
+    .cta-section::before {
+      content: '';
+      position: absolute; inset: 0; pointer-events: none;
+      background: radial-gradient(ellipse 70% 60% at 50% 50%, rgba(79,110,247,.12) 0%, transparent 70%);
+    }
+    .cta-box {
+      max-width: 620px; margin: 0 auto;
+      background: var(--card); border: 1px solid rgba(79,110,247,.3);
+      border-radius: 24px; padding: 56px 40px;
+      box-shadow: 0 0 80px rgba(79,110,247,.12);
+    }
+    .cta-box h2 { font-size: clamp(26px, 4vw, 38px); font-weight: 800; margin-bottom: 14px; letter-spacing: -.02em; }
+    .cta-box p { font-size: 16px; color: var(--muted); margin-bottom: 32px; line-height: 1.6; }
+    .cta-form { display: flex; gap: 10px; max-width: 420px; margin: 0 auto; flex-wrap: wrap; }
+    .cta-input {
+      flex: 1; min-width: 200px;
+      background: var(--card2); border: 1px solid var(--border);
+      border-radius: 10px; color: var(--text); font-size: 15px;
+      padding: 12px 16px; outline: none; font-family: inherit;
+    }
+    .cta-input:focus { border-color: var(--blue); }
+    .cta-submit {
+      background: linear-gradient(135deg, var(--blue), var(--blue2));
+      border: none; color: #fff; border-radius: 10px;
+      padding: 12px 22px; font-size: 15px; font-weight: 700;
+      cursor: pointer; font-family: inherit; white-space: nowrap;
+      box-shadow: 0 4px 16px rgba(79,110,247,.35);
+    }
+    .cta-submit:hover { opacity: .9; }
+    .cta-note { font-size: 12px; color: var(--muted); margin-top: 14px; }
+
+    /* ── FOOTER ── */
+    footer {
+      border-top: 1px solid var(--border);
+      padding: 32px 24px; text-align: center;
+    }
+    .footer-inner {
+      max-width: 1100px; margin: 0 auto;
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 16px; flex-wrap: wrap;
+    }
+    .footer-logo { display: flex; align-items: center; gap: 8px; font-size: 15px; font-weight: 700; }
+    .footer-links { display: flex; gap: 20px; }
+    .footer-links a { color: var(--muted); font-size: 13px; text-decoration: none; }
+    .footer-links a:hover { color: var(--text); }
+    .footer-copy { font-size: 12px; color: var(--muted); }
+
+    /* ── RESPONSIVE ── */
+    @media (max-width: 700px) {
+      .nav-links { display: none; }
+      .mockup-body { grid-template-columns: 1fr; }
+      .cta-box { padding: 36px 24px; }
+      .footer-inner { flex-direction: column; text-align: center; }
+      .step { flex-direction: column; gap: 14px; }
+    }
+
+    /* TOAST */
+    #toast {
+      position: fixed; bottom: 28px; left: 50%;
+      transform: translateX(-50%) translateY(20px);
+      background: var(--card2); border: 1px solid var(--border);
+      color: var(--text); padding: 11px 20px; border-radius: 12px;
+      font-size: 13px; opacity: 0; transition: opacity .2s, transform .2s;
+      pointer-events: none; z-index: 200; white-space: nowrap;
+      box-shadow: 0 8px 32px rgba(0,0,0,.4);
+    }
+    #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  </style>
+</head>
+<body>
+
+  <!-- NAV -->
+  <nav>
+    <div class="nav-inner">
+      <a class="nav-logo" href="/">
+        <div class="nav-logo-icon">✉️</div>
+        <span class="nav-logo-text">MailPilot</span>
+      </a>
+      <div class="nav-links">
+        <a class="nav-link" href="#features">Fonctionnalités</a>
+        <a class="nav-link" href="#comment">Comment ça marche</a>
+        <a class="nav-link" href="#contact">Contact</a>
+      </div>
+      <a class="nav-login" href="/login">Connexion</a>
+      <a class="nav-cta" href="/register">Essai gratuit →</a>
+    </div>
+  </nav>
+
+  <!-- HERO -->
+  <section class="hero">
+    <div class="hero-badge">
+      <span class="dot"></span>
+      Bêta — Accès limité disponible
+    </div>
+    <h1>Votre boite mail gérée par <span class="gradient">l'intelligence artificielle</span></h1>
+    <p>MailPilot lit vos emails, détecte les demandes de rendez-vous et les ajoute automatiquement à votre agenda. Plus aucun RDV oublié.</p>
+    <div class="hero-btns">
+      <a class="btn-hero-primary" href="/register">🚀 Démarrer gratuitement</a>
+      <a class="btn-hero-secondary" href="#comment">▶ Voir comment ça marche</a>
+    </div>
+
+    <!-- MOCKUP -->
+    <div class="hero-mockup">
+      <div class="mockup-bar">
+        <div class="mockup-dots"><span></span><span></span><span></span></div>
+        <div class="mockup-url">mailpilot.app — Tableau de bord</div>
+      </div>
+      <div class="mockup-body">
+        <!-- Emails colonne gauche -->
+        <div class="mock-card">
+          <div class="mock-card-title">📬 Emails récents</div>
+          <div class="mock-email">
+            <div class="mock-avatar" style="background:rgba(79,110,247,.2);color:#a5b4fc;">M</div>
+            <div class="mock-email-text">
+              <div class="mock-email-name">Marie Dupont</div>
+              <div class="mock-email-preview">Bonjour, serait-il possible de prévoir…</div>
+            </div>
+            <div class="mock-badge rdv">📅 RDV</div>
+          </div>
+          <div class="mock-email">
+            <div class="mock-avatar" style="background:rgba(34,197,94,.15);color:#22c55e;">P</div>
+            <div class="mock-email-text">
+              <div class="mock-email-name">Pierre Martin</div>
+              <div class="mock-email-preview">Merci pour votre retour rapide…</div>
+            </div>
+            <div class="mock-badge ok">✓ Traité</div>
+          </div>
+          <div class="mock-email">
+            <div class="mock-avatar" style="background:rgba(245,158,11,.15);color:#f59e0b;">S</div>
+            <div class="mock-email-text">
+              <div class="mock-email-name">Sophie Bernard</div>
+              <div class="mock-email-preview">Disponible jeudi ou vendredi prochain ?</div>
+            </div>
+            <div class="mock-badge rdv">📅 RDV</div>
+          </div>
+        </div>
+        <!-- Agenda colonne droite -->
+        <div class="mock-card">
+          <div class="mock-card-title">📅 Agenda — Prochains RDVs</div>
+          <div class="mock-ai-tag">✨ Détecté par l'IA</div>
+          <div class="mock-rdv-item">
+            <div class="mock-rdv-dot" style="background:#4f6ef7"></div>
+            <div class="mock-rdv-info">
+              <div class="mock-rdv-name">Marie Dupont</div>
+              <div class="mock-rdv-date">Demain — 14h00</div>
+            </div>
+            <div class="mock-badge ok">Confirmé</div>
+          </div>
+          <div class="mock-rdv-item">
+            <div class="mock-rdv-dot" style="background:#f59e0b"></div>
+            <div class="mock-rdv-info">
+              <div class="mock-rdv-name">Sophie Bernard</div>
+              <div class="mock-rdv-date">Jeudi — 10h30</div>
+            </div>
+            <div class="mock-badge wait">En attente</div>
+          </div>
+          <div class="mock-rdv-item">
+            <div class="mock-rdv-dot" style="background:#22c55e"></div>
+            <div class="mock-rdv-info">
+              <div class="mock-rdv-name">Lucas Moreau</div>
+              <div class="mock-rdv-date">Vendredi — 09h00</div>
+            </div>
+            <div class="mock-badge ok">Confirmé</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- COMPAT LOGOS -->
+  <div class="compat-section">
+    <p class="compat-label">Compatible avec vos outils existants</p>
+    <div class="compat-logos">
+      <div class="compat-logo"><span>📧</span> Gmail</div>
+      <div class="compat-logo"><span>💼</span> Outlook</div>
+      <div class="compat-logo"><span>🌐</span> IMAP / OVH</div>
+      <div class="compat-logo"><span>📱</span> iOS &amp; Android</div>
+    </div>
+  </div>
+
+  <!-- FEATURES -->
+  <section class="features" id="features">
+    <p class="section-label">Fonctionnalités</p>
+    <h2 class="section-title">Tout ce dont vous avez besoin</h2>
+    <p class="section-sub">Un outil complet pour gérer votre relation client par email, sans effort.</p>
+
+    <div class="features-grid">
+      <div class="feature-card">
+        <div class="feature-icon" style="background:rgba(79,110,247,.15);">🤖</div>
+        <h3>Détection automatique des RDVs</h3>
+        <p>L'IA analyse chaque email entrant et identifie automatiquement les demandes de rendez-vous, même formulées indirectement.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon" style="background:rgba(34,197,94,.15);">📅</div>
+        <h3>Agenda intégré</h3>
+        <p>Vos rendez-vous détectés apparaissent directement dans votre agenda. Vue jour, semaine ou mois avec détection de conflits.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon" style="background:rgba(124,79,248,.15);">✉️</div>
+        <h3>Proposition de créneaux</h3>
+        <p>Envoyez des créneaux disponibles à votre client en un clic. Il choisit son horaire depuis un lien sécurisé, sans compte requis.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon" style="background:rgba(245,158,11,.15);">🗓</div>
+        <h3>Emploi du temps</h3>
+        <p>Définissez vos plages de disponibilité habituelles. L'IA ne propose que des créneaux réellement libres, sans double réservation.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon" style="background:rgba(239,68,68,.15);">🔔</div>
+        <h3>Notifications en temps réel</h3>
+        <p>Recevez une notification instantanée quand un email important arrive ou quand un client confirme un rendez-vous.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon" style="background:rgba(6,182,212,.15);">💬</div>
+        <h3>Assistant IA pour les réponses</h3>
+        <p>Générez des brouillons de réponses professionnelles adaptés à votre secteur d'activité. Relisez et envoyez en un clic.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- HOW IT WORKS -->
+  <section class="how" id="comment">
+    <p class="section-label">Comment ça marche</p>
+    <h2 class="section-title">En service en moins de 5 minutes</h2>
+    <p class="section-sub">Aucune installation, aucune configuration complexe. Juste votre email.</p>
+
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">1</div>
+        <div class="step-content">
+          <h3>Connectez votre boite mail</h3>
+          <p>Gmail, Outlook ou IMAP. Autorisez l'accès en quelques clics via OAuth sécurisé. Vos identifiants ne sont jamais stockés.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <div class="step-content">
+          <h3>L'IA surveille vos emails</h3>
+          <p>MailPilot analyse vos emails entrants en continu et détecte automatiquement les demandes de rendez-vous, urgences et demandes importantes.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <div class="step-content">
+          <h3>Recevez une notification</h3>
+          <p>Dès qu'un email nécessite votre attention, vous êtes notifié sur votre téléphone ou navigateur avec un résumé clair.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">4</div>
+        <div class="step-content">
+          <h3>Confirmez ou proposez des créneaux</h3>
+          <p>Confirmez le rendez-vous en un clic ou envoyez automatiquement plusieurs créneaux disponibles à votre client pour qu'il choisisse.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- CTA -->
+  <section class="cta-section" id="contact">
+    <div class="cta-box">
+      <h2>Prêt à tester MailPilot ?</h2>
+      <p>Rejoignez la bêta gratuite et découvrez comment l'IA peut transformer la gestion de vos emails professionnels.</p>
+      <form class="cta-form" onsubmit="soumettreBeta(event)">
+        <input class="cta-input" type="email" id="beta-email" placeholder="votre@email.com" required />
+        <button class="cta-submit" type="submit">Rejoindre la bêta →</button>
+      </form>
+      <p class="cta-note">🔒 Gratuit pendant la bêta · Aucune carte bancaire · Désactivable à tout moment</p>
+    </div>
+  </section>
+
+  <!-- FOOTER -->
+  <footer>
+    <div class="footer-inner">
+      <div class="footer-logo">✉️ MailPilot</div>
+      <div class="footer-links">
+        <a href="/privacy">Confidentialité</a>
+        <a href="/login">Connexion</a>
+        <a href="/register">S'inscrire</a>
+        <a href="mailto:contact@mailpilot.app">Contact</a>
+      </div>
+      <div class="footer-copy">© 2025 MailPilot · Tous droits réservés</div>
+    </div>
+  </footer>
+
+  <div id="toast"></div>
+
+  <script>
+    function toast(msg, duree=3000) {
+      const el = document.getElementById('toast');
+      el.textContent = msg; el.classList.add('show');
+      setTimeout(() => el.classList.remove('show'), duree);
+    }
+
+    async function soumettreBeta(e) {
+      e.preventDefault();
+      const email = document.getElementById('beta-email').value.trim();
+      if (!email) return;
+      try {
+        const res = await fetch('/api/beta-inscription', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email })
+        });
+        const j = await res.json();
+        if (j.ok) {
+          toast('🎉 Demande enregistrée ! On vous contacte bientôt.');
+          document.getElementById('beta-email').value = '';
+        } else {
+          // Si la route n'existe pas encore, on redirige vers register
+          window.location.href = `/register?email=${encodeURIComponent(email)}`;
+        }
+      } catch {
+        window.location.href = `/register?email=${encodeURIComponent(email)}`;
+      }
+    }
+  </script>
+
+</body>
+</html>
