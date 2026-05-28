@@ -468,6 +468,76 @@ def login():
     return render_template("login.html")
 
 
+def _envoyer_email_bienvenue(dest_email, nom):
+    """Envoie un email de bienvenue via smtplib avec le compte Gmail de l'app."""
+    import smtplib
+    from email.mime.text import MIMEText
+    from email.mime.multipart import MIMEMultipart
+
+    smtp_user = os.environ.get("SMTP_USER", "")
+    smtp_pass = os.environ.get("SMTP_PASS", "")
+    if not smtp_user or not smtp_pass:
+        logger.info("SMTP_USER/SMTP_PASS non configurés — email bienvenue ignoré")
+        return
+
+    prenom = nom.split()[0] if nom else "là"
+
+    sujet = "🛩️ Bienvenue sur MailPilot !"
+    corps_html = f"""
+<div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;max-width:560px;margin:0 auto;background:#060b18;color:#f0f4ff;border-radius:16px;overflow:hidden;">
+  <div style="background:linear-gradient(135deg,#4f6ef7,#7c4ff8);padding:32px 40px;text-align:center;">
+    <div style="font-size:40px;margin-bottom:8px;">✉️</div>
+    <h1 style="margin:0;font-size:26px;font-weight:800;color:#fff;">MailPilot</h1>
+    <p style="margin:6px 0 0;color:rgba(255,255,255,.75);font-size:14px;">Votre assistant IA pour les emails</p>
+  </div>
+  <div style="padding:36px 40px;">
+    <p style="font-size:18px;font-weight:600;margin:0 0 16px;">Bonjour {prenom} 👋</p>
+    <p style="color:#a0b0c8;line-height:1.6;margin:0 0 24px;">
+      Bienvenue sur MailPilot ! Votre compte est prêt.<br>
+      Voici comment démarrer en 3 étapes :
+    </p>
+
+    <div style="background:#0d1526;border:1px solid #1a2c47;border-radius:12px;padding:20px 24px;margin-bottom:24px;">
+      <div style="display:flex;gap:14px;align-items:flex-start;margin-bottom:16px;">
+        <div style="width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,#4f6ef7,#7c4ff8);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#fff;flex-shrink:0;">1</div>
+        <div><strong style="color:#f0f4ff;">Connectez votre boîte mail</strong><br><span style="color:#5a7090;font-size:13px;">Gmail, Outlook ou IMAP — autorisez l'accès en quelques clics</span></div>
+      </div>
+      <div style="display:flex;gap:14px;align-items:flex-start;margin-bottom:16px;">
+        <div style="width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,#4f6ef7,#7c4ff8);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#fff;flex-shrink:0;">2</div>
+        <div><strong style="color:#f0f4ff;">Démarrez la surveillance</strong><br><span style="color:#5a7090;font-size:13px;">Cliquez sur ▶ Démarrer — l'IA analyse vos emails en temps réel</span></div>
+      </div>
+      <div style="display:flex;gap:14px;align-items:flex-start;">
+        <div style="width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,#4f6ef7,#7c4ff8);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#fff;flex-shrink:0;">3</div>
+        <div><strong style="color:#f0f4ff;">Consultez votre agenda</strong><br><span style="color:#5a7090;font-size:13px;">Les RDVs détectés apparaissent automatiquement dans l'agenda</span></div>
+      </div>
+    </div>
+
+    <div style="text-align:center;">
+      <a href="https://mailpilot-production-981d.up.railway.app/dashboard"
+         style="display:inline-block;background:linear-gradient(135deg,#4f6ef7,#7c4ff8);color:#fff;text-decoration:none;border-radius:10px;padding:13px 28px;font-size:15px;font-weight:700;">
+        Accéder au dashboard →
+      </a>
+    </div>
+
+    <p style="color:#5a7090;font-size:12px;text-align:center;margin-top:28px;">
+      Une question ? Répondez à cet email, on vous aide.<br>
+      MailPilot · <a href="https://mailpilot-production-981d.up.railway.app/privacy" style="color:#4f6ef7;">Confidentialité</a>
+    </p>
+  </div>
+</div>"""
+
+    msg = MIMEMultipart("alternative")
+    msg["Subject"] = sujet
+    msg["From"]    = f"MailPilot <{smtp_user}>"
+    msg["To"]      = dest_email
+    msg.attach(MIMEText(corps_html, "html", "utf-8"))
+
+    with smtplib.SMTP_SSL("smtp.gmail.com", 465) as s:
+        s.login(smtp_user, smtp_pass)
+        s.sendmail(smtp_user, dest_email, msg.as_string())
+    logger.info(f"📧 Email bienvenue envoyé → {dest_email}")
+
+
 @app.route("/register", methods=["GET", "POST"])
 @limiter.limit("5 per minute; 20 per hour", methods=["POST"])
 def register():
@@ -521,6 +591,13 @@ def register():
         data["comptes"].append(compte)
         sauver_comptes(data)
         session["user_id"] = compte["id"]
+
+        # Email de bienvenue
+        try:
+            _envoyer_email_bienvenue(email, nom)
+        except Exception as e:
+            logger.warning(f"Email bienvenue échoué pour {email}: {e}")
+
         return jsonify({"ok": True})
     if session.get("user_id"):
         return redirect("/dashboard")
@@ -2686,7 +2763,7 @@ En cas d'empêchement, n'hésitez pas à nous contacter le plus tôt possible af
 
 def charger_rappel_settings(compte_id):
     return get_setting(compte_id, "rappel", {
-        "actif": False, "avance_heures": 24,
+        "actif": True, "avance_heures": 24,
         "sujet_template": "", "corps_template": "",
         "derniere_exec": None, "nb_envoyes": 0,
     })
@@ -2799,7 +2876,8 @@ def thread_rappel_rdv():
                                 boite.get("smtp_server",""), boite.get("smtp_port","465"),
                                 boite.get("imap_password",""), expediteur, dest, sujet, corps
                             )
-                        rdv["rappel_envoye_at"] = now.isoformat()
+                        # Marquer en DB directement — évite de réécrire tout l'agenda
+                        db_module.modifier_rdv_db(compte_id, rdv["id"], {"rappel_envoye_at": now.isoformat()})
                         modifie = True
                         s["nb_envoyes"] = s.get("nb_envoyes", 0) + 1
                         print(f"📅 Rappel RDV envoyé → {dest} ({rdv['titre']} — {c['nom']})")
@@ -2807,7 +2885,6 @@ def thread_rappel_rdv():
                         print(f"❌ Rappel RDV échoué → {dest}: {e}")
 
                 if modifie:
-                    sauver_agenda(compte_id, rdvs)
                     s["derniere_exec"] = now.isoformat()
                     sauver_rappel_settings(compte_id, s)
 

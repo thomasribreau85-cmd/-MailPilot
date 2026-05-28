@@ -761,6 +761,29 @@
 
         <div class="notif-divider"></div>
         <div id="notif-status-box"></div>
+
+        <!-- EMAIL RAPPEL -->
+        <div class="notif-divider"></div>
+        <div class="notif-panel-title" style="margin-top:4px">📧 Rappel email client</div>
+        <div class="notif-row">
+          <div>
+            <label>Email au client avant le RDV</label>
+            <div style="font-size:11px;color:var(--muted)" id="rappel-email-status">Chargement…</div>
+          </div>
+          <label class="toggle-switch" style="flex-shrink:0">
+            <input type="checkbox" id="rappel-email-toggle" onchange="onToggleRappelEmail(this.checked)" />
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+        <div id="rappel-avance-row">
+          <label style="font-size:12px;color:var(--muted);font-weight:500">Envoyer combien de temps avant ?</label>
+          <select class="notif-select" id="rappel-avance" onchange="onRappelAvanceChange(this.value)">
+            <option value="2">2 heures avant</option>
+            <option value="6">6 heures avant</option>
+            <option value="24" selected>24 heures avant (J-1)</option>
+            <option value="48">48 heures avant (J-2)</option>
+          </select>
+        </div>
       </div>
     </div>
     <button class="btn-primary" onclick="ouvrirModal()">+ Nouveau RDV</button>
@@ -2140,9 +2163,48 @@
       }
     });
 
+    // ── RAPPEL EMAIL CLIENT ──────────────────────────────────
+    async function chargerRappelEmail() {
+      try {
+        const r = await fetch(`/api/rappel/${COMPTE_ID}`);
+        const j = await r.json();
+        if (!j.ok) return;
+        document.getElementById('rappel-email-toggle').checked = j.actif;
+        const sel = document.getElementById('rappel-avance');
+        if (sel) sel.value = String(j.avance_heures || 24);
+        const nb = j.nb_envoyes || 0;
+        const last = j.derniere_exec ? new Date(j.derniere_exec).toLocaleDateString('fr-FR') : null;
+        document.getElementById('rappel-email-status').textContent =
+          j.actif
+            ? `✅ Actif · ${nb} rappel${nb>1?'s':''} envoyé${nb>1?'s':''}${last?' · dernier '+last:''}`
+            : '⏸ Désactivé';
+      } catch(e) {}
+    }
+
+    async function onToggleRappelEmail(checked) {
+      const avance = parseInt(document.getElementById('rappel-avance').value) || 24;
+      await fetch(`/api/rappel/${COMPTE_ID}`, {
+        method: 'POST', headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ actif: checked, avance_heures: avance })
+      });
+      document.getElementById('rappel-email-status').textContent =
+        checked ? '✅ Actif — rappels activés' : '⏸ Désactivé';
+      toast(checked ? '📧 Rappels email activés' : '⏸ Rappels email désactivés');
+    }
+
+    async function onRappelAvanceChange(val) {
+      const checked = document.getElementById('rappel-email-toggle').checked;
+      await fetch(`/api/rappel/${COMPTE_ID}`, {
+        method: 'POST', headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ avance_heures: parseInt(val) })
+      });
+      if (checked) toast(`📧 Rappel réglé sur ${val}h avant le RDV`);
+    }
+
     // ── Init ─────────────────────────────────────────────────
     charger();
     initRappels();
+    chargerRappelEmail();
   </script>
 </body>
 </html>

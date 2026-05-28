@@ -106,6 +106,7 @@ CREATE TABLE IF NOT EXISTS agenda (
     notes                  TEXT NOT NULL DEFAULT '',
     boite_id               TEXT NOT NULL DEFAULT '',
     confirmation_envoyee_at TEXT,
+    rappel_envoye_at       TEXT,
     created_at             TEXT NOT NULL DEFAULT (datetime('now')),
     PRIMARY KEY (id, compte_id)
 );
@@ -167,6 +168,12 @@ def init_db():
     """Crée toutes les tables si elles n'existent pas encore."""
     db = _conn()
     db.executescript(SCHEMA)
+    # Migrations ALTER TABLE pour les colonnes ajoutées après la création initiale
+    try:
+        db.execute("ALTER TABLE agenda ADD COLUMN rappel_envoye_at TEXT")
+        db.commit()
+    except Exception:
+        pass  # colonne déjà présente
     db.commit()
 
 
@@ -393,8 +400,8 @@ def sauver_agenda(compte_id, rdvs):
         db.execute("""
             INSERT INTO agenda(id,compte_id,titre,client_nom,client_email,client_tel,
                 adresse,date,heure_debut,heure_fin,type,statut,notes,boite_id,
-                confirmation_envoyee_at,created_at)
-            VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+                confirmation_envoyee_at,rappel_envoye_at,created_at)
+            VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
         """, (
             rdv["id"], compte_id, rdv.get("titre",""),
             rdv.get("client_nom",""), rdv.get("client_email",""),
@@ -403,6 +410,7 @@ def sauver_agenda(compte_id, rdvs):
             rdv.get("heure_fin","10:00"), rdv.get("type","autre"),
             rdv.get("statut","confirme"), rdv.get("notes",""),
             rdv.get("boite_id",""), rdv.get("confirmation_envoyee_at"),
+            rdv.get("rappel_envoye_at"),
             rdv.get("created_at",""),
         ))
     db.commit()
@@ -428,7 +436,7 @@ def modifier_rdv_db(compte_id, rdv_id, updates):
     """Met à jour les champs fournis dans updates."""
     allowed = {"titre","client_nom","client_email","client_tel","adresse","date",
                "heure_debut","heure_fin","type","statut","notes",
-               "confirmation_envoyee_at"}
+               "confirmation_envoyee_at","rappel_envoye_at"}
     sets = {k: v for k, v in updates.items() if k in allowed}
     if not sets:
         return None
