@@ -730,6 +730,28 @@ def beta_inscription():
     return jsonify({"ok": True})
 
 
+@app.route("/api/contact", methods=["POST"])
+def api_contact():
+    """Enregistre les demandes de démo / contact depuis la landing page."""
+    d = request.json or {}
+    nom     = (d.get("nom") or "").strip()
+    email   = (d.get("email") or "").strip().lower()
+    tel     = (d.get("tel") or "").strip()
+    secteur = (d.get("secteur") or "").strip()
+    message = (d.get("message") or "").strip()
+    if not email or "@" not in email or not nom:
+        return jsonify({"ok": False, "message": "Données manquantes"}), 400
+    contact_file = os.path.join(os.path.dirname(__file__), "contacts.txt")
+    try:
+        with open(contact_file, "a", encoding="utf-8") as f:
+            from datetime import datetime as _dt
+            line = f"{_dt.now().strftime('%Y-%m-%d %H:%M')} | {nom} | {email} | {tel} | {secteur} | {message}\n"
+            f.write(line)
+    except Exception as e:
+        app.logger.warning(f"api_contact write error: {e}")
+    return jsonify({"ok": True})
+
+
 @app.route("/privacy")
 def privacy():
     return render_template("privacy.html")

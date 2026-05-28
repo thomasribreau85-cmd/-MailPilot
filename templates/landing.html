@@ -275,6 +275,73 @@
     .footer-links a:hover { color: var(--text); }
     .footer-copy { font-size: 12px; color: var(--muted); }
 
+    /* ── POUR QUI ── */
+    .pourqui { padding: 100px 24px; }
+    .pourqui-grid {
+      max-width: 1100px; margin: 48px auto 0;
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 16px;
+    }
+    .pourqui-card {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 16px; padding: 28px 24px;
+      transition: border-color .2s, transform .2s;
+    }
+    .pourqui-card:hover { border-color: var(--blue); transform: translateY(-3px); }
+    .pourqui-icon { font-size: 30px; margin-bottom: 14px; }
+    .pourqui-card h3 { font-size: 15px; font-weight: 700; margin-bottom: 8px; }
+    .pourqui-card p { font-size: 13px; color: var(--muted); line-height: 1.6; }
+
+    /* ── DEMO CTA BANNER ── */
+    .demo-banner {
+      margin: 0 24px 80px;
+      max-width: 1100px; margin-left: auto; margin-right: auto;
+    }
+    .demo-banner-inner {
+      background: linear-gradient(135deg, rgba(79,110,247,.18), rgba(124,79,248,.14));
+      border: 1px solid rgba(79,110,247,.35);
+      border-radius: 20px; padding: 44px 48px;
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 24px; flex-wrap: wrap;
+    }
+    .demo-banner-text h2 { font-size: clamp(20px, 3vw, 28px); font-weight: 800; margin-bottom: 8px; }
+    .demo-banner-text p { font-size: 15px; color: var(--muted); max-width: 480px; }
+    .btn-demo {
+      display: inline-flex; align-items: center; gap: 8px;
+      background: linear-gradient(135deg, var(--blue), var(--blue2));
+      color: #fff; text-decoration: none; border-radius: 12px;
+      padding: 14px 28px; font-size: 15px; font-weight: 700;
+      box-shadow: 0 4px 20px rgba(79,110,247,.45);
+      transition: opacity .15s; white-space: nowrap;
+      border: none; cursor: pointer; font-family: inherit;
+    }
+    .btn-demo:hover { opacity: .88; }
+
+    /* ── CONTACT / DEMO FORM ── */
+    .contact-section { padding: 20px 24px 100px; }
+    .contact-inner {
+      max-width: 760px; margin: 0 auto;
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 24px; padding: 56px 48px;
+    }
+    .contact-inner h2 { font-size: clamp(22px, 3vw, 32px); font-weight: 800; margin-bottom: 10px; }
+    .contact-inner > p { font-size: 15px; color: var(--muted); margin-bottom: 36px; }
+    .contact-form { display: flex; flex-direction: column; gap: 16px; }
+    .contact-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .contact-field { display: flex; flex-direction: column; gap: 7px; }
+    .contact-field label { font-size: 13px; font-weight: 600; color: var(--muted); }
+    .contact-field input, .contact-field select, .contact-field textarea {
+      background: var(--card2); border: 1px solid var(--border);
+      border-radius: 10px; color: var(--text); font-size: 14px;
+      padding: 12px 14px; outline: none; font-family: inherit;
+    }
+    .contact-field input:focus, .contact-field select:focus, .contact-field textarea:focus {
+      border-color: var(--blue);
+    }
+    .contact-field select option { background: var(--card); }
+    .contact-field textarea { resize: vertical; min-height: 90px; }
+    .contact-submit-row { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+    .contact-note { font-size: 12px; color: var(--muted); }
+
     /* ── RESPONSIVE ── */
     @media (max-width: 700px) {
       .nav-links { display: none; }
@@ -282,6 +349,9 @@
       .cta-box { padding: 36px 24px; }
       .footer-inner { flex-direction: column; text-align: center; }
       .step { flex-direction: column; gap: 14px; }
+      .contact-row { grid-template-columns: 1fr; }
+      .contact-inner { padding: 32px 24px; }
+      .demo-banner-inner { flex-direction: column; text-align: center; }
     }
 
     /* TOAST */
@@ -308,6 +378,7 @@
       </a>
       <div class="nav-links">
         <a class="nav-link" href="#features">Fonctionnalités</a>
+        <a class="nav-link" href="#pourqui">Pour qui ?</a>
         <a class="nav-link" href="#comment">Comment ça marche</a>
         <a class="nav-link" href="#contact">Contact</a>
       </div>
@@ -474,8 +545,110 @@
     </div>
   </section>
 
+  <!-- POUR QUI -->
+  <section class="pourqui" id="pourqui">
+    <p class="section-label">Pour qui ?</p>
+    <h2 class="section-title">Fait pour les professionnels qui reçoivent beaucoup de mails</h2>
+    <p class="section-sub">MailPilot s'adapte à votre secteur et apprend votre façon de gérer les rendez-vous.</p>
+    <div class="pourqui-grid">
+      <div class="pourqui-card">
+        <div class="pourqui-icon">🏠</div>
+        <h3>Immobilier</h3>
+        <p>Visites, estimations, signatures de compromis. Gérez des dizaines de demandes clients sans rien oublier.</p>
+      </div>
+      <div class="pourqui-card">
+        <div class="pourqui-icon">🩺</div>
+        <h3>Santé &amp; Médical</h3>
+        <p>Cabinets médicaux, kinés, dentistes. Réduisez le temps passé à gérer les prises de RDV par email.</p>
+      </div>
+      <div class="pourqui-card">
+        <div class="pourqui-icon">⚖️</div>
+        <h3>Juridique &amp; Conseil</h3>
+        <p>Avocats, notaires, consultants. Priorisez les dossiers urgents et ne manquez jamais une audience.</p>
+      </div>
+      <div class="pourqui-card">
+        <div class="pourqui-icon">🛒</div>
+        <h3>Commerce &amp; E-commerce</h3>
+        <p>SAV, rappels clients, rendez-vous B2B. L'IA classe et répond automatiquement aux emails courants.</p>
+      </div>
+      <div class="pourqui-card">
+        <div class="pourqui-icon">🏗️</div>
+        <h3>BTP &amp; Artisans</h3>
+        <p>Devis, chantiers, fournisseurs. Centralisez tout dans un agenda unique pour ne jamais rater un rendez-vous terrain.</p>
+      </div>
+      <div class="pourqui-card">
+        <div class="pourqui-icon">🎓</div>
+        <h3>Formation &amp; Coaching</h3>
+        <p>Séances individuelles, sessions de groupe. Automatisez la planification et les rappels à vos stagiaires.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- DEMO BANNER -->
+  <div class="demo-banner">
+    <div class="demo-banner-inner">
+      <div class="demo-banner-text">
+        <h2>📞 Vous voulez voir MailPilot en action ?</h2>
+        <p>Réservez une démo de 20 minutes et on vous montre comment l'adapter à votre métier. Gratuit, sans engagement.</p>
+      </div>
+      <button class="btn-demo" onclick="document.getElementById('contact').scrollIntoView({behavior:'smooth'})">
+        📅 Demander une démo →
+      </button>
+    </div>
+  </div>
+
+  <!-- CONTACT / DEMO FORM -->
+  <section class="contact-section" id="contact">
+    <p class="section-label" style="text-align:center;">Contact</p>
+    <h2 class="section-title">Parlons de votre projet</h2>
+    <p class="section-sub">Remplissez le formulaire et nous vous recontactons sous 24h pour organiser une démo ou répondre à vos questions.</p>
+    <div class="contact-inner">
+      <h2>Demander une démo ou nous contacter</h2>
+      <p>Notre équipe vous répond rapidement pour adapter MailPilot à votre activité.</p>
+      <form class="contact-form" onsubmit="soumettreContact(event)">
+        <div class="contact-row">
+          <div class="contact-field">
+            <label>Prénom et nom *</label>
+            <input type="text" id="contact-nom" placeholder="Jean Dupont" required />
+          </div>
+          <div class="contact-field">
+            <label>Email professionnel *</label>
+            <input type="email" id="contact-email" placeholder="jean@entreprise.com" required />
+          </div>
+        </div>
+        <div class="contact-row">
+          <div class="contact-field">
+            <label>Téléphone</label>
+            <input type="tel" id="contact-tel" placeholder="+33 6 00 00 00 00" />
+          </div>
+          <div class="contact-field">
+            <label>Secteur d'activité</label>
+            <select id="contact-secteur">
+              <option value="">Sélectionner…</option>
+              <option>Immobilier</option>
+              <option>Santé / Médical</option>
+              <option>Juridique / Conseil</option>
+              <option>Commerce / E-commerce</option>
+              <option>BTP / Artisanat</option>
+              <option>Formation / Coaching</option>
+              <option>Autre</option>
+            </select>
+          </div>
+        </div>
+        <div class="contact-field">
+          <label>Message (optionnel)</label>
+          <textarea id="contact-message" placeholder="Décrivez votre besoin, le nombre de boites mail concernées, vos questions…"></textarea>
+        </div>
+        <div class="contact-submit-row">
+          <button class="btn-demo" type="submit">Envoyer ma demande →</button>
+          <span class="contact-note">🔒 Vos données restent confidentielles et ne sont jamais revendues.</span>
+        </div>
+      </form>
+    </div>
+  </section>
+
   <!-- CTA -->
-  <section class="cta-section" id="contact">
+  <section class="cta-section">
     <div class="cta-box">
       <h2>Prêt à tester MailPilot ?</h2>
       <p>Rejoignez la bêta gratuite et découvrez comment l'IA peut transformer la gestion de vos emails professionnels.</p>
@@ -525,11 +698,40 @@
           toast('🎉 Demande enregistrée ! On vous contacte bientôt.');
           document.getElementById('beta-email').value = '';
         } else {
-          // Si la route n'existe pas encore, on redirige vers register
           window.location.href = `/register?email=${encodeURIComponent(email)}`;
         }
       } catch {
         window.location.href = `/register?email=${encodeURIComponent(email)}`;
+      }
+    }
+
+    async function soumettreContact(e) {
+      e.preventDefault();
+      const nom     = document.getElementById('contact-nom').value.trim();
+      const email   = document.getElementById('contact-email').value.trim();
+      const tel     = document.getElementById('contact-tel').value.trim();
+      const secteur = document.getElementById('contact-secteur').value;
+      const message = document.getElementById('contact-message').value.trim();
+      if (!nom || !email) return;
+      const btn = e.target.querySelector('button[type="submit"]');
+      btn.disabled = true; btn.textContent = 'Envoi…';
+      try {
+        const res = await fetch('/api/contact', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ nom, email, tel, secteur, message })
+        });
+        const j = await res.json();
+        if (j.ok) {
+          toast('✅ Message envoyé ! On vous répond sous 24h.');
+          e.target.reset();
+        } else {
+          toast('❌ Une erreur est survenue, réessayez.', 4000);
+        }
+      } catch {
+        toast('❌ Erreur réseau, réessayez.', 4000);
+      } finally {
+        btn.disabled = false; btn.textContent = 'Envoyer ma demande →';
       }
     }
   </script>
