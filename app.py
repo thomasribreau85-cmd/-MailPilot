@@ -1504,6 +1504,81 @@ def gerer_labels(compte_id, boite_id):
 
 # ── Stats ─────────────────────────────────────────────────────
 
+@app.route("/api/stats-global/<compte_id>")
+def stats_global_compte(compte_id):
+    """Stats agrégées pour le dashboard : emails, RDVs, catégories."""
+    if not check_access(compte_id):
+        return jsonify({"ok": False}), 403
+    data = charger_comptes()
+    c = trouver_compte(data, compte_id)
+    if not c:
+        return jsonify({"ok": False}), 404
+
+    from datetime import date, timedelta
+    aujourd_hui = date.today()
+    lundi = aujourd_hui - timedelta(days=aujourd_hui.weekday())
+    semaine_str = lundi.strftime("%Y-%m-%d")
+
+    # Stats emails par boite
+    total_traites = 0
+    total_brouillons = 0
+    categories_total = {}
+    boites_stats = []
+    for b in c.get("boites", []):
+        s, hist = db_module.charger_stats_route(compte_id, b["id"])
+        total_traites   += s.get("traites", 0)
+        total_brouillons += s.get("brouillons", 0)
+        for cat, n in s.get("categories", {}).items():
+            categories_total[cat] = categories_total.get(cat, 0) + n
+        boites_stats.append({
+            "email":      b.get("email", ""),
+            "provider":   b.get("provider", "gmail"),
+            "traites":    s.get("traites", 0),
+            "brouillons": s.get("brouillons", 0),
+            "historique": hist[-8:] if hist else [],
+        })
+
+    # Stats RDVs
+    rdvs = charger_agenda(compte_id)
+    rdv_total    = len(rdvs)
+    rdv_confirme = sum(1 for r in rdvs if r.get("statut") == "confirme")
+    rdv_attente  = sum(1 for r in rdvs if r.get("statut") == "attente")
+    rdv_ce_mois  = sum(1 for r in rdvs if r.get("date","").startswith(aujourd_hui.strftime("%Y-%m")))
+    # RDVs des 4 dernières semaines par semaine
+    rdv_par_semaine = {}
+    for r in rdvs:
+        try:
+            d = date.fromisoformat(r["date"])
+            sem = (d - timedelta(days=d.weekday())).strftime("%Y-%m-%d")
+            rdv_par_semaine[sem] = rdv_par_semaine.get(sem, 0) + 1
+        except Exception:
+            pass
+
+    # Rappels envoyés
+    rappel_s = charger_rappel_settings(compte_id)
+
+    return jsonify({
+        "ok": True,
+        "emails": {
+            "total_traites":    total_traites,
+            "total_brouillons": total_brouillons,
+            "categories":       categories_total,
+            "boites":           boites_stats,
+        },
+        "rdvs": {
+            "total":        rdv_total,
+            "confirme":     rdv_confirme,
+            "attente":      rdv_attente,
+            "ce_mois":      rdv_ce_mois,
+            "par_semaine":  rdv_par_semaine,
+        },
+        "rappels": {
+            "nb_envoyes": rappel_s.get("nb_envoyes", 0),
+            "actif":      rappel_s.get("actif", False),
+        }
+    })
+
+
 @app.route("/stats/<compte_id>/<boite_id>")
 def stats_compte_route(compte_id, boite_id):
     if not check_access(compte_id):

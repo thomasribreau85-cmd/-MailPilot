@@ -296,17 +296,17 @@
     <!-- STATS -->
     <div class="stats-bar" id="stats-bar">
       <div class="stat-pill">
-        <span class="stat-icon">👥</span>
+        <span class="stat-icon">📧</span>
         <div>
-          <div class="stat-val" id="stat-comptes">{{ data.comptes|length }}</div>
-          <div class="stat-lbl">Compte{{ 's' if data.comptes|length > 1 else '' }}</div>
+          <div class="stat-val" id="stat-emails">—</div>
+          <div class="stat-lbl">Emails traités</div>
         </div>
       </div>
       <div class="stat-pill">
-        <span class="stat-icon">📬</span>
+        <span class="stat-icon">✍️</span>
         <div>
-          <div class="stat-val" id="stat-boites">{{ data.comptes | sum(attribute='boites', start=[]) | list | length }}</div>
-          <div class="stat-lbl">Boîte{{ 's' if (data.comptes | sum(attribute='boites', start=[]) | list | length) > 1 else '' }} mail</div>
+          <div class="stat-val" id="stat-brouillons">—</div>
+          <div class="stat-lbl">Brouillons IA</div>
         </div>
       </div>
       <div class="stat-pill">
@@ -323,7 +323,17 @@
           <div class="stat-lbl">RDVs confirmés</div>
         </div>
       </div>
+      <div class="stat-pill">
+        <span class="stat-icon">🔔</span>
+        <div>
+          <div class="stat-val" id="stat-rappels">—</div>
+          <div class="stat-lbl">Rappels envoyés</div>
+        </div>
+      </div>
     </div>
+
+    <!-- STATS DÉTAIL (par compte, collapsible) -->
+    <div id="stats-detail" style="display:none; margin-bottom:20px;"></div>
 
     <!-- ACTIONS BAR -->
     <div class="actions-bar">
@@ -672,18 +682,26 @@
     const compteIds = [{% for c in data.comptes %}'{{ c.id }}'{% if not loop.last %},{% endif %}{% endfor %}];
 
     async function chargerRdvStats() {
-      let totalAttente = 0, totalConfirme = 0;
+      let totalEmails = 0, totalBrouillons = 0;
+      let totalAttente = 0, totalConfirme = 0, totalRappels = 0;
+
       for (const id of compteIds) {
         try {
-          const r = await fetch(`/api/rdv/${id}`);
+          const r = await fetch(`/api/stats-global/${id}`);
           if (!r.ok) continue;
           const j = await r.json();
-          const rdvs = j.rdvs || [];
-          const attente  = rdvs.filter(r => r.statut === 'attente').length;
-          const confirme = rdvs.filter(r => r.statut === 'confirme').length;
-          totalAttente  += attente;
-          totalConfirme += confirme;
+          if (!j.ok) continue;
+
+          // Totaux globaux
+          totalEmails     += j.emails?.total_traites    || 0;
+          totalBrouillons += j.emails?.total_brouillons || 0;
+          totalAttente    += j.rdvs?.attente  || 0;
+          totalConfirme   += j.rdvs?.confirme || 0;
+          totalRappels    += j.rappels?.nb_envoyes || 0;
+
           // Badges par compte
+          const attente  = j.rdvs?.attente  || 0;
+          const confirme = j.rdvs?.confirme || 0;
           const ba = document.getElementById(`badge-attente-${id}`);
           const bc = document.getElementById(`badge-confirme-${id}`);
           const na = document.getElementById(`n-attente-${id}`);
@@ -692,12 +710,56 @@
           if (nc) nc.textContent = confirme;
           if (ba) ba.style.display = attente  > 0 ? '' : 'none';
           if (bc) bc.style.display = confirme > 0 ? '' : 'none';
+
+          // Stats détail par compte
+          afficherStatsDetail(id, j);
         } catch(e) {}
       }
-      const sa = document.getElementById('stat-rdv-attente');
-      const sc = document.getElementById('stat-rdv-confirme');
-      if (sa) sa.textContent = totalAttente;
-      if (sc) sc.textContent = totalConfirme;
+
+      const se  = document.getElementById('stat-emails');
+      const sb  = document.getElementById('stat-brouillons');
+      const sa  = document.getElementById('stat-rdv-attente');
+      const sc  = document.getElementById('stat-rdv-confirme');
+      const sr  = document.getElementById('stat-rappels');
+      if (se)  se.textContent  = totalEmails;
+      if (sb)  sb.textContent  = totalBrouillons;
+      if (sa)  sa.textContent  = totalAttente;
+      if (sc)  sc.textContent  = totalConfirme;
+      if (sr)  sr.textContent  = totalRappels;
+    }
+
+    function afficherStatsDetail(compteId, j) {
+      const container = document.getElementById('stats-detail');
+      if (!container) return;
+      container.style.display = 'block';
+
+      // Catégories emails
+      const cats = j.emails?.categories || {};
+      const topCats = Object.entries(cats).sort((a,b)=>b[1]-a[1]).slice(0,4);
+      const catsHtml = topCats.map(([k,v]) =>
+        `<span style="background:rgba(79,110,247,.12);border:1px solid rgba(79,110,247,.2);border-radius:6px;padding:3px 9px;font-size:11px;color:#a5b4fc;">${k} <strong>${v}</strong></span>`
+      ).join(' ');
+
+      let existing = document.getElementById(`stats-detail-${compteId}`);
+      if (!existing) {
+        existing = document.createElement('div');
+        existing.id = `stats-detail-${compteId}`;
+        existing.style.cssText = 'background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px 20px;margin-bottom:12px;';
+        container.appendChild(existing);
+      }
+
+      existing.innerHTML = `
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap;">
+          <span style="font-size:13px;font-weight:700;color:var(--text);">📊 Cette semaine</span>
+          <span style="font-size:12px;color:var(--muted);">·</span>
+          <span style="font-size:12px;color:var(--muted);">${j.emails?.total_traites||0} emails traités</span>
+          <span style="font-size:12px;color:var(--muted);">·</span>
+          <span style="font-size:12px;color:var(--muted);">${j.rdvs?.ce_mois||0} RDV ce mois</span>
+          <span style="font-size:12px;color:var(--muted);">·</span>
+          <span style="font-size:12px;color:var(--muted);">${j.rappels?.nb_envoyes||0} rappel${(j.rappels?.nb_envoyes||0)>1?'s':''} envoyé${(j.rappels?.nb_envoyes||0)>1?'s':''}</span>
+        </div>
+        ${catsHtml ? `<div style="display:flex;gap:6px;flex-wrap:wrap;">${catsHtml}</div>` : ''}
+      `;
     }
 
     // ── POLLING ───────────────────────────────────────────────

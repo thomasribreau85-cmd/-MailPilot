@@ -729,6 +729,7 @@
     <button class="btn-icon" onclick="document.getElementById('import-ics').click()">📥 .ics</button>
     <input type="file" id="import-ics" accept=".ics" style="display:none" onchange="importerICS(this)" />
     <button class="btn-icon" onclick="exporterICS()">📤 .ics</button>
+    <button class="btn-icon" onclick="exporterCSV()">📊 CSV</button>
     <!-- Bouton rappels -->
     <div style="position:relative" id="notif-wrap">
       <button class="btn-icon notif-btn" id="notif-btn" onclick="toggleNotifPanel()">
@@ -1960,6 +1961,32 @@
       a.href = url; a.download = 'mailpilot-agenda.ics'; a.click();
       URL.revokeObjectURL(url);
       toast(`✅ ${confirmes.length} RDV exporté(s)`);
+    }
+
+    // ── Export CSV ───────────────────────────────────────────
+    function exporterCSV() {
+      if (!rdvs.length) { toast('⚠️ Aucun RDV à exporter'); return; }
+      const cols = ['Date','Heure début','Heure fin','Titre','Client','Email','Téléphone','Adresse','Statut','Notes'];
+      const esc  = v => '"' + String(v||'').replace(/"/g,'""') + '"';
+      const lignes = [cols.map(esc).join(',')];
+      const statutFr = { confirme: 'Confirmé', attente: 'En attente', annule: 'Annulé' };
+      for (const r of [...rdvs].sort((a,b) => (a.date+a.heure_debut).localeCompare(b.date+b.heure_debut))) {
+        lignes.push([
+          r.date, r.heure_debut, r.heure_fin || '',
+          r.titre || '', r.client_nom || '', r.client_email || '',
+          r.client_tel || '', r.adresse || '',
+          statutFr[r.statut] || r.statut || '',
+          r.notes || ''
+        ].map(esc).join(','));
+      }
+      // BOM UTF-8 pour Excel
+      const blob = new Blob(['﻿' + lignes.join('\r\n')], { type: 'text/csv;charset=utf-8' });
+      const url  = URL.createObjectURL(blob);
+      const a    = document.createElement('a');
+      const mois = new Date().toISOString().slice(0,7);
+      a.href = url; a.download = `mailpilot-rdvs-${mois}.csv`; a.click();
+      URL.revokeObjectURL(url);
+      toast(`✅ ${rdvs.length} RDV exporté(s) en CSV`);
     }
 
     // ── Rappels notifications ────────────────────────────────
