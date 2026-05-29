@@ -100,6 +100,35 @@ def _record_login_fail(email: str):
 def _record_login_success(email: str):
     _login_attempts.pop(email, None)
 
+# ── Blocage IP (brute force multi-comptes) ────────────────────
+# { ip: {"fails": int, "locked_until": float} }
+_ip_attempts: dict = {}
+_IP_MAX_FAILS   = 15      # 15 échecs toutes IP/comptes confondus
+_IP_LOCKOUT_SEC = 1800    # 30 minutes
+
+def _check_ip_locked(ip: str) -> bool:
+    info = _ip_attempts.get(ip)
+    if not info:
+        return False
+    if info.get("locked_until", 0) > time.time():
+        return True
+    if info.get("locked_until", 0) and info["locked_until"] <= time.time():
+        _ip_attempts.pop(ip, None)
+    return False
+
+def _record_ip_fail(ip: str):
+    info = _ip_attempts.setdefault(ip, {"fails": 0, "locked_until": 0})
+    info["fails"] += 1
+    if info["fails"] >= _IP_MAX_FAILS:
+        info["locked_until"] = time.time() + _IP_LOCKOUT_SEC
+        sec_log.warning("IP_LOCKED ip=%s duration=30min", ip)
+
+def _record_ip_success(ip: str):
+    _ip_attempts.pop(ip, None)
+
+# ── Mot de passe factice pour timing constant ─────────────────
+_DUMMY_HASH = generate_password_hash("__dummy__mailpilot__", method="pbkdf2:sha256")
+
 from prompts import TOUS_LES_LABELS, LABELS_DEFAUT
 
 # ── Chemins ──────────────────────────────────────────────────
@@ -486,25 +515,41 @@ def login():
         pwd   = d.get("password", "")
         ip    = request.remote_addr
 
+        # Vérification du blocage IP (brute force multi-comptes)
+        if _check_ip_locked(ip):
+            sec_log.warning("LOGIN_BLOCKED_IP ip=%s", ip)
+            return jsonify({"ok": False, "message": "Trop de tentatives depuis votre réseau. Réessayez dans 30 minutes."}), 429
+
         # Vérification du verrouillage de compte
         if _check_account_locked(email):
             sec_log.warning("LOGIN_BLOCKED_LOCKED email=%s ip=%s", email, ip)
             return jsonify({"ok": False, "message": "Compte temporairement verrouillé suite à trop de tentatives. Réessayez dans 15 minutes."}), 429
 
         data  = charger_comptes()
+        compte_trouve = None
+        hash_a_verifier = _DUMMY_HASH  # timing constant si email inconnu
         for c in data["comptes"]:
             if get_login_email(c).lower() == email and c.get("password_hash"):
-                if check_password_hash(c["password_hash"], pwd):
-                    # Régénération de session (protection session fixation)
-                    session.clear()
-                    session["user_id"] = c["id"]
-                    session["pwd_v"]   = c.get("password_version", 0)
-                    session.permanent  = True
-                    _record_login_success(email)
-                    sec_log.info("LOGIN_OK email=%s compte=%s ip=%s", email, c["id"], ip)
-                    return jsonify({"ok": True})
+                compte_trouve = c
+                hash_a_verifier = c["password_hash"]
+                break
+
+        # Toujours appeler check_password_hash (même si email inconnu) → timing constant
+        mdp_ok = check_password_hash(hash_a_verifier, pwd)
+
+        if compte_trouve and mdp_ok:
+            # Régénération de session (protection session fixation)
+            session.clear()
+            session["user_id"] = compte_trouve["id"]
+            session["pwd_v"]   = compte_trouve.get("password_version", 0)
+            session.permanent  = True
+            _record_login_success(email)
+            _record_ip_success(ip)
+            sec_log.info("LOGIN_OK email=%s compte=%s ip=%s", email, compte_trouve["id"], ip)
+            return jsonify({"ok": True})
 
         _record_login_fail(email)
+        _record_ip_fail(ip)
         sec_log.warning("LOGIN_FAIL email=%s ip=%s", email, ip)
         return jsonify({"ok": False, "message": "Email ou mot de passe incorrect"})
     if session.get("admin"):
@@ -596,6 +641,8 @@ def register():
             return jsonify({"ok": False, "message": "Nom, email et mot de passe sont requis"})
         if len(pwd) < 8:
             return jsonify({"ok": False, "message": "Mot de passe trop court (8 caractères minimum)"})
+        if not re.search(r"[0-9]", pwd):
+            return jsonify({"ok": False, "message": "Le mot de passe doit contenir au moins un chiffre"})
         data = charger_comptes()
         for c in data["comptes"]:
             if get_login_email(c).lower() == email:
@@ -687,6 +734,7 @@ def logout():
 
 
 @app.route("/api/change-password/<compte_id>", methods=["POST"])
+@limiter.limit("5 per hour; 2 per minute")
 def change_password(compte_id):
     if session.get("user_id") != compte_id:
         return jsonify({"ok": False, "message": "Non autorisé"}), 403
@@ -791,6 +839,25 @@ def api_contact():
     except Exception as e:
         app.logger.warning(f"api_contact write error: {e}")
     return jsonify({"ok": True})
+
+
+@app.route("/robots.txt")
+def robots_txt():
+    content = (
+        "User-agent: *\n"
+        "Allow: /\n"
+        "Allow: /register\n"
+        "Allow: /login\n"
+        "Disallow: /dashboard\n"
+        "Disallow: /admin-dashboard\n"
+        "Disallow: /api/\n"
+        "Disallow: /agenda/\n"
+        "Disallow: /emploi-du-temps/\n"
+        "Disallow: /creneaux/\n"
+        "Disallow: /oauth/\n"
+    )
+    from flask import Response
+    return Response(content, mimetype="text/plain")
 
 
 @app.route("/privacy")
