@@ -72,6 +72,34 @@ limiter = Limiter(
     storage_uri="memory://",
 )
 
+# ── Verrouillage de compte (brute force) ──────────────────────
+# { email: {"fails": int, "locked_until": float} }
+_login_attempts: dict = {}
+_LOGIN_MAX_FAILS   = 5       # tentatives avant verrouillage
+_LOGIN_LOCKOUT_SEC = 900     # 15 minutes
+
+def _check_account_locked(email: str) -> bool:
+    """Retourne True si le compte est temporairement verrouillé."""
+    info = _login_attempts.get(email)
+    if not info:
+        return False
+    if info.get("locked_until", 0) > time.time():
+        return True
+    if info.get("locked_until", 0) and info["locked_until"] <= time.time():
+        # Verrou expiré — on remet à zéro
+        _login_attempts.pop(email, None)
+    return False
+
+def _record_login_fail(email: str):
+    info = _login_attempts.setdefault(email, {"fails": 0, "locked_until": 0})
+    info["fails"] += 1
+    if info["fails"] >= _LOGIN_MAX_FAILS:
+        info["locked_until"] = time.time() + _LOGIN_LOCKOUT_SEC
+        sec_log.warning("ACCOUNT_LOCKED email=%s ip=%s duration=15min", email, request.remote_addr)
+
+def _record_login_success(email: str):
+    _login_attempts.pop(email, None)
+
 from prompts import TOUS_LES_LABELS, LABELS_DEFAUT
 
 # ── Chemins ──────────────────────────────────────────────────
@@ -457,15 +485,26 @@ def login():
         email = d.get("email", "").strip().lower()
         pwd   = d.get("password", "")
         ip    = request.remote_addr
+
+        # Vérification du verrouillage de compte
+        if _check_account_locked(email):
+            sec_log.warning("LOGIN_BLOCKED_LOCKED email=%s ip=%s", email, ip)
+            return jsonify({"ok": False, "message": "Compte temporairement verrouillé suite à trop de tentatives. Réessayez dans 15 minutes."}), 429
+
         data  = charger_comptes()
         for c in data["comptes"]:
             if get_login_email(c).lower() == email and c.get("password_hash"):
                 if check_password_hash(c["password_hash"], pwd):
+                    # Régénération de session (protection session fixation)
+                    session.clear()
                     session["user_id"] = c["id"]
                     session["pwd_v"]   = c.get("password_version", 0)
                     session.permanent  = True
+                    _record_login_success(email)
                     sec_log.info("LOGIN_OK email=%s compte=%s ip=%s", email, c["id"], ip)
                     return jsonify({"ok": True})
+
+        _record_login_fail(email)
         sec_log.warning("LOGIN_FAIL email=%s ip=%s", email, ip)
         return jsonify({"ok": False, "message": "Email ou mot de passe incorrect"})
     if session.get("admin"):
@@ -555,8 +594,8 @@ def register():
         pwd   = d.get("password", "")
         if not nom or not email or not pwd:
             return jsonify({"ok": False, "message": "Nom, email et mot de passe sont requis"})
-        if len(pwd) < 6:
-            return jsonify({"ok": False, "message": "Mot de passe trop court (6 caractères min)"})
+        if len(pwd) < 8:
+            return jsonify({"ok": False, "message": "Mot de passe trop court (8 caractères minimum)"})
         data = charger_comptes()
         for c in data["comptes"]:
             if get_login_email(c).lower() == email:
@@ -714,6 +753,7 @@ def home():
 
 
 @app.route("/api/beta-inscription", methods=["POST"])
+@limiter.limit("10 per hour; 3 per minute")
 def beta_inscription():
     """Enregistre les demandes d'accès bêta."""
     d = request.json or {}
@@ -731,6 +771,7 @@ def beta_inscription():
 
 
 @app.route("/api/contact", methods=["POST"])
+@limiter.limit("5 per hour; 2 per minute")
 def api_contact():
     """Enregistre les demandes de démo / contact depuis la landing page."""
     d = request.json or {}
