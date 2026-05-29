@@ -498,8 +498,12 @@
         err.textContent = 'Nom, email et mot de passe sont requis';
         err.style.display = 'block'; return;
       }
-      if (pwd.length < 6) {
-        err.textContent = 'Le mot de passe doit faire au moins 6 caractères';
+      if (pwd.length < 8) {
+        err.textContent = 'Le mot de passe doit faire au moins 8 caractères';
+        err.style.display = 'block'; return;
+      }
+      if (!/[0-9]/.test(pwd)) {
+        err.textContent = 'Le mot de passe doit contenir au moins un chiffre';
         err.style.display = 'block'; return;
       }
       if (pwd !== pwd2) {
@@ -522,17 +526,30 @@
         Object.assign(body, { imap_server, imap_port, smtp_server, smtp_port, imap_password });
       }
 
-      const res  = await fetch('/register', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body)
-      });
-      const json = await res.json();
-      if (json.ok) {
-        window.location.href = '/dashboard';
-      } else {
-        err.textContent = json.message || 'Erreur lors de la création du compte';
+      const btn = document.querySelector('.btn-main');
+      btn.disabled = true;
+      btn.textContent = 'Création en cours…';
+
+      try {
+        const res  = await fetch('/register', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body)
+        });
+        const json = await res.json();
+        if (json.ok) {
+          window.location.href = '/dashboard';
+        } else {
+          err.textContent = json.message || 'Erreur lors de la création du compte';
+          err.style.display = 'block';
+          btn.disabled = false;
+          btn.textContent = 'Créer mon compte →';
+        }
+      } catch {
+        err.textContent = 'Erreur réseau, réessayez.';
         err.style.display = 'block';
+        btn.disabled = false;
+        btn.textContent = 'Créer mon compte →';
       }
     }
   </script>
