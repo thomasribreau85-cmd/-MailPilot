@@ -700,11 +700,12 @@ def register():
         session["pwd_v"]    = 0
         session.permanent   = True   # cookie persistant (7 jours)
 
-        # Email de bienvenue
-        try:
-            _envoyer_email_bienvenue(email, nom)
-        except Exception as e:
-            logger.warning(f"Email bienvenue échoué pour {email}: {e}")
+        # Email de bienvenue en arrière-plan (ne bloque pas la réponse HTTP)
+        threading.Thread(
+            target=_envoyer_email_bienvenue,
+            args=(email, nom),
+            daemon=True
+        ).start()
 
         return jsonify({"ok": True})
 
