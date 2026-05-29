@@ -491,16 +491,15 @@ def set_security_headers(resp):
     # HSTS — force HTTPS en production (Railway)
     if not os.environ.get("DEV_MODE", "1") == "1":
         resp.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
-    # Content Security Policy avec nonce — supprime unsafe-inline pour les scripts
-    nonce = getattr(g, "csp_nonce", "")
+    # Content Security Policy
     csp = (
-        f"default-src 'self'; "
-        f"script-src 'self' 'nonce-{nonce}'; "
-        f"style-src 'self' 'unsafe-inline'; "
-        f"img-src 'self' data:; "
-        f"connect-src 'self'; "
-        f"font-src 'self'; "
-        f"frame-ancestors 'none';"
+        "default-src 'self'; "
+        "script-src 'self' 'unsafe-inline'; "
+        "style-src 'self' 'unsafe-inline'; "
+        "img-src 'self' data:; "
+        "connect-src 'self'; "
+        "font-src 'self'; "
+        "frame-ancestors 'none';"
     )
     resp.headers["Content-Security-Policy"] = csp
     return resp
