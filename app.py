@@ -695,7 +695,10 @@ def register():
         }
         data["comptes"].append(compte)
         sauver_comptes(data)
-        session["user_id"] = compte["id"]
+        session.clear()
+        session["user_id"]  = compte["id"]
+        session["pwd_v"]    = 0
+        session.permanent   = True   # cookie persistant (7 jours)
 
         # Email de bienvenue
         try:
@@ -704,6 +707,8 @@ def register():
             logger.warning(f"Email bienvenue échoué pour {email}: {e}")
 
         return jsonify({"ok": True})
+
+    # Si déjà connecté → dashboard directement
     if session.get("user_id"):
         return redirect("/dashboard")
     return render_template("register.html")

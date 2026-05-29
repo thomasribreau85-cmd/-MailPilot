@@ -432,7 +432,7 @@
       <div class="section-divider s-blue"><span class="sdot"></span>Sécurité</div>
 
       <div class="field-group">
-        <label>Mot de passe MailPilot * <span style="color:#3a5070;font-weight:500;text-transform:none;letter-spacing:0">(6 caractères min)</span></label>
+        <label>Mot de passe MailPilot * <span style="color:#3a5070;font-weight:500;text-transform:none;letter-spacing:0">(8 caractères min, avec au moins un chiffre)</span></label>
         <input type="password" id="pwd" placeholder="Choisissez un mot de passe fort" />
       </div>
 
@@ -538,7 +538,9 @@
         });
         const json = await res.json();
         if (json.ok) {
-          window.location.href = '/dashboard';
+          window.location.replace('/dashboard');
+        } else if (json.redirect) {
+          window.location.replace(json.redirect);
         } else {
           err.textContent = json.message || 'Erreur lors de la création du compte';
           err.style.display = 'block';
