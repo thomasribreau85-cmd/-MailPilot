@@ -69,7 +69,7 @@
 
     <div class="back"><a href="/login">← Retour connexion client</a></div>
   </div>
-  <script>
+  <script nonce="{{ csp_nonce }}">
     async function connexion() {
       const pwd = document.getElementById('pwd').value;
       const res = await fetch('/admin', {

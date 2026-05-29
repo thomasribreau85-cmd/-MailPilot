@@ -2334,7 +2334,7 @@
 
   <div id="toast"></div>
 
-  <script>
+  <script nonce="{{ csp_nonce }}">
     const COMPTE_ID = "{{ compte.id }}";
     const LABELS_DEFAUT = {{ labels_defaut | tojson }};
     const LABELS_INFO   = {{ labels_info   | tojson }};

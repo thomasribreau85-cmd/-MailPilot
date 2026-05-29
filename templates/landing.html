@@ -676,7 +676,7 @@
 
   <div id="toast"></div>
 
-  <script>
+  <script nonce="{{ csp_nonce }}">
     function toast(msg, duree=3000) {
       const el = document.getElementById('toast');
       el.textContent = msg; el.classList.add('show');

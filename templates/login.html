@@ -332,7 +332,7 @@
 
   </div>
 
-  <script>
+  <script nonce="{{ csp_nonce }}">
     async function connexion() {
       const email = document.getElementById('email').value.trim();
       const pwd   = document.getElementById('pwd').value;

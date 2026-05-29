@@ -20,7 +20,7 @@ from urllib.parse import urlencode
 
 import anthropic as anthropic_sdk
 import requests as http_requests
-from flask import Flask, render_template, render_template_string, request, jsonify, redirect, session
+from flask import Flask, render_template, render_template_string, request, jsonify, redirect, session, g
 from werkzeug.security import generate_password_hash, check_password_hash
 from google_auth_oauthlib.flow import InstalledAppFlow, Flow
 from google.auth.transport.requests import Request
@@ -469,6 +469,18 @@ def auto_restart_agents():
 
 
 # ── Security headers ──────────────────────────────────────────
+@app.context_processor
+def inject_csp_nonce():
+    """Injecte csp_nonce dans tous les contextes de templates Jinja2."""
+    return {"csp_nonce": getattr(g, "csp_nonce", "")}
+
+
+@app.before_request
+def generate_csp_nonce():
+    """Génère un nonce CSP unique par requête, accessible via g.csp_nonce dans les templates."""
+    g.csp_nonce = secrets.token_urlsafe(16)
+
+
 @app.after_request
 def set_security_headers(resp):
     resp.headers["X-Content-Type-Options"]  = "nosniff"
@@ -479,15 +491,16 @@ def set_security_headers(resp):
     # HSTS — force HTTPS en production (Railway)
     if not os.environ.get("DEV_MODE", "1") == "1":
         resp.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
-    # Content Security Policy
+    # Content Security Policy avec nonce — supprime unsafe-inline pour les scripts
+    nonce = getattr(g, "csp_nonce", "")
     csp = (
-        "default-src 'self'; "
-        "script-src 'self' 'unsafe-inline'; "
-        "style-src 'self' 'unsafe-inline'; "
-        "img-src 'self' data:; "
-        "connect-src 'self'; "
-        "font-src 'self'; "
-        "frame-ancestors 'none';"
+        f"default-src 'self'; "
+        f"script-src 'self' 'nonce-{nonce}'; "
+        f"style-src 'self' 'unsafe-inline'; "
+        f"img-src 'self' data:; "
+        f"connect-src 'self'; "
+        f"font-src 'self'; "
+        f"frame-ancestors 'none';"
     )
     resp.headers["Content-Security-Policy"] = csp
     return resp
@@ -839,6 +852,18 @@ def api_contact():
     except Exception as e:
         app.logger.warning(f"api_contact write error: {e}")
     return jsonify({"ok": True})
+
+
+@app.route("/.well-known/security.txt")
+def security_txt():
+    from flask import Response
+    content = (
+        "Contact: mailto:mailpilot.contact86@gmail.com\n"
+        "Preferred-Languages: fr, en\n"
+        "Scope: https://mailpilot-production-981d.up.railway.app\n"
+        "Policy: Merci de nous signaler toute vulnérabilité par email avant toute divulgation publique.\n"
+    )
+    return Response(content, mimetype="text/plain")
 
 
 @app.route("/robots.txt")

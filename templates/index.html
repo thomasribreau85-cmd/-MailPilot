@@ -481,7 +481,7 @@
 
   <div id="toast"></div>
 
-  <script>
+  <script nonce="{{ csp_nonce }}">
     // ── UTILS ─────────────────────────────────────────────────
     function toast(msg, duree=2800) {
       const el = document.getElementById('toast');
